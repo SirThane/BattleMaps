@@ -1,0 +1,8 @@
+*.idea*
+*__pycache__*
+cogs/utils/temp.txt
+*.log
+redis.json
+/cogs/selfroles.py
+/AWSMapConverter/
+Would skip repository AWSMapConverter/
