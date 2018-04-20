@@ -42,11 +42,13 @@ class Maps:
             return
 
         author = awmap.author
+        awbw_id = awmap.awbw_id
 
         aws = await self.get_aws(awmap)
         csv = await self.get_awbw(awmap)
         minimap = await self.get_minimap(awmap)
-        embed = self.format_embed(ctx, awmap.title, author=author, aws=aws, minimap=minimap, csv=csv)
+
+        embed = self.format_embed(ctx, awmap.title, author=author, aws=aws, minimap=minimap, csv=csv, awbw_id=awbw_id)
         await ctx.send(embed=embed)
 
     ##########################
@@ -89,9 +91,15 @@ class Maps:
             else:
                 try:
                     search = re_csv.search(msg.content)
-                    if search:
+                    if search and 0 <= int(search.group(0).split(",")[0]) <= 176:
                         awmap = AWMap().from_awbw(search.group(0), title)
                         return awmap
+                    elif search:
+                        try:
+                            awbw_id = int(search.group(0))
+                            return self.open_awbw_map_id(awbw_id)
+                        except ValueError:
+                            return
                 except AssertionError:
                     return
 
