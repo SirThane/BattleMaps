@@ -3,4 +3,4 @@
 *.log
 redis.json
 /AWSMapConverter/
-main.sh
+BattleMaps.sh
