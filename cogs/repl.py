@@ -2,12 +2,9 @@ from discord.ext import commands
 from .utils import checks, utils
 import discord
 import inspect
-import logging
 import sys
 from io import StringIO
 import contextlib
-
-log = logging.getLogger()
 
 
 @contextlib.contextmanager

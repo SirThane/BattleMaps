@@ -9,7 +9,6 @@ from discord.ext import commands
 import discord
 import traceback
 import inspect
-import logging
 from asyncio import sleep
 import sys
 import os
@@ -18,7 +17,6 @@ import contextlib
 from cogs.utils import checks
 from main import app_name
 
-log = logging.getLogger()
 config = f'{app_name}:admin'
 
 
@@ -210,7 +208,6 @@ class Admin:
     @checks.sudo()
     @commands.command(hidden=True, name='restart', aliases=["kill", "f"])
     async def _restart(self, ctx, *, arg=None):  # Overwrites builtin kill()
-        log.warning("Restarted by command.")
         if arg.lower() == "pull":
             resp = self.pull()
         await ctx.send(content=f"{resp}\nRestarting by command. . .")

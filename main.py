@@ -5,12 +5,10 @@ Still a test bot
 
 import json
 import sys
-import os
 from discord.ext import commands
 import discord
 import asyncio
 import traceback
-import logging
 from cogs.utils import utils
 
 
@@ -28,14 +26,6 @@ except:
     print('ERROR: could not load configuration')
     exit()
 
-log = logging.getLogger()
-log.setLevel(logging.WARNING)
-handler = logging.FileHandler(filename=f'{app_name}.log', encoding='utf-8', mode='a')
-formatter = logging.Formatter("{asctime} - {levelname} - {message}", style="{")
-handler.setFormatter(formatter)
-log.addHandler(handler)
-
-log.info("Instance started.")
 
 db = utils.StrictRedis(**conf)
 config = f'{app_name}:config'
@@ -86,8 +76,6 @@ async def on_command_error(ctx, error):
         print('In {0.command.qualified_name}:'.format(ctx), file=sys.stderr)
         print('{0.__class__.__name__}: {0}'.format(error.original), file=sys.stderr)
         traceback.print_tb(error.__traceback__, file=sys.stderr)
-        log.error('In {0.command.qualified_name}:'.format(ctx))
-        log.error('{0.__class__.__name__}: {0}'.format(error.original))
 
     else:
         traceback.print_tb(error.__traceback__, file=sys.stderr)
@@ -107,9 +95,7 @@ async def on_ready():
         try:
             print(f'| Loading initial cog {cog}')
             bot.load_extension(f'cogs.{cog}')
-            log.info(f'Loaded {cog}')
         except Exception as e:
-            log.warning('Failed to load extension {}\n{}: {}'.format(cog, type(e).__name__, e))
             print('| Failed to load extension {}\n|   {}: {}'.format(cog, type(e).__name__, e))
 
     print(f'#-------------------------------#\n')
