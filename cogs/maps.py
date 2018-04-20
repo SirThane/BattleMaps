@@ -34,10 +34,8 @@ class Maps:
         await self.bot.process_commands(ctx.message)
 
     @_map.command(name="info")
-    async def _info(self, ctx, *, arg: str=""):
-
-        ctx.message.content = arg
-        awmap = await self.check_map(ctx.message)
+    async def _info(self, ctx, title: str=None, *, arg: str=""):
+        awmap = await self.check_map(ctx.message, title)
 
         if not awmap:
             await ctx.send("Invalid Map")  # TODO: Prettify
@@ -46,8 +44,9 @@ class Maps:
         author = awmap.author
 
         aws = await self.get_aws(awmap)
+        csv = await self.get_awbw(awmap)
         minimap = await self.get_minimap(awmap)
-        embed = self.format_embed(ctx, awmap.title, author=author, aws=aws, minimap=minimap)
+        embed = self.format_embed(ctx, awmap.title, author=author, aws=aws, minimap=minimap, csv=csv)
         await ctx.send(embed=embed)
 
     ##########################
@@ -58,7 +57,7 @@ class Maps:
         msg = await self.buffer_channel.send(file=file)
         return msg.attachments[0].url
 
-    async def check_map(self, msg: discord.Message):
+    async def check_map(self, msg: discord.Message, title: str=None):
         if msg.attachments:
             attachment = msg.attachments[0]
             filename, ext = os.path.splitext(attachment.filename)
@@ -85,13 +84,13 @@ class Maps:
                     return
                 except TypeError:
                     return
-                finally:
+                else:
                     return self.open_awbw_map_id(search.group(3))
             else:
                 try:
                     search = re_csv.search(msg.content)
                     if search:
-                        awmap = AWMap().from_awbw(search.group(0))
+                        awmap = AWMap().from_awbw(search.group(0), title)
                         return awmap
                 except AssertionError:
                     return
@@ -121,6 +120,7 @@ class Maps:
         awmap = AWMap().from_awbw(map_csv, title=title)
         awmap.author = author
         awmap.desc = map_url
+        awmap.awbw_id = awbw_id
 
         return awmap
 
@@ -130,6 +130,15 @@ class Maps:
         else:
             title = "Untitled"
         attachment = discord.File(fp=BytesIO(awmap.to_aws), filename=f"{title}.aws")
+        url = await self.get_hosted_file(attachment)
+        return url
+
+    async def get_awbw(self, awmap: AWMap):
+        if awmap.title:
+            title = awmap.title
+        else:
+            title = "Untitled"
+        attachment = discord.File(fp=BytesIO(awmap.to_awbw.encode("utf-8")), filename=f"{title}.csv")
         url = await self.get_hosted_file(attachment)
         return url
 
@@ -156,6 +165,7 @@ class Maps:
         author = kwargs.get("author")
         aws = kwargs.get("aws")
         minimap = kwargs.get("minimap")
+        csv = kwargs.get("csv")
 
         embed = {
             "title": title,
@@ -177,7 +187,13 @@ class Maps:
 
         if aws:
             embed["fields"] += [{"name": "AWS Download:",
-                                 "value": f"[{title}]({aws})"}]
+                                 "value": f"[{title}]({aws})",
+                                 "inline": True}]
+
+        if csv:
+            embed["fields"] += [{"name": "AWBW Text Map",
+                                 "value": f"[{title}]({csv})",
+                                 "inline": True}]
 
         return discord.Embed.from_data(embed)
 
@@ -193,20 +209,19 @@ class Maps:
 
     @staticmethod
     def pull():
-        cmd = "git -C AWSMapConverter --no-pager pull"
+        cmd = "git -C AWSMapConverter --no-pager pull".split(" ")
         params = {
-            "args":                 cmd.split(" "),
             "universal_newlines":   True,
             "cwd":                  os.getcwd(),
             "stdout":               subprocess.PIPE,
             "stderr":               subprocess.STDOUT
         }
-        ret = subprocess.run(**params)
+        ret = subprocess.run(cmd, **params)
         if "up-to-date" in ret.stdout:
             return False
         elif "fatal: Not a git repository" in ret.stdout:
-            params["args"] = "git clone --no-pager https://github.com/SirThane/AWSMapConverter.git"
-            subprocess.run(**params)
+            cmd = "git clone --no-pager https://github.com/SirThane/AWSMapConverter.git".split(" ")
+            subprocess.run(cmd, **params)
             return True
         else:
             return True
