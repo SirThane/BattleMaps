@@ -4,8 +4,6 @@ import discord
 from discord.ext import commands
 from main import app_name
 from io import BytesIO, StringIO
-import requests
-import bs4
 import re
 import os
 import subprocess
@@ -87,17 +85,17 @@ class Maps:
                 except TypeError:
                     return
                 else:
-                    return self.open_awbw_map_id(search.group(3))
+                    return AWMap().from_awbw(awbw_id=search.group(3))
             else:
                 try:
                     search = re_csv.search(msg.content)
                     if search and 0 <= int(search.group(0).split(",")[0]) <= 176:
-                        awmap = AWMap().from_awbw(search.group(0), title)
+                        awmap = AWMap().from_awbw(data=search.group(0), title=title)
                         return awmap
                     elif search:
                         try:
                             awbw_id = int(search.group(0))
-                            return self.open_awbw_map_id(awbw_id)
+                            return AWMap().from_awbw(awbw_id=awbw_id)
                         except ValueError:
                             return
                 except AssertionError:
@@ -106,31 +104,32 @@ class Maps:
     def open_aws(self, aws: bytes):
         return AWMap().from_aws(aws)
 
-    def open_awbw_map_id(self, awbw_id):
-        r_text = requests.get(f"http://awbw.amarriner.com/text_map.php?maps_id={awbw_id}")
-        soup_text = bs4.BeautifulSoup(r_text.text, "html.parser")
-        title_href = soup_text.find_all("a", href=f"prevmaps.php?maps_id={awbw_id}")
-
-        if len(title_href) == 0:
-            return
-
-        map_url = f"http://awbw.amarriner.com/prevmaps.php?maps_id={awbw_id}"
-
-        r_map = requests.get(map_url)
-        soup_map = bs4.BeautifulSoup(r_map.text, "html.parser")
-        # author = soup_map.select('a[href*="profile.php"]')[0].contents[0]
-        author = soup_map.find(href=lambda href: href and re.compile("profile.php").search(href)).contents[0]
-
-        title = title_href[0].contents[0]
-        table = title_href[0].find_previous("table")
-        map_csv = "\n".join([t.contents[0] for t in table.find_all_next("td")[2:]])
-
-        awmap = AWMap().from_awbw(map_csv, title=title)
-        awmap.author = author
-        awmap.desc = map_url
-        awmap.awbw_id = awbw_id
-
-        return awmap
+    # def open_awbw_map_id(self, awbw_id):
+    #     r_text = requests.get(f"http://awbw.amarriner.com/text_map.php?maps_id={awbw_id}")
+    #     soup_text = bs4.BeautifulSoup(r_text.text, "html.parser")
+    #     title_href = soup_text.find_all("a", href=f"prevmaps.php?maps_id={awbw_id}")
+    #
+    #     if len(title_href) == 0:
+    #         return
+    #
+    #     map_url = f"http://awbw.amarriner.com/prevmaps.php?maps_id={awbw_id}"
+    #
+    #     r_map = requests.get(map_url)
+    #     soup_map = bs4.BeautifulSoup(r_map.text, "html.parser")
+    #     # author = soup_map.select('a[href*="profile.php"]')[0].contents[0]
+    #     print(soup_map.find(href=lambda href: href and re.compile("profile.php").search(href)).contents)
+    #     author = soup_map.find(href=lambda href: href and re.compile("profile.php").search(href)).contents[0]
+    #
+    #     title = title_href[0].contents[0]
+    #     table = title_href[0].find_previous("table")
+    #     map_csv = "\n".join([t.contents[0] for t in table.find_all_next("td")[2:]])
+    #
+    #     awmap = AWMap().from_awbw(map_csv, title=title)
+    #     awmap.author = author
+    #     awmap.desc = map_url
+    #     awmap.awbw_id = awbw_id
+    #
+    #     return awmap
 
     async def get_aws(self, awmap: AWMap):
         if awmap.title:
