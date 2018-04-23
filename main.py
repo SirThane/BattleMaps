@@ -72,6 +72,9 @@ async def on_command_error(ctx, error):
         await bot.formatter.format_help_for(ctx, [c for c in bot.commands if 'help' == c.name][0],
                                             "Command not found.")
 
+    elif isinstance(error, commands.CheckFailure):
+        pass
+
     elif isinstance(error, commands.CommandInvokeError):
         print('In {0.command.qualified_name}:'.format(ctx), file=sys.stderr)
         print('{0.__class__.__name__}: {0}'.format(error.original), file=sys.stderr)

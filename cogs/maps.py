@@ -7,6 +7,7 @@ from io import BytesIO, StringIO
 import re
 import os
 import subprocess
+import requests
 from cogs.utils import checks
 from AWSMapConverter.awmap import AWMap
 
@@ -187,8 +188,9 @@ class Maps:
             embed["image"] = {"url": minimap}
 
         if author:
+            r = requests.get(f"http://awbw.amarriner.com/profile.php?username={author}")
             embed["description"] = f"Design map by " \
-                                   f"[{author}](http://awbw.amarriner.com/profile.php?username={author})"
+                                   f"[{author}]({r.url})"
 
         embed["fields"] = []
 
@@ -204,7 +206,7 @@ class Maps:
 
         return discord.Embed.from_data(embed)
 
-    # @checks.has_admin()
+    @checks.awbw_staff()
     @_map.command(name="listen", hidden=True)
     async def listen(self, ctx, *, arg):
         if arg.strip(" ").lower() in "on yes true y t".split(" "):
