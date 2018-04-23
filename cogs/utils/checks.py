@@ -10,6 +10,21 @@ from main import db, app_name
 config = f'{app_name}:config:permissions'
 
 
+AWBW_GOD_ROLE = 345549110528704513
+AWBW_DEMIGOD_ROLE = 397475020076744704
+AWBW_CHAN_MOD_ROLE = 314798536837562378
+AWBW_MC_ROLE = 324122288930684928
+AWBW_WIKI_MOD_ROLE = 392397509714116618
+
+AWBW_STAFF_ROLES = [
+    AWBW_GOD_ROLE,
+    AWBW_DEMIGOD_ROLE,
+    AWBW_CHAN_MOD_ROLE,
+    AWBW_MC_ROLE,
+    AWBW_WIKI_MOD_ROLE,
+]
+
+
 def supercede(precedent):
     """Decorate a predicate.
     Pass a predicate as param.
@@ -78,7 +93,7 @@ def sudoer(ctx):
 
 
 @supercede(sudoer)
-def has_admin(ctx):  # TODO: Why didn't this work?
+def admin_perm(ctx):  # TODO: Why didn't this work?
     if ctx.guild:
         return ctx.author.guild_permissions.administrator
     else:
@@ -86,21 +101,31 @@ def has_admin(ctx):  # TODO: Why didn't this work?
 
 
 @supercede(sudoer)
-def adminrole(ctx):  # TODO: WIP
-    role = db.hget(f'{config}:adminrole', f'{ctx.guild.id}')
-    if role:
-        return has_role(ctx, lambda r: r.id == int(role))
+@require(lambda ctx: ctx.guild and ctx.guild.id == 313453805150928906)
+def awbw_staff_role(ctx):
+    if ctx.guild:
+        for role in AWBW_STAFF_ROLES:
+            return role in [r.id for r in ctx.author.roles]
     else:
         return False
 
 
-@supercede(sudoer)
-def modrole(ctx):  # TODO: WIP
-    role = db.hget(f'{config}:modrole', f'{ctx.guild.id}')
-    if role:
-        return has_role(ctx, lambda r: r.id == int(role))
-    else:
-        return False
+# @supercede(sudoer)
+# def adminrole(ctx):  # TODO: WIP
+#     role = db.hget(f'{config}:adminrole', f'{ctx.guild.id}')
+#     if role:
+#         return has_role(ctx, lambda r: r.id == int(role))
+#     else:
+#         return False
+#
+#
+# @supercede(sudoer)
+# def modrole(ctx):  # TODO: WIP
+#     role = db.hget(f'{config}:modrole', f'{ctx.guild.id}')
+#     if role:
+#         return has_role(ctx, lambda r: r.id == int(role))
+#     else:
+#         return False
 
 
 # ### Luc's Predicates ###
@@ -134,11 +159,23 @@ def sudo():
     return commands.check(predicate)
 
 
-def pm(allow=False):
-    def decorator(check):
-        def predicate(ctx):
-            return in_pm(ctx)
-        return commands.check(predicate)
+def has_admin():
+    def predicate(ctx):
+        return admin_perm(ctx)
+    return commands.check(predicate)
+
+
+def awbw_staff():
+    def predicate(ctx):
+        return awbw_staff_role(ctx)
+    return commands.check(predicate)
+
+
+# def pm(allow=False):
+#     def decorator(check):
+#         def predicate(ctx):
+#             return in_pm(ctx)
+#         return commands.check(predicate)
 
 
 # ### Luc's checks ###
