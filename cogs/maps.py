@@ -23,7 +23,7 @@ class Maps:
     def __init__(self, bot):
         self.bot = bot
         self.db = bot.db
-        self.listen_for_maps = False
+        self.listen_for_maps = self.db.get(f"{config}:listen_for_maps") or False
         self.buffer_channel = self.bot.get_channel(id=434551085185630218)
 
     @commands.group(name="map", invoke_without_command=True)
@@ -204,6 +204,19 @@ class Maps:
 
         return discord.Embed.from_data(embed)
 
+    # @checks.has_admin()
+    @_map.command(name="listen", hidden=True)
+    async def listen(self, ctx, *, arg):
+        if arg.strip(" ").lower() in "on yes true y t".split(" "):
+            self.db.set(f"{config}:listen_for_maps", True)
+            self.listen_for_maps = True
+        elif arg.strip(" ").lower() in "off no false n f".split(" "):
+            self.db.set(f"{config}:listen_for_maps", False)
+            self.listen_for_maps = False
+        em = discord.Embed(color=self._color(ctx), title="BattleMaps Config",
+                           description=f"Active Listen For Maps: `{self.listen_for_maps}`")
+        await ctx.send(embed=em)
+
     @checks.sudo()
     @_map.command(name="update", hidden=True)
     async def _update(self, ctx):
@@ -238,7 +251,7 @@ class Maps:
             if not msg.content.startswith(self.bot.command_prefix[0]):
                 search = re_awl.search(msg.content)
                 if search:
-                    msg.content = f"{self.bot.command_prefix} {search.group(3)}"
+                    msg.content = f"{self.bot.command_prefix[0]}map {search.group(3)}"
                     await self.bot.process_commands(msg)
 
 

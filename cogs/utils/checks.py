@@ -37,11 +37,15 @@ def require(requisite):
 
 
 def in_pm(ctx):
-    return isinstance(ctx.channel, discord.DMChannel) or isinstance(ctx.channel, discord.GroupChannel)
+    def check():
+        return isinstance(ctx.channel, discord.DMChannel) or isinstance(ctx.channel, discord.GroupChannel)
+    return check()
 
 
 def no_pm(ctx):
-    return not in_pm(ctx)
+    def check():
+        return not in_pm(ctx)
+    return check()
 
 
 """
@@ -71,6 +75,14 @@ def has_role(ctx, check):
 @supercede(bot_owner)
 def sudoer(ctx):
     return ctx.author in db.smembers(f'{config}:sudoers')
+
+
+@supercede(sudoer)
+def has_admin(ctx):  # TODO: Why didn't this work?
+    if ctx.guild:
+        return ctx.author.guild_permissions.administrator
+    else:
+        return False
 
 
 @supercede(sudoer)
