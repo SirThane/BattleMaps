@@ -77,10 +77,23 @@ async def on_command_error(ctx, error):
 
     elif isinstance(error, errors.AWBWDimensionsException):
         em = discord.Embed(color=ctx.guild.me.color,
-                           title="⚠ Who there buddy!",
-                           description="I can't take that map. The edges are all wrong. Look at it again.\n\n"
-                                       "```\nThe map you uploaded contained rows with a differing amounts of columns."
-                                       "\nCheck your map and try again.\n```")
+                           title="⚠  Woah there, buddy!",
+                           description="I can't take that map. The edges are all wrong.\n"
+                                       "What'd'ya say you take a look and try it again.\n\n"
+                                       "```\nThe map you uploaded contained\n"
+                                       "rows with a differing amounts of\n"
+                                       "columns. Check your map and try again.\n```")
+        await ctx.send(embed=em)
+
+    elif isinstance(error, errors.InvalidMapException):
+        em = discord.Embed(color=ctx.guild.me.color,
+                           title="⚠  Woah there, buddy!",
+                           description="What are you trying to sell here? Is that even\n"
+                                       "a map? It don't look like none I ever seen.\n\n"
+                                       "```\nThe converter was unable to detect a valid\n"
+                                       "map in your message. Please check your\n"
+                                       "file and command parameters. If you have\n"
+                                       "trouble, try in `$$help`\n```")
         await ctx.send(embed=em)
 
     elif isinstance(error, commands.CommandInvokeError):
