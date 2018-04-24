@@ -1,15 +1,18 @@
-"""General Commands"""
+"""Commands for Advance Wars Maps"""
 
 import discord
 from discord.ext import commands
 from main import app_name
-from io import BytesIO, StringIO
+from io import BytesIO
 import re
 import os
 import subprocess
+from datetime import datetime
+from asyncio import sleep
 from urllib.parse import quote
 from cogs.utils import checks
 from AWSMapConverter.awmap import AWMap
+from cogs.utils.errors import *
 
 config = f"{app_name}:maps"
 
@@ -19,7 +22,12 @@ re_csv = re.compile(r"(([0-9])+(,[0-9]*)*(\n[0-9]+(,[0-9]*)*)*){1}")
 
 
 class Maps:
-    """General use and utility commands."""
+    """
+    Commands for working with Advance Wars maps.
+    Will currently support AWS map files and
+    AWBW maps, both text, file, and links.
+    Other features soon to come™
+    """
 
     def __init__(self, bot):
         self.bot = bot
@@ -35,19 +43,17 @@ class Maps:
 
     @_map.command(name="load")
     async def _load(self, ctx, title: str=None, *, arg: str=""):
-        awmap = await self.check_map(ctx.message, title)
+        awmap = await CheckMap.check(ctx.message, title)
 
         if not awmap:
-            await ctx.send("Invalid Map")  # TODO: Prettify
-            return
+            raise InvalidMapException
 
     @_map.command(name="info")
     async def _info(self, ctx, title: str=None, *, arg: str=""):
-        awmap = await self.check_map(ctx.message, title)
+        awmap = await CheckMap.check(ctx.message, title)
 
         if not awmap:
-            await ctx.send("Invalid Map")  # TODO: Prettify
-            return
+            raise InvalidMapException
 
         author = awmap.author
         awbw_id = awmap.awbw_id
@@ -63,53 +69,26 @@ class Maps:
     # Some Utility Functions #
     ##########################
 
+    async def timed_store(self, user: discord.Member, awmap: AWMap):
+        """
+        Stores an AWMap by user ID with a expiry of 5 minutes.
+        Loading another map will reset the timer.
+
+        :param user: `discord.Member` instance of command author
+        :param awmap: `AWMap` instance of map loaded by `user`
+        """
+        ts = datetime.utcnow()
+        self.loaded_maps[user.id] = {
+            "ts": ts,
+            "awmap": awmap
+        }
+        await sleep(300)
+        if self.loaded_maps[user.id]["ts"] == ts:
+            self.loaded_maps.pop(user.id)
+
     async def get_hosted_file(self, file: discord.File):
         msg = await self.buffer_channel.send(file=file)
         return msg.attachments[0].url
-
-    async def check_map(self, msg: discord.Message, title: str=None):
-        if msg.attachments:
-            attachment = msg.attachments[0]
-            filename, ext = os.path.splitext(attachment.filename)
-            if ext.lower() == ".aws":
-                aws_bytes = BytesIO()
-                await attachment.save(fp=aws_bytes)
-                aws_bytes.seek(0)
-                return AWMap().from_aws(aws_bytes.read())
-            elif ext.lower() in [".txt", ".csv"]:
-                try:
-                    awbw_string = StringIO()
-                    attachment.save(fp=awbw_string)
-                    awbw_string.seek(0)
-                    awmap = AWMap().from_awbw(awbw_string.read())  # TODO: Need to check discord.File
-                    return awmap
-                except AssertionError:
-                    return  # TODO: Error message: Invalid AWBW CSV
-        else:
-            search = re_awl.search(msg.content)
-            if search:
-                try:
-                    int(search.group(3))
-                except ValueError:
-                    return
-                except TypeError:
-                    return
-                else:
-                    return AWMap().from_awbw(awbw_id=search.group(3))
-            else:
-                try:
-                    search = re_csv.search(msg.content)
-                    if search and 0 <= int(search.group(0).split(",")[0]) <= 176:
-                        awmap = AWMap().from_awbw(data=search.group(0), title=title)
-                        return awmap
-                    elif search:
-                        try:
-                            awbw_id = int(search.group(0))
-                            return AWMap().from_awbw(awbw_id=awbw_id)
-                        except ValueError:
-                            return
-                except AssertionError:
-                    return
 
     def open_aws(self, aws: bytes):
         return AWMap().from_aws(aws)
@@ -236,6 +215,76 @@ class Maps:
                 if search:
                     msg.content = f"{self.bot.command_prefix[0]}map {search.group(3)}"
                     await self.bot.process_commands(msg)
+
+
+class CheckMap:
+    """Takes a discord.Message object and checks
+    for valid maps that can be loaded."""
+
+    @staticmethod
+    async def check(msg: discord.Message, title="[Untitled]", skips=None):
+
+        if msg.attachments:
+            attachment = msg.attachments[0]
+            filename, ext = os.path.splitext(attachment.filename)
+
+            if "aws" not in skips and ext == ".aws":
+                return await CheckMap.from_aws(attachment)
+
+            if "text" not in skips and ext.lower() in [".txt", ".csv"]:
+                return await CheckMap.from_text(attachment, filename)
+
+        s_awl = re_awl.search(msg.content)
+
+        if "link" not in skips and s_awl:
+            return CheckMap.from_id(s_awl.group(3))
+
+        s_csv = re_awl.search(msg.content)
+
+        if s_csv:
+
+            if "msg_csv" not in skips and 0 <= int(s_csv.group(0).split(",")[0]) <= 176:
+                return CheckMap.from_csv(s_csv.group(0), title)
+
+            if "id" not in skips:
+                return CheckMap.from_id(s_csv.group(0))
+
+
+    @staticmethod
+    async def from_aws(attachment):
+        aws_bytes = BytesIO()
+        await attachment.save(fp=aws_bytes)
+        aws_bytes.seek(0)
+        return AWMap().from_aws(aws_bytes.read())
+
+    @staticmethod
+    async def from_text(attachment, filename):
+        awbw_bytes = BytesIO()
+        await attachment.save(fp=awbw_bytes)
+        awbw_bytes.seek(0)
+        map_csv = awbw_bytes.read().decode("utf-8")
+        try:
+            awmap = AWMap().from_awbw(map_csv, title=filename)
+        except AssertionError:
+            raise AWBWDimensionsException
+        else:
+            return awmap
+
+    @staticmethod
+    def from_id(awbw_id):
+        try:
+            int(awbw_id)
+        except Exception:
+            raise InvalidMapException
+        else:
+            return AWMap().from_awbw(awbw_id=awbw_id)
+
+    @staticmethod
+    def from_csv(msg_csv, title):
+        try:
+            return AWMap().from_awbw(data=msg_csv, title=title)
+        except AssertionError:
+            raise AWBWDimensionsException
 
 
 def setup(bot):
