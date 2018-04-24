@@ -10,6 +10,7 @@ import subprocess
 from urllib.parse import quote
 from cogs.utils import checks
 from AWSMapConverter.awmap import AWMap
+from cogs.utils.errors import *
 
 config = f"{app_name}:maps"
 
@@ -58,7 +59,7 @@ class Maps:
         msg = await self.buffer_channel.send(file=file)
         return msg.attachments[0].url
 
-    async def check_map(self, msg: discord.Message, title: str=None):
+    async def check_map(self, msg: discord.Message, title: str=None):  # TODO: This whole bitch gon get a refactor
         if msg.attachments:
             attachment = msg.attachments[0]
             filename, ext = os.path.splitext(attachment.filename)
@@ -69,13 +70,15 @@ class Maps:
                 return AWMap().from_aws(aws_bytes.read())
             elif ext.lower() in [".txt", ".csv"]:
                 try:
-                    awbw_string = StringIO()
-                    attachment.save(fp=awbw_string)
-                    awbw_string.seek(0)
-                    awmap = AWMap().from_awbw(awbw_string.read())  # TODO: Need to check discord.File
+                    awbw_bytes = BytesIO()
+                    await attachment.save(fp=awbw_bytes)
+                    awbw_bytes.seek(0)
+                    map_csv = awbw_bytes.read().decode("utf-8")
+                    awmap = AWMap().from_awbw(map_csv, title=filename)  # TODO: Need to check discord.File
                     return awmap
                 except AssertionError:
-                    return  # TODO: Error message: Invalid AWBW CSV
+                    raise AWBWDimensionsException
+                    # return  # TODO: Error message: Invalid AWBW CSV
         else:
             search = re_awl.search(msg.content)
             if search:
@@ -100,7 +103,8 @@ class Maps:
                         except ValueError:
                             return
                 except AssertionError:
-                    return
+                    raise AWBWDimensionsException  # TODO: The converter core is catching AssertionError. Stop that.
+                    # return
 
     def open_aws(self, aws: bytes):
         return AWMap().from_aws(aws)
