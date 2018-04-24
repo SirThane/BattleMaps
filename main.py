@@ -9,7 +9,7 @@ from discord.ext import commands
 import discord
 import asyncio
 import traceback
-from cogs.utils import utils
+from cogs.utils import utils, errors
 
 
 loop = asyncio.get_event_loop()
@@ -74,6 +74,14 @@ async def on_command_error(ctx, error):
 
     elif isinstance(error, commands.CheckFailure):
         pass
+
+    elif isinstance(error, errors.AWBWDimensionsException):
+        em = discord.Embed(color=ctx.guild.me.color,
+                           title="⚠ Who there buddy!",
+                           description="I can't take that map. The edges are all wrong. Look at it again.\n\n"
+                                       "```\nThe map you uploaded contained rows with a differing amounts of columns."
+                                       "\nCheck your map and try again.\n```")
+        await ctx.send(embed=em)
 
     elif isinstance(error, commands.CommandInvokeError):
         print('In {0.command.qualified_name}:'.format(ctx), file=sys.stderr)
