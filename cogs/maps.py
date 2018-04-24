@@ -7,7 +7,7 @@ from io import BytesIO, StringIO
 import re
 import os
 import subprocess
-import requests
+from urllib.parse import quote
 from cogs.utils import checks
 from AWSMapConverter.awmap import AWMap
 
@@ -105,33 +105,6 @@ class Maps:
     def open_aws(self, aws: bytes):
         return AWMap().from_aws(aws)
 
-    # def open_awbw_map_id(self, awbw_id):
-    #     r_text = requests.get(f"http://awbw.amarriner.com/text_map.php?maps_id={awbw_id}")
-    #     soup_text = bs4.BeautifulSoup(r_text.text, "html.parser")
-    #     title_href = soup_text.find_all("a", href=f"prevmaps.php?maps_id={awbw_id}")
-    #
-    #     if len(title_href) == 0:
-    #         return
-    #
-    #     map_url = f"http://awbw.amarriner.com/prevmaps.php?maps_id={awbw_id}"
-    #
-    #     r_map = requests.get(map_url)
-    #     soup_map = bs4.BeautifulSoup(r_map.text, "html.parser")
-    #     # author = soup_map.select('a[href*="profile.php"]')[0].contents[0]
-    #     print(soup_map.find(href=lambda href: href and re.compile("profile.php").search(href)).contents)
-    #     author = soup_map.find(href=lambda href: href and re.compile("profile.php").search(href)).contents[0]
-    #
-    #     title = title_href[0].contents[0]
-    #     table = title_href[0].find_previous("table")
-    #     map_csv = "\n".join([t.contents[0] for t in table.find_all_next("td")[2:]])
-    #
-    #     awmap = AWMap().from_awbw(map_csv, title=title)
-    #     awmap.author = author
-    #     awmap.desc = map_url
-    #     awmap.awbw_id = awbw_id
-    #
-    #     return awmap
-
     async def get_aws(self, awmap: AWMap):
         if awmap.title:
             title = awmap.title
@@ -188,9 +161,8 @@ class Maps:
             embed["image"] = {"url": minimap}
 
         if author:
-            r = requests.get(f"http://awbw.amarriner.com/profile.php?username={author}")
             embed["description"] = f"Design map by " \
-                                   f"[{author}]({r.url})"
+                                   f"[{author}]({quote(f'http://awbw.amarriner.com/profile.php?username={author}')})"
 
         embed["fields"] = []
 
