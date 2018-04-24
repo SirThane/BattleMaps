@@ -38,8 +38,7 @@ class Maps:
         awmap = await self.check_map(ctx.message, title)
 
         if not awmap:
-            await ctx.send("Invalid Map")  # TODO: Prettify
-            return
+            raise InvalidMapException
 
         author = awmap.author
         awbw_id = awmap.awbw_id
@@ -74,11 +73,10 @@ class Maps:
                     await attachment.save(fp=awbw_bytes)
                     awbw_bytes.seek(0)
                     map_csv = awbw_bytes.read().decode("utf-8")
-                    awmap = AWMap().from_awbw(map_csv, title=filename)  # TODO: Need to check discord.File
+                    awmap = AWMap().from_awbw(map_csv, title=filename)
                     return awmap
                 except AssertionError:
                     raise AWBWDimensionsException
-                    # return  # TODO: Error message: Invalid AWBW CSV
         else:
             search = re_awl.search(msg.content)
             if search:
@@ -103,8 +101,7 @@ class Maps:
                         except ValueError:
                             return
                 except AssertionError:
-                    raise AWBWDimensionsException  # TODO: The converter core is catching AssertionError. Stop that.
-                    # return
+                    raise AWBWDimensionsException
 
     def open_aws(self, aws: bytes):
         return AWMap().from_aws(aws)
