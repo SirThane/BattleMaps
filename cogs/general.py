@@ -12,7 +12,7 @@ class General:
         self.bot = bot
 
     @checks.sudo()
-    @commands.command(name='userinfo', no_private=True, hidden=True)
+    @commands.command(name='userinfo', no_private=True)
     async def userinfo(self, ctx, member: discord.Member=None):
         """Gets current server information for a given user
 
@@ -86,49 +86,7 @@ class General:
     @commands.command(name='ping', hidden=True)
     async def ping(self, ctx):
         """Your basic `ping`"""
-        await ctx.send('pong')
-
-    @checks.sudo()
-    @commands.command(name='discrim', hidden=True, disabled=True)
-    async def discrim(self, ctx, *, member: discord.Member=None):
-        """Finds a username that you can use to change discriminator
-
-        [p]discrim"""
-        if not member:
-            member = ctx.author
-
-        d = member.discriminator
-        f = discord.utils.find(lambda x: x.discriminator == d and not x.id == member.id,
-                               self.bot.get_all_members())
-        if f is not None:
-            em = discord.Embed(title="Discrim",
-                               description="Change your name to `{}` and then back to `{}` to get a new discriminator"
-                                           "".format(f.name, member.name), colour=0x00FF00)
-            await ctx.send(embed=em)
-        else:
-            em = discord.Embed(title="Sorry",
-                               description="I couldn't find another person with your discriminator", colour=0xFF0000)
-            await ctx.send(embed=em)
-
-    @checks.sudo()
-    @commands.command(name='learnpy', hidden=True, disabled=True)
-    async def learnpy(self, ctx):
-        """Links some tutorials for Python"""
-        msg = """
-Well, I started here and everyone said I shouldn't bother with it because it has an old Python version, but for someone who's not just new to Python, but new to programming in general, use https://codecademy.com/.
-It's very interactive, and even though you can't really do anything with what you learn, it will familiarize you with the fundamentals.
-It's free. There are some other resources that you can use afterwards, but I would suggest starting here.
-http://python.swaroopch.com/ (for complete beginners to programming)
-https://learnxinyminutes.com/docs/python3/ (for people who know programming already)
-https://docs.python.org/3.5/tutorial/ (for the in-between group, i.e. knows some programming but not a lot)
-see also: http://www.codeabbey.com/ (exercises for beginners)
-http://www.learnpython.org/ (somewhat interactive tutorial)
-Also, this guy's video tutorials are excellent.
-https://www.youtube.com/playlist?list=PL-osiE80TeTskrapNbzXhwoFUiLCjGgY7
-https://www.youtube.com/playlist?list=PL-osiE80TeTt2d9bfVyTiXJA-UTHn6WwU
-https://www.youtube.com/playlist?list=PL-osiE80TeTsqhIuOqKhwlXsIBIdSeYtc
-"""
-        await ctx.send(msg)
+        await ctx.send('Pong')
 
 
 def setup(bot):
