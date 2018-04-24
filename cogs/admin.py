@@ -208,8 +208,10 @@ class Admin:
     @checks.sudo()
     @commands.command(hidden=True, name='restart', aliases=["kill", "f"])
     async def _restart(self, ctx, *, arg=None):  # Overwrites builtin kill()
-        if arg.lower() == "pull":
+        if arg and arg.lower() == "pull":
             resp = self.pull()
+        else:
+            resp = ""
         await ctx.send(content=f"{resp}\nRestarting by command. . .")
         await self.bot.logout()
 
