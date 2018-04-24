@@ -341,7 +341,6 @@ class Help(formatter.HelpFormatter):
         traceback.print_tb(error.original.__traceback__, file=sys.stderr)
 
     def __unload(self):
-        print('called __unload')
         self.bot.formatter = formatter.HelpFormatter()
         self.bot.add_command(orig_help)
 
