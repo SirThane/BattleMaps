@@ -88,7 +88,7 @@ async def on_command_error(ctx, error):
 async def on_ready():
     bot.app_info = await bot.application_info()
     bot.owner = discord.utils.get(bot.get_all_members(), id=bot.app_info.owner.id)
-    await bot.change_presence(game=discord.Game(name=f'{bot.command_prefix}help'))
+    await bot.change_presence(game=discord.Game(name="setting up shop."))
     bot.loop.create_task(init_timed_events(bot))
 
     print(f'\n'
@@ -102,6 +102,8 @@ async def on_ready():
             print('| Failed to load extension {}\n|   {}: {}'.format(cog, type(e).__name__, e))
 
     print(f'#-------------------------------#\n')
+
+    await bot.change_presence(game=discord.Game(name=f'{bot.command_prefix}help'))
 
     print(f'#-------------------------------#\n'
           f'| Successfully logged in.\n'
