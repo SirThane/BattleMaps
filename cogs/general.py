@@ -11,7 +11,6 @@ class General:
     def __init__(self, bot):
         self.bot = bot
 
-    @checks.sudo()
     @commands.command(name='userinfo', no_private=True)
     async def userinfo(self, ctx, member: discord.Member=None):
         """Gets current server information for a given user
@@ -20,12 +19,10 @@ class General:
          [p]userinfo username#discrim
          [p]userinfo userid"""
 
-        from datetime import datetime
-
         if member is None:
             member = ctx.message.author
 
-        roles = str([r.name for r in member.roles if '@everyone' not in r.name]).strip('[]').replace(', ', '\n').replace("'", '')
+        roles = ", ".join([r.name for r in sorted(member.roles, reverse=True) if '@everyone' not in r.name])
         if roles == '':
             roles = 'User has no assigned roles.'
 
@@ -47,7 +44,7 @@ class General:
                 },
                 {
                     'name': 'Display Name:',
-                    'value': member.display_name if not member.name else '(no display name set)',
+                    'value': member.nick if not None else '(no display name set)',
                     'inline': True
                 },
                 {
@@ -65,12 +62,7 @@ class General:
                     'value': member.joined_at.strftime("%b. %d, %Y\n%I:%M %p"),
                     'inline': True
                 },
-            ],
-            'footer': {
-                'text': 'Invoked by {0.name}#{0.discriminator} || {1}\
-                        '.format(ctx.message.author, datetime.utcnow().strftime("%b. %d, %Y %I:%M %p")),
-                'icon_url': ctx.message.author.avatar_url
-            }
+            ]
         }
 
         embed = discord.Embed(**emb['embed'])  # TODO: EMBED FUNCTION/CLASS
@@ -78,7 +70,6 @@ class General:
         embed.set_thumbnail(url=member.avatar_url_as(format='png'))
         for field in emb['fields']:
             embed.add_field(**field)
-        embed.set_footer(**emb['footer'])
 
         await ctx.channel.send(embed=embed)
 
