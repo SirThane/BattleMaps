@@ -96,6 +96,17 @@ async def on_command_error(ctx, error):
                                        "trouble, try in `$$help`\n```")
         await ctx.send(embed=em)
 
+    elif isinstance(error, errors.NoLoadedMap):
+        em = discord.Embed(color=ctx.guild.me.color,
+                           title="⚠  Woah there, buddy!",
+                           description="You can try that that all you like, but you\n"
+                                       "ain't doin' nothin' without a map to do it on.\n\n"
+                                       "```\nThis command requires you load a map first.\n"
+                                       "Make sure you load a map with `$$map load`\n"
+                                       "first. If you are having trouble, try looking\n"
+                                       "in `$$help`\n```")
+        await ctx.send(embed=em)
+
     elif isinstance(error, commands.CommandInvokeError):
         print('In {0.command.qualified_name}:'.format(ctx), file=sys.stderr)
         print('{0.__class__.__name__}: {0}'.format(error.original), file=sys.stderr)
