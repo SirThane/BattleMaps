@@ -162,8 +162,9 @@ class Maps:
             embed["image"] = {"url": minimap}
 
         if author:
+            author_url = quote(f'http://awbw.amarriner.com/profile.php?username={author}')
             embed["description"] = f"Design map by " \
-                                   f"[{author}]({quote(f'http://awbw.amarriner.com/profile.php?username={author}')})"
+                                   f"[{author}]({author_url})"
 
         embed["fields"] = []
 
