@@ -98,6 +98,15 @@ class Admin:
             await ctx.send(content='Module reloaded.')
 
     @checks.sudo()
+    @commands.command(name="say_in", hidden=True)
+    async def say_in(self, ctx, ch_id: int, *, msg: str=""):
+        channel = self.bot.get_channel(ch_id)
+        if channel:
+            await channel.send(msg)
+        else:
+            ctx.author.send(f"Couldn't find channel {ch_id}.")
+
+    @checks.sudo()
     @commands.command(hidden=True, name='await')
     async def _await(self, ctx, *, code):
 
