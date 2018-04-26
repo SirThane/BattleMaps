@@ -20,3 +20,12 @@ class InvalidMapException(commands.CommandError):
 
     def __init__(self, message=None, *args):
         super().__init__(message, *args)
+
+
+class NoLoadedMap(commands.CommandError):
+    """Exception raised when a command requiring
+    a loaded map is invoked by a user without a map
+    loaded"""
+
+    def __init__(self, message=None, *args):
+        super().__init__(message, *args)
