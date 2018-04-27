@@ -2,6 +2,7 @@
 
 import discord
 from discord.ext import commands
+from discord.ext.commands.context import Context
 from main import app_name
 from io import BytesIO
 import re
@@ -17,11 +18,11 @@ from cogs.utils.errors import *
 config = f"{app_name}:maps"
 
 
-re_awl = re.compile(r"(http[s]?:\/\/)?awbw.amarriner.com\/(glenstorm\/)?prevmaps.php\?maps_id=([0-9]+)(?i)")
+re_awl = re.compile(r"(http[s]?://)?awbw.amarriner.com/(glenstorm/)?prevmaps.php\?maps_id=([0-9]+)(?i)")
 re_csv = re.compile(r"(([0-9])+(,[0-9]*)*(\n[0-9]+(,[0-9]*)*)*){1}")
 
 
-class Maps:
+class AdvanceWars:
     """
     Commands for working with Advance Wars maps.
     Will currently support AWS map files and
@@ -47,7 +48,7 @@ class Maps:
     """
 
     @commands.group(name="map", invoke_without_command=True, usage="[map file or link]")
-    async def _map(self, ctx, *, _: str=""):
+    async def _map(self, ctx: Context, *, arg: str=""):  # TODO: Think I'll need to refactor how this works.
         """The base command for working with maps
 
         This command will retrieve map information
@@ -58,15 +59,19 @@ class Maps:
 
         See `[p]help map load` for more information
         on loading maps."""
-        if ctx.author in self.loaded_maps.keys():
-            ctx.message.content = f"{self.bot.command_prefix[0]}map info"
-            await self.bot.process_commands(ctx.message)
+
+        if ctx.author.id in self.loaded_maps.keys():  # TODO: This is unkind with command typos.
+            ctx.message.content = f"{self._inv(ctx)} info {arg}"
+            ctx = await self.bot.get_context(ctx.message)
+            await self.bot.invoke(ctx)
+
         else:
-            ctx.message.content = f"{self.bot.command_prefix[0]}map load"
-            await self.bot.process_commands(ctx.message)
+            ctx.message.content = f"{self._inv(ctx)} load {arg}"
+            ctx = await self.bot.get_context(ctx.message)
+            await self.bot.invoke(ctx)
 
     @_map.command(name="load", usage="[title]")
-    async def _load(self, ctx, title: str=None, *, _: str=""):
+    async def _load(self, ctx: Context, title: str=None, *, _: str=""):
         """Load a map to be worked with
 
         This command will load a map to be worked with.
@@ -94,17 +99,17 @@ class Maps:
         21,22,23,24,25
         ```
         For text maps, the first line must be the title.
-        For multi-word titles, you must wrap the title in
-        quotes (" " or ' '). You will receive an error if
-        not all rows have the same number of columns.
-        Markdown boxes are not necessary, but may make
-        typing text maps easier.
+        For multi-word titles, you must wrap the title
+        in quotes (" " or ' '). You will receive an
+        error if not all rows have the same number of
+        columns. Markdown boxes are not necessary, but
+        may make typing text maps easier.
 
         Text maps stay loaded as long as you're working
         with them with a time out of 5 minutes. After 5
         minutes with no activity, maps are automatically
-        unloaded and must loaded again to continue working
-        with them."""
+        unloaded and must loaded again to continue
+        working with them."""
 
         awmap = await CheckMap.check(ctx.message, title)
 
@@ -115,7 +120,7 @@ class Maps:
         await self.timed_store(ctx.author, awmap)
 
     @_map.command(name="download", usage=" ")
-    async def download(self, ctx, *, _: str=""):
+    async def download(self, ctx: Context, *, _: str=""):
         """Download your currently loaded map
 
         Use this command when you have a map loaded
@@ -128,9 +133,14 @@ class Maps:
         awmap = self.get_loaded_map(ctx.author)
 
         if not awmap:
-            raise NoLoadedMap
+            raise NoLoadedMapException
 
         await self.em_download(ctx.channel, awmap)
+
+    @_map.command(name="info", usage=" ")
+    async def info(self, ctx: Context, *, _: str=""):
+        """Something something information about a map"""
+        raise UnimplementedException
 
     """
         ##########################
@@ -200,11 +210,20 @@ class Maps:
         url = await self.get_hosted_file(attachment)
         return url
 
+    """
+        ######################################
+        # Some Special Utilities for Discord #
+        ######################################
+    """
+
     def _color(self, channel):
         if isinstance(channel, discord.DMChannel):
             return 0
         else:
             return channel.guild.me.color.value
+
+    def _inv(self, ctx: Context):
+        return f"{ctx.prefix}{ctx.invoked_with}"
 
     """
         #####################
@@ -212,19 +231,29 @@ class Maps:
         #####################
     """
 
-    async def em_load(self, channel, awmap: AWMap):
-        """Formats and sends an embed to `channel` appropriate
-        for when a map is loaded for a user."""
+    def base_embed(self, channel, awmap: AWMap):
+        """Formats and returns the base embed with map
+        title and author."""
 
         if awmap.awbw_id:
             a_url = f'http://awbw.amarriner.com/profile.php?username={quote(awmap.author)}'
-            author = f"Design map by [{awmap.author}]({a_url})"
+            if awmap.author == "[Unknown]":
+                author = "Design Map by [Unknown]"
+            else:
+                author = f"Design map by [{awmap.author}]({a_url})"
             m_url = f"http://awbw.amarriner.com/prevmaps.php?maps_id={awmap.awbw_id}"
         else:
             author = f"Design map by {awmap.author}"
             m_url = ""
 
-        em = discord.Embed(color=self._color(channel), title=awmap.title, description=author, url=m_url)
+        return discord.Embed(color=self._color(channel), title=awmap.title, description=author, url=m_url)
+
+    async def em_load(self, channel, awmap: AWMap):
+        """Formats and sends an embed to `channel` appropriate
+        for when a map is loaded for a user."""
+
+        em = self.base_embed(channel, awmap)
+
         image_url = await self.get_minimap(awmap)
         em.set_image(url=image_url)
 
@@ -234,19 +263,14 @@ class Maps:
         """Formats and sends an embed to `channel` containing
         downloads for the supported map types."""
 
-        if awmap.awbw_id:
-            a_url = f'http://awbw.amarriner.com/profile.php?username={quote(awmap.author)}'
-            author = f"Design map by [{awmap.author}]({a_url})"
-            m_url = f"http://awbw.amarriner.com/prevmaps.php?maps_id={awmap.awbw_id}"
-        else:
-            author = f"Design map by {awmap.author}"
-            m_url = ""
+        em = self.base_embed(channel, awmap)
 
         aws = await self.get_aws(awmap)
         csv = await self.get_awbw(awmap)
+        thumb = await self.get_minimap(awmap)
 
-        em = discord.Embed(color=self._color(channel), title=awmap.title, description=author, url=m_url)
         em.add_field(name="Downloads", value=f"[AWS]({aws})\n[AWBW CSV]({csv})")
+        em.set_thumbnail(url=thumb)
 
         await channel.send(embed=em)
 
@@ -295,7 +319,7 @@ class Maps:
 
     @checks.awbw_staff()
     @_map.command(name="listen", hidden=True)
-    async def listen(self, ctx, *, arg):
+    async def listen(self, ctx: Context, *, arg):
         if arg.strip(" ").lower() in "on yes true y t".split(" "):
             self.db.set(f"{config}:listen_for_maps", True)
             self.listen_for_maps = True
@@ -307,12 +331,22 @@ class Maps:
         await ctx.send(embed=em)
 
     @checks.sudo()
+    @_map.command(name="viewloadedmaps", hidden=True)
+    async def viewallmaps(self, ctx: Context):
+        em = discord.Embed(
+            color=self._color(ctx.channel),
+            title="All Currently Loaded Maps",
+            description="\n" + "\n".join(f"{k} @ {v['ts']}: {v['awmap'].title}" for k, v in self.loaded_maps.items())
+        )
+        await ctx.send(embed=em)
+
+    @checks.sudo()
     @_map.command(name="update", hidden=True)
     async def _update(self, ctx):
         if self.pull():
             await ctx.send("Converter core updated.\nReloading cog.")
-            self.bot.remove_cog(Maps(self.bot))
-            self.bot.add_cog(Maps(self.bot))
+            self.bot.remove_cog("AdvanceWars")
+            self.bot.add_cog(AdvanceWars(self.bot))
         else:
             await ctx.send("Converter core already up-to-date.")
 
@@ -362,19 +396,19 @@ class CheckMap:
                 return await CheckMap.from_aws(attachment)
 
             if "text" not in skips and ext.lower() in [".txt", ".csv"]:
-                return await CheckMap.from_text(attachment, filename)
+                return await CheckMap.from_text(attachment, filename, msg.author.mention)
 
         s_awl = re_awl.search(msg.content)
 
         if "link" not in skips and s_awl:
             return CheckMap.from_id(s_awl.group(3))
 
-        s_csv = re_awl.search(msg.content)
+        s_csv = re_csv.search(msg.content)
 
         if s_csv:
 
             if "msg_csv" not in skips and 0 <= int(s_csv.group(0).split(",")[0]) <= 176:
-                return CheckMap.from_csv(s_csv.group(0), title)
+                return CheckMap.from_csv(s_csv.group(0), title, msg.author.mention)
 
             if "id" not in skips:
                 return CheckMap.from_id(s_csv.group(0))
@@ -388,13 +422,14 @@ class CheckMap:
         return AWMap().from_aws(aws_bytes.read())
 
     @staticmethod
-    async def from_text(attachment, filename):
+    async def from_text(attachment, filename, author):
         awbw_bytes = BytesIO()
         await attachment.save(fp=awbw_bytes)
         awbw_bytes.seek(0)
         map_csv = awbw_bytes.read().decode("utf-8")
         try:
             awmap = AWMap().from_awbw(map_csv, title=filename)
+            awmap.author = author
         except AssertionError:
             raise AWBWDimensionsException
         else:
@@ -404,19 +439,23 @@ class CheckMap:
     def from_id(awbw_id):
         try:
             int(awbw_id)
+            awmap = AWMap().from_awbw(awbw_id=awbw_id)
         except Exception:
             raise InvalidMapException
         else:
-            return AWMap().from_awbw(awbw_id=awbw_id)
+            return awmap
 
     @staticmethod
-    def from_csv(msg_csv, title):
+    def from_csv(msg_csv, title, author):
         try:
-            return AWMap().from_awbw(data=msg_csv, title=title)
+            awmap = AWMap().from_awbw(data=msg_csv, title=title)
+            awmap.author = author
         except AssertionError:
             raise AWBWDimensionsException
+        else:
+            return awmap
 
 
 def setup(bot):
-    Maps.pull()
-    bot.add_cog(Maps(bot))
+    AdvanceWars.pull()
+    bot.add_cog(AdvanceWars(bot))
