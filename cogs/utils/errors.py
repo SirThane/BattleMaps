@@ -10,22 +10,22 @@ class AWBWDimensionsException(commands.CommandError):
     Catch the AssertionError raised by the converter
     and raise this Exception"""
 
-    def __init__(self, message=None, *args):
-        super().__init__(message, *args)
+    # def __init__(self, message=None, *args):
+    #     super().__init__(message, *args)
 
 
 class InvalidMapException(commands.CommandError):
     """Exception raised when `check_map()` fails
     to return an `AWMap` instance."""
 
-    def __init__(self, message=None, *args):
-        super().__init__(message, *args)
 
-
-class NoLoadedMap(commands.CommandError):
+class NoLoadedMapException(commands.CommandError):
     """Exception raised when a command requiring
     a loaded map is invoked by a user without a map
     loaded"""
 
-    def __init__(self, message=None, *args):
-        super().__init__(message, *args)
+
+class UnimplementedException(commands.CommandError):
+    """Exception raised when a command is called
+    using a feature that has not yet been
+    implemented"""
