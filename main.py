@@ -20,6 +20,7 @@ try:
     with open('redis.json', 'r+') as redis_conf:
         conf = json.load(redis_conf)["db"]
 except FileNotFoundError:
+    conf = None  # STHU, PyCharm
     print('ERROR: redis.json not found in running directory')
     exit()
 # except:
