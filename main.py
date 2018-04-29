@@ -68,14 +68,19 @@ async def on_command_error(ctx, error):
         await bot.formatter.format_help_for(ctx, ctx.command, "You are missing required arguments.")
 
     elif isinstance(error, commands.CommandNotFound):
-        # await ctx.send('Command not found. (I\'m working on fixing cmd_not_found forf help module')
-        await bot.formatter.format_help_for(ctx, [c for c in bot.commands if 'help' == c.name][0],
-                                            "Command not found.")
+        await bot.formatter.format_help_for(ctx, bot.get_command("help"), "Command not found.")
 
     elif isinstance(error, commands.CheckFailure):
-        pass
+        em = discord.Embed(color=ctx.guild.me.color,
+                           title="⚠  Woah there, buddy!",
+                           description="Get your hands off that! \n"
+                                       "What'd'ya say you take a look and try it again.\n\n"
+                                       "```\nThe map you uploaded contained\n"
+                                       "rows with a differing amounts of\n"
+                                       "columns. Check your map and try again.\n```")
+        await ctx.send(embed=em)
 
-    elif isinstance(error, errors.AWBWDimensionsException):
+    elif isinstance(error, errors.AWBWDimensionsError):
         em = discord.Embed(color=ctx.guild.me.color,
                            title="⚠  Woah there, buddy!",
                            description="I can't take that map. The edges are all wrong.\n"
@@ -85,7 +90,7 @@ async def on_command_error(ctx, error):
                                        "columns. Check your map and try again.\n```")
         await ctx.send(embed=em)
 
-    elif isinstance(error, errors.InvalidMapException):
+    elif isinstance(error, errors.InvalidMapError):
         em = discord.Embed(color=ctx.guild.me.color,
                            title="⚠  Woah there, buddy!",
                            description="What are you trying to sell here? Is that even\n"
@@ -96,7 +101,7 @@ async def on_command_error(ctx, error):
                                        "trouble, try in `$$help`\n```")
         await ctx.send(embed=em)
 
-    elif isinstance(error, errors.NoLoadedMap):
+    elif isinstance(error, errors.NoLoadedMapError):
         em = discord.Embed(color=ctx.guild.me.color,
                            title="⚠  Woah there, buddy!",
                            description="You can try that that all you like, but you\n"
@@ -105,6 +110,14 @@ async def on_command_error(ctx, error):
                                        "Make sure you load a map with `$$map load`\n"
                                        "first. If you are having trouble, try looking\n"
                                        "in `$$help`\n```")
+        await ctx.send(embed=em)
+
+    elif isinstance(error, errors.UnimplementedError):
+        em = discord.Embed(color=ctx.guild.me.color,
+                           title="⚠  Woah there, buddy!",
+                           description="I ain't got the stuff to do that quite yet.\n"
+                                       "Hold yer horses. I'll have it ready here soon.\n\n"
+                                       "```\nThis feature has not yet been implemented.\n```")
         await ctx.send(embed=em)
 
     elif isinstance(error, commands.CommandInvokeError):
