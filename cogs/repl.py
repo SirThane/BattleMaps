@@ -68,7 +68,11 @@ class REPL:
         pass
 
     @checks.sudo()
-    @env.command(hidden=True, name='update')
+    @env.command(
+        hidden=True,
+        name='update',
+        aliases=['store', 'add', 'append']
+    )
     async def _update(self, ctx, name):
         if name:
             self._env_store[name] = self.ret
@@ -89,7 +93,11 @@ class REPL:
         await ctx.send(embed=emb)
 
     @checks.sudo()
-    @env.command(hidden=True, name='remove', aliases=['rem', 'del', 'pop'])
+    @env.command(
+        hidden=True,
+        name='remove',
+        aliases=['rem', 'del', 'pop']
+    )
     async def _remove(self, ctx, name):
         if name:
             v = self._env_store.pop(name, None)
