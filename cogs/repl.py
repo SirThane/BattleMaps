@@ -1,3 +1,5 @@
+"""Cog to provide REPL-like functionality"""
+
 from discord.ext import commands
 from .utils import checks, utils
 import discord
@@ -25,7 +27,11 @@ class REPL:
         self.db = bot.db
         self.ret = None
         self._env_store = {}
-        self.emb_pag = utils.Paginator(page_limit=1014, trunc_limit=1850, header_extender='Cont.')
+        self.emb_pag = utils.Paginator(
+            page_limit=1014,
+            trunc_limit=1850,
+            header_extender='Cont.'
+        )
 
     def emb_dict(self, title, desc):
         d = {
@@ -66,11 +72,20 @@ class REPL:
     async def _update(self, ctx, name):
         if name:
             self._env_store[name] = self.ret
-            emb = discord.Embed(title='Environment Updated', color=discord.Colour.green())
-            emb.add_field(name=name, value=repr(self.ret))
+            emb = discord.Embed(
+                title='Environment Updated',
+                color=discord.Colour.green()
+            )
+            emb.add_field(
+                name=name,
+                value=repr(self.ret)
+            )
         else:
-            emb = discord.Embed(title='Environment Update', description='You must enter a name',
-                                color=discord.Colour.red())
+            emb = discord.Embed(
+                title='Environment Update',
+                description='You must enter a name',
+                color=discord.Colour.red()
+            )
         await ctx.send(embed=emb)
 
     @checks.sudo()
@@ -82,22 +97,41 @@ class REPL:
             v = None
             name = 'You must enter a name'
         if v:
-            emb = discord.Embed(title='Environment Item Removed', color=discord.Colour.green())
-            emb.add_field(name=name, value=repr(v))
+            emb = discord.Embed(
+                title='Environment Item Removed',
+                color=discord.Colour.green()
+            )
+            emb.add_field(
+                name=name,
+                value=repr(v)
+            )
         else:
-            emb = discord.Embed(title='Environment Item Not Found', description=name, color=discord.Colour.red())
+            emb = discord.Embed(
+                title='Environment Item Not Found',
+                description=name,
+                color=discord.Colour.red()
+            )
         await ctx.send(embed=emb)
 
     @checks.sudo()
     @env.command(hidden=True, name='list')
     async def _list(self, ctx):
         if len(self._env_store.keys()):
-            emb = discord.Embed(title='Environment Store List', color=discord.Colour.green())
+            emb = discord.Embed(
+                title='Environment Store List',
+                color=discord.Colour.green()
+            )
             for k, v in self._env_store.items():
-                emb.add_field(name=k, value=repr(v))
+                emb.add_field(
+                    name=k,
+                    value=repr(v)
+                )
         else:
-            emb = discord.Embed(title='Environment Store List', description='Environment Store is currently empty',
-                                color=discord.Colour.green())
+            emb = discord.Embed(
+                title='Environment Store List',
+                description='Environment Store is currently empty',
+                color=discord.Colour.green()
+            )
         await ctx.send(embed=emb)
 
     @checks.sudo()
@@ -121,7 +155,10 @@ class REPL:
         """Run eval() on an input."""
 
         code = code.strip('` ')
-        emb = self.emb_dict(title='Eval on', desc=self.py.format(code))
+        emb = self.emb_dict(
+            title='Eval on',
+            desc=self.py.format(code)
+        )
 
         try:
             result = eval(code, self._env(ctx))
@@ -137,6 +174,7 @@ class REPL:
                     'inline': False
                 }
                 emb['fields'].append(field)
+
         except Exception as e:
             emb['color'] = 0xFF0000
             field = {

@@ -6,7 +6,13 @@ import redis
 
 class Paginator:
 
-    def __init__(self, page_limit: int=1000, trunc_limit: int=2000, headers=None, header_extender=u'\u200b'):
+    def __init__(
+            self,
+            page_limit: int=1000,
+            trunc_limit: int=2000,
+            headers=None,
+            header_extender=u'\u200b'
+    ):
         self.page_limit = page_limit
         self.trunc_limit = trunc_limit
         self._pages = None
@@ -18,7 +24,9 @@ class Paginator:
         if self._headers:
             self._extend_headers(len(self._pages))
             headers, self._headers = self._headers, None
-            return [(headers[i], self._pages[i]) for i in range(len(self._pages))]
+            return [
+                (headers[i], self._pages[i]) for i in range(len(self._pages))
+            ]
         else:
             return self._pages
 

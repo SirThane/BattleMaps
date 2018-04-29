@@ -94,7 +94,7 @@ class Help(formatter.HelpFormatter):
         if rewrite():
             return self.bot.user.avatar_url_as(format='png')
         else:
-            return self.bot.user.avatar_url  # TODO: I really don't like not having a PNG
+            return self.bot.user.avatar_url
 
     @property
     def color(self):
@@ -119,14 +119,17 @@ class Help(formatter.HelpFormatter):
         else:
             name = self.me.display_name if not '' else self.bot.user.name
         author = {
-                'name': '{0} Help Manual'.format(name),
-                'icon_url': self.avatar
-            }
+            'name': '{0} Help Manual'.format(name),
+            'icon_url': self.avatar
+        }
         return author
 
     @property
     def destination(self):
-        return self.context.message.author if self.bot.pm_help else self.context.message.channel
+        if self.bot.pm_help:
+            return self.context.message.author
+        else:
+            return self.context.message.channel
 
     def _add_subcommands(self, cmds):
         entries = ''
@@ -144,7 +147,8 @@ class Help(formatter.HelpFormatter):
     def get_ending_note(self):
         # command_name = self.context.invoked_with
         return "Type {0}help <command> for more info on a command.\n" \
-               "You can also type {0}help <category> for more info on a category.".format(self.clean_prefix)
+               "You can also type {0}help <category> for more info on a" \
+               "category.".format(self.clean_prefix)
 
     async def format(self, ctx, command):
         """Formats command for output.
@@ -165,7 +169,11 @@ class Help(formatter.HelpFormatter):
             'fields': []
         }
 
-        description = command.description if not self.is_cog() else inspect.getdoc(command)
+        if self.is_cog():
+            description = command.description
+        else:
+            description = inspect.getdoc(command)
+
         if not description == '' and description is not None:
             description = '*{0}*'.format(description)
 
@@ -176,13 +184,17 @@ class Help(formatter.HelpFormatter):
         if isinstance(command, discord.ext.commands.core.Command):
             # <signature portion>
             emb['embed']['title'] = emb['embed']['description']
-            emb['embed']['description'] = '`Syntax: {0}`'.format(self.get_command_signature())
+            emb['embed']['description'] = '`Syntax: {0}`'.format(
+                self.get_command_signature()
+            )
 
             # <long doc> section
             if command.help:
                 name = '__{0}__'.format(command.help.split('\n\n')[0])
                 name_length = len(name) - 4
-                value = command.help[name_length:].replace('[p]', self.clean_prefix)
+                value = command.help[name_length:].replace(
+                    '[p]', self.clean_prefix
+                )
                 if value == '':
                     value = empty
                 field = {
@@ -199,7 +211,11 @@ class Help(formatter.HelpFormatter):
         def category(tup):
             # Turn get cog (Category) name from cog/list tuples
             cog = tup[1].cog_name
-            return '**__{0}:__**'.format(cog) if cog is not None else '**__\u200bNo Category:__**'
+
+            if cog is not None:
+                return '**__{0}:__**'.format(cog)
+            else:
+                return '**__\u200bNo Category:__**'
 
         # Get subcommands for bot or category
         if rewrite():
@@ -210,33 +226,37 @@ class Help(formatter.HelpFormatter):
         if self.is_bot():
             # Get list of non-hidden commands for bot.
             data = sorted(filtered, key=category)
-            for category, commands in itertools.groupby(data, key=category):
+            for category, cmds in itertools.groupby(data, key=category):
                 # there simply is no prettier way of doing this.
                 field = {
                     'inline': False
                 }
-                commands = sorted(commands)
-                if len(commands) > 0:
-                    field['name'] = category
-                    field['value'] = self._add_subcommands(commands)  # May need paginated
+                cmds = sorted(cmds)
+                if len(cmds) > 0:
+                    field['name'] = category  # TODO: Below may need paginated
+                    field['value'] = self._add_subcommands(cmds)
                     emb['fields'].append(field)
 
         else:
             # Get list of commands for category
             filtered = sorted(filtered)
             if filtered:
-                field = {
-                    'name': '**__Commands:__**' if not self.is_bot() and self.is_cog() else '**__Subcommands:__**',
-                    'value': self._add_subcommands(filtered),  # May need paginated
+                field = {  # Below may need paginated
+                    'value': self._add_subcommands(filtered),
                     'inline': False
                 }
+
+                if not self.is_bot() and self.is_cog():
+                    field['name'] = '**__Commands:__**'
+                else:
+                    field['name'] = '**__Subcommands:__**'
 
                 emb['fields'].append(field)
 
         return emb
 
     async def format_help_for(self, ctx, command_or_bot, reason: str=None):
-        """Formats the help page and handles the actual heavy lifting of how  ### WTF HAPPENED?
+        """Formats the help page and handles the actual heavy lifting of how
         the help command looks like. To change the behaviour, override the
         :meth:`~.HelpFormatter.format` method.
 
@@ -246,6 +266,8 @@ class Help(formatter.HelpFormatter):
             The context of the invoked help command.
         command_or_bot: :class:`.Command` or :class:`.Bot`
             The bot or command that we are getting the help of.
+        reason: Optional message to include for calling outside
+            of `[p]help` command
 
         Returns
         --------
@@ -266,9 +288,19 @@ class Help(formatter.HelpFormatter):
         embed.set_footer(**emb['footer'])
         await self.send(self.destination, embed=embed)
 
-    def simple_embed(self, title=None, description=None, color=None, author=None):
+    def simple_embed(
+            self,
+            title=None,
+            description=None,
+            color=None,
+            author=None
+    ):
         # Shortcut
-        embed = discord.Embed(title=title, description=description, color=color)
+        embed = discord.Embed(
+            title=title,
+            description=description,
+            color=color
+        )
         embed.set_footer(text=self.bot.formatter.get_ending_note())
         if author:
             embed.set_author(**author)
@@ -276,9 +308,13 @@ class Help(formatter.HelpFormatter):
 
     def cmd_not_found(self, cmd, color=0):
         # Shortcut for a shortcut. Sue me
-        embed = self.simple_embed(title=self.bot.command_not_found.format(cmd),
-                                  description='Commands are case sensitive. Please check your spelling and try again',
-                                  color=color, author=self.author)
+        embed = self.simple_embed(
+            title=self.bot.command_not_found.format(cmd),
+            description='Commands are case sensitive.'
+                        'Please check your spelling and try again',
+            color=color,
+            author=self.author
+        )
         return embed
 
     @commands.command(name='help', pass_context=True)
@@ -301,13 +337,16 @@ class Help(formatter.HelpFormatter):
         elif len(cmds) == 1:
             # try to see if it is a cog name
             name = _mention_pattern.sub(repl, cmds[0])
-            command = None
+            # command = None
             if name in self.bot.cogs:
                 command = self.bot.cogs[name]
             else:
                 command = self.bot_all_commands.get(name)
                 if command is None:
-                    await self.send(self.destination, embed=self.cmd_not_found(name, self.color))
+                    await self.send(
+                        self.destination,
+                        embed=self.cmd_not_found(name, self.color)
+                    )
                     return
 
             await self.bot.formatter.format_help_for(ctx, command)
@@ -315,7 +354,10 @@ class Help(formatter.HelpFormatter):
             name = _mention_pattern.sub(repl, cmds[0])
             command = self.bot_all_commands.get(name)
             if command is None:
-                await self.send(self.destination, embed=self.cmd_not_found(name, self.color))
+                await self.send(
+                    self.destination,
+                    embed=self.cmd_not_found(name, self.color)
+                )
                 return
 
             for key in cmds[1:]:
@@ -323,22 +365,35 @@ class Help(formatter.HelpFormatter):
                     key = _mention_pattern.sub(repl, key)
                     command = command.all_commands.get(key)
                     if command is None:
-                        await self.send(self.destination, embed=self.cmd_not_found(key, self.color))
+                        await self.send(
+                            self.destination,
+                            embed=self.cmd_not_found(key, self.color)
+                        )
                         return
                 except AttributeError:
-                    await self.send(self.destination,
-                                    embed=self.simple_embed(title=
-                                                            'Command "{0.name}" has no subcommands.'.format(command),
-                                                            color=self.color,
-                                                            author=self.author))
+                    await self.send(
+                        self.destination,
+                        embed=self.simple_embed(
+                            title='Command "{0.name}" has'
+                                  'no subcommands.'.format(command),
+                            color=self.color,
+                            author=self.author
+                        )
+                    )
                     return
 
             await self.bot.formatter.format_help_for(ctx, command)
 
     @help.error
     async def help_error(self, error, ctx):
-        await self.send(self.destination, '{0.__name__}: {1}'.format(type(error), error))
-        traceback.print_tb(error.original.__traceback__, file=sys.stderr)
+        await self.send(
+            self.destination,
+            '{0.__name__}: {1}'.format(type(error), error)
+        )
+        traceback.print_tb(
+            error.original.__traceback__,
+            file=sys.stderr
+        )
 
     def __unload(self):
         self.bot.formatter = formatter.HelpFormatter()

@@ -10,9 +10,6 @@ class AWBWDimensionsError(commands.CommandError):
     Catch the AssertionError raised by the converter
     and raise this Exception"""
 
-    # def __init__(self, message=None, *args):
-    #     super().__init__(message, *args)
-
 
 class InvalidMapError(commands.CommandError):
     """Exception raised when `check_map()` fails

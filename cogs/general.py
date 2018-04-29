@@ -22,7 +22,12 @@ class General:
         if member is None:
             member = ctx.message.author
 
-        roles = ", ".join([r.name for r in sorted(member.roles, reverse=True) if '@everyone' not in r.name])
+        roles = ", ".join(
+            [r.name for r in sorted(
+                member.roles,
+                reverse=True
+            ) if '@everyone' not in r.name]
+        )
         if roles == '':
             roles = 'User has no assigned roles.'
 
@@ -44,7 +49,8 @@ class General:
                 },
                 {
                     'name': 'Display Name:',
-                    'value': member.nick if not None else '(no display name set)',
+                    'value': member.nick if not None
+                    else '(no display name set)',
                     'inline': True
                 },
                 {
@@ -54,7 +60,9 @@ class General:
                 },
                 {
                     'name': 'Account Created:',
-                    'value': member.created_at.strftime("%b. %d, %Y\n%I:%M %p"),  # ("%Y-%m-%d %H:%M"),
+                    'value': member.created_at.strftime(
+                        "%b. %d, %Y\n%I:%M %p"
+                    ),
                     'inline': True
                 },
                 {

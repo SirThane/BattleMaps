@@ -53,7 +53,13 @@ def require(requisite):
 
 def in_pm(ctx):
     def check():
-        return isinstance(ctx.channel, discord.DMChannel) or isinstance(ctx.channel, discord.GroupChannel)
+        return isinstance(
+            ctx.channel,
+            discord.DMChannel
+        ) or isinstance(
+            ctx.channel,
+            discord.GroupChannel
+        )
     return check()
 
 
@@ -169,70 +175,3 @@ def awbw_staff():
     def predicate(ctx):
         return awbw_staff_role(ctx)
     return commands.check(predicate)
-
-
-# def pm(allow=False):
-#     def decorator(check):
-#         def predicate(ctx):
-#             return in_pm(ctx)
-#         return commands.check(predicate)
-
-
-# ### Luc's checks ###
-#
-# @supercede(bot_owner)
-# def can_tag():
-#     def predicate(ctx):
-#         return ctx.author.id in []
-#     return commands.check(predicate)
-#
-#
-# def is_pokemon_mod():
-#     def predicate(ctx):
-#         return has_role(ctx, lambda r: r.id == 278331223775117313)
-#     return commands.check(predicate)
-#
-#
-# @require(no_pm)
-# def r_pokemon():
-#     """Check if it's the /r/pokemon server"""
-#     def predicate(ctx):
-#         return ctx.message.guild.id == 111504456838819840
-#     return commands.check(predicate)
-#
-#
-# @require(no_pm)
-# def r_md():
-#     """Check if it's the Pokemon Mystery Dungeon server"""
-#     def predicate(ctx):
-#         return ctx.message.guild is not None and ctx.message.guild.id == 117485575237402630
-#     return commands.check(predicate)
-#
-#
-# @require(no_pm)
-# def not_in_oaks_lab():
-#     def predicate(ctx):
-#         return ctx.message.guild.id != 204402667265589258
-#     return commands.check(predicate)
-#
-#
-# @require(no_pm)
-# def not_in_pokemon():
-#     def predicate(ctx):
-#         return ctx.message.guild.id != 111504456838819840
-#     return commands.check(predicate)
-#
-#
-# @supercede(bot_owner)
-# def mod_server():
-#     def predicate(ctx):
-#         return mod_server_check(ctx.message.guild)
-#     return commands.check(predicate)
-
-
-# def is_regular():
-#     # Hope you've been eating your fiber
-#     def predicate(ctx):
-#         return not r_pokemon_check(ctx.message.guild) or (r_pokemon_check(ctx.message.guild) and
-#                                                           has_role(ctx, lambda r: r.id == 117242433091141636))
-#     return commands.check(predicate)
