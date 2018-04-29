@@ -28,7 +28,7 @@ Everything else credit to SirThane#1780"""
 
 import discord
 from discord.ext import commands
-from discord.ext.commands import formatter
+from discord.ext.commands import formatter, Context
 import sys
 import re
 import inspect
@@ -58,18 +58,20 @@ orig_help = None
 class Help(formatter.HelpFormatter):
     """Formats help for commands."""
 
-    def __init__(self, bot, *args, **kwargs):
+    def __init__(self, bot: commands.Bot, *args, **kwargs):
         self.bot = bot
         global orig_help
         orig_help = bot.get_command('help')
         self.bot.remove_command('help')
         self.bot.formatter = self
         self.bot.help_formatter = self
+        self.context = None
+        self.command = None
         super().__init__(*args, **kwargs)
 
     # Shortcuts that allow cog to run on 0.16.8 and 1.0.0a
 
-    def pm_check(self, ctx):
+    def pm_check(self, ctx: Context):
         if rewrite():
             return isinstance(ctx.channel, discord.DMChannel)
         else:
@@ -103,7 +105,7 @@ class Help(formatter.HelpFormatter):
         else:
             return self.me.color
 
-    async def send(self, dest, content=None, embed=None):
+    async def send(self, dest, content: str=None, embed: discord.Embed=None):
         if rewrite():
             await dest.send(content=content, embed=embed)
         else:
@@ -150,7 +152,7 @@ class Help(formatter.HelpFormatter):
                "You can also type {0}help <category> for more info on a" \
                "category.".format(self.clean_prefix)
 
-    async def format(self, ctx, command):
+    async def format(self, ctx: Context, command):
         """Formats command for output.
 
         Returns a dict used to build embed"""
@@ -170,9 +172,9 @@ class Help(formatter.HelpFormatter):
         }
 
         if self.is_cog():
-            description = command.description
-        else:
             description = inspect.getdoc(command)
+        else:
+            description = command.description
 
         if not description == '' and description is not None:
             description = '*{0}*'.format(description)
@@ -255,7 +257,12 @@ class Help(formatter.HelpFormatter):
 
         return emb
 
-    async def format_help_for(self, ctx, command_or_bot, reason: str=None):
+    async def format_help_for(
+            self,
+            ctx: Context,
+            command_or_bot,
+            reason: str=None
+    ):
         """Formats the help page and handles the actual heavy lifting of how
         the help command looks like. To change the behaviour, override the
         :meth:`~.HelpFormatter.format` method.
@@ -385,7 +392,7 @@ class Help(formatter.HelpFormatter):
             await self.bot.formatter.format_help_for(ctx, command)
 
     @help.error
-    async def help_error(self, error, ctx):
+    async def help_error(self, ctx, error):
         await self.send(
             self.destination,
             '{0.__name__}: {1}'.format(type(error), error)
