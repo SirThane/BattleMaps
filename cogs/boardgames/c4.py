@@ -3602,7 +3602,7 @@ class ConnectFour:
     def __init__(self, bot):
         self.bot = bot
         self.db = bot.db
-        self.app_name = bot.app_name
+        self.APP_NAME = bot.APP_NAME
         self.sessions = {}
         self.timeout = 120
         self.timeout_incr = 5
@@ -3613,7 +3613,7 @@ class ConnectFour:
         return self.sessions.get(ctx.channel.id, None)
 
     def chan_check(self, ctx):
-        return str(ctx.channel.id) in self.db.smembers(f"{self.app_name}:c4:allowed_channels")
+        return str(ctx.channel.id) in self.db.smembers(f"{self.APP_NAME}:c4:allowed_channels")
 
     async def member_check(self, ctx, member):
         try:
@@ -3778,7 +3778,7 @@ class ConnectFour:
         Pass a channel as an argument to enable on that channel"""
         if not chan:
             chan = ctx.channel
-        if self.db.sadd(f"{self.app_name}:c4:allowed_channels", chan.id):
+        if self.db.sadd(f"{self.APP_NAME}:c4:allowed_channels", chan.id):
             await self.message(ctx, msg="Connect Four successfully enabled on channel.")
         else:
             await self.message(ctx, msg="Connect Four already enabled on channel.", level=1)
@@ -3792,7 +3792,7 @@ class ConnectFour:
         Pass a channel as an argument to disable on that channel"""
         if not chan:
             chan = ctx.channel
-        if self.db.srem(f"{self.app_name}:c4:allowed_channels", chan.id):
+        if self.db.srem(f"{self.APP_NAME}:c4:allowed_channels", chan.id):
             await self.message(ctx, msg="Connect Four successfully disabled on channel.")
         else:
             await self.message(ctx, msg="Connect Four already disabled on channel.", level=1)

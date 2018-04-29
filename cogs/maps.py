@@ -2,7 +2,7 @@
 
 import discord
 from discord.ext import commands
-from main import app_name
+from main import APP_NAME
 from io import BytesIO, StringIO
 import re
 import os
@@ -12,7 +12,7 @@ from cogs.utils import checks
 from AWSMapConverter.awmap import AWMap
 from cogs.utils.errors import *
 
-config = f"{app_name}:maps"
+config = f"{APP_NAME}:maps"
 
 
 re_awl = re.compile(r"(http[s]?:\/\/)?awbw.amarriner.com\/(glenstorm\/)?prevmaps.php\?maps_id=([0-9]+)(?i)")

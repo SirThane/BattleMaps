@@ -34,7 +34,7 @@ bot = commands.Bot(
     **db.hgetall(f'{config}:instance')  # TODO: Refactor
 )
 bot.db = db
-bot.app_name = APP_NAME
+bot.APP_NAME = APP_NAME
 
 
 @bot.listen()
