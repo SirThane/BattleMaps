@@ -1,14 +1,12 @@
-"""
-Currently a test bot.
-Still a test bot
-"""
+"""BattleMaps, a utility bot for working with Advance Wars
+maps on the AWBW Discord server"""
 
+import asyncio
 import json
 import sys
-from discord.ext import commands
-import discord
-import asyncio
 import traceback
+import discord
+from discord.ext import commands
 from cogs.utils import utils, errors
 
 
@@ -23,9 +21,6 @@ except FileNotFoundError:
     conf = None  # STHU, PyCharm
     print('ERROR: redis.json not found in running directory')
     exit()
-# except:
-#     print('ERROR: could not load configuration')
-#     exit()
 
 
 db = utils.StrictRedis(**conf)
@@ -44,20 +39,19 @@ async def timer_update(seconds):
     return seconds
 
 
-# TODO: INVESTIGATE HOW THESE FUCKERS WORK. LUC, YOU'RE MY IDOL.
 # TODO: Refactor into events cog or similar
-async def init_timed_events(bot):
+async def init_timed_events(client: commands.Bot):
     """Create a listener task with a tick-rate of 1s"""
 
     await bot.wait_until_ready()  # Wait for the bot to launch first
-    bot.secs = 0
+    client.secs = 0
 
     secs = 0  # Count number secs
     while True:
-        bot.dispatch("timer_update", secs)
+        client.dispatch("timer_update", secs)
         await timer_update(secs)
         secs += 1
-        bot.secs = secs
+        client.secs = secs
         await asyncio.sleep(1)
 
 
@@ -217,23 +211,9 @@ async def on_ready():
           f'# ------------------------------#')
 
 
-def get_default_prefix():
-    return db.hget(f'{config}:prefix', 'default')
-
-
 @bot.event
-async def on_message(message):  # TODO: Refactor. Delete alt prefixes
-    default_prefix = get_default_prefix()
-    if not isinstance(message.channel, discord.TextChannel):
-        bot.command_prefix = [default_prefix]
-    else:
-        guild_prefix = db.hget(f'{config}:prefix', message.guild.id)
-        if guild_prefix:
-            bot.command_prefix = [guild_prefix, default_prefix]
-        else:
-            bot.command_prefix = [default_prefix]
+async def on_message(message):
     await bot.process_commands(message)
-    bot.command_prefix = [default_prefix]
 
 
 if __name__ == "__main__":
