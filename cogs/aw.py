@@ -1,7 +1,7 @@
 """Commands for Advance Wars Maps"""
 
 import discord
-from discord.ext import commands
+# from discord.ext import commands
 from discord.ext.commands.context import Context
 from main import app_name
 from io import BytesIO
@@ -15,11 +15,12 @@ from cogs.utils import checks
 from AWSMapConverter.awmap import AWMap
 from cogs.utils.errors import *
 
-config = f"{app_name}:maps"
+
+CONFIG = f"{app_name}:maps"
 
 
-re_awl = re.compile(r"(http[s]?://)?awbw.amarriner.com/(glenstorm/)?prevmaps.php\?maps_id=([0-9]+)(?i)")
-re_csv = re.compile(r"(([0-9])+(,[0-9]*)*(\n[0-9]+(,[0-9]*)*)*){1}")
+RE_AWL = re.compile(r"(http[s]?://)?awbw.amarriner.com/(glenstorm/)?prevmaps.php\?maps_id=([0-9]+)(?i)")
+RE_CSV = re.compile(r"(([0-9])+(,[0-9]*)*(\n[0-9]+(,[0-9]*)*)*){1}")
 
 
 class AdvanceWars:
@@ -37,7 +38,7 @@ class AdvanceWars:
     def __init__(self, bot):
         self.bot = bot
         self.db = bot.db
-        self.listen_for_maps = self.db.get(f"{config}:listen_for_maps") or False
+        self.listen_for_maps = self.db.get(f"{CONFIG}:listen_for_maps") or False
         self.buffer_channel = self.bot.get_channel(id=434551085185630218)
         self.loaded_maps = {}
 
@@ -48,7 +49,7 @@ class AdvanceWars:
     """
 
     @commands.group(name="map", invoke_without_command=True, usage="[map file or link]")
-    async def _map(self, ctx: Context, *, arg: str=""):  # TODO: Think I'll need to refactor how this works.
+    async def _map(self, ctx: Context, arg: str="", *, args: str=""):
         """The base command for working with maps
 
         This command will retrieve map information
@@ -60,13 +61,27 @@ class AdvanceWars:
         See `[p]help map load` for more information
         on loading maps."""
 
-        if ctx.author.id in self.loaded_maps.keys():  # TODO: This is unkind with command typos.
-            ctx.message.content = f"{self._inv(ctx)} info {arg}"
-            ctx = await self.bot.get_context(ctx.message)
-            await self.bot.invoke(ctx)
+        if ctx.author.id in self.loaded_maps.keys():
+
+            # Subcommands available to ctx.author
+            avail_cmds = []
+
+            for command in ctx.command.walk_commands():
+                if await command.can_run(ctx):
+                    avail_cmds.append(command.name)
+
+            if arg in avail_cmds:
+                ctx.message.content = f"{self._inv(ctx)} {arg} {args}"
+                ctx = await self.bot.get_context(ctx.message)
+                await self.bot.invoke(ctx)
+
+            else:
+                ctx.message.content = f"{self._inv(ctx)} info {arg} {args}"
+                ctx = await self.bot.get_context(ctx.message)
+                await self.bot.invoke(ctx)
 
         else:
-            ctx.message.content = f"{self._inv(ctx)} load {arg}"
+            ctx.message.content = f"{self._inv(ctx)} load {arg} {args}"
             ctx = await self.bot.get_context(ctx.message)
             await self.bot.invoke(ctx)
 
@@ -114,7 +129,7 @@ class AdvanceWars:
         awmap = await CheckMap.check(ctx.message, title)
 
         if not awmap:
-            raise InvalidMapException
+            raise InvalidMapError
 
         await self.em_load(ctx.channel, awmap)
         await self.timed_store(ctx.author, awmap)
@@ -133,14 +148,14 @@ class AdvanceWars:
         awmap = self.get_loaded_map(ctx.author)
 
         if not awmap:
-            raise NoLoadedMapException
+            raise NoLoadedMapError
 
         await self.em_download(ctx.channel, awmap)
 
     @_map.command(name="info", usage=" ")
     async def info(self, ctx: Context, *, _: str=""):
         """Something something information about a map"""
-        raise UnimplementedException
+        raise UnimplementedError
 
     """
         ##########################
@@ -321,17 +336,17 @@ class AdvanceWars:
     @_map.command(name="listen", hidden=True)
     async def listen(self, ctx: Context, *, arg):
         if arg.strip(" ").lower() in "on yes true y t".split(" "):
-            self.db.set(f"{config}:listen_for_maps", True)
+            self.db.set(f"{CONFIG}:listen_for_maps", True)
             self.listen_for_maps = True
         elif arg.strip(" ").lower() in "off no false n f".split(" "):
-            self.db.set(f"{config}:listen_for_maps", False)
+            self.db.set(f"{CONFIG}:listen_for_maps", False)
             self.listen_for_maps = False
         em = discord.Embed(color=self._color(ctx.channel), title="BattleMaps Config",
                            description=f"Active Listen For Maps: `{self.listen_for_maps}`")
         await ctx.send(embed=em)
 
     @checks.sudo()
-    @_map.command(name="viewloadedmaps", hidden=True)
+    @_map.command(name="viewallmaps", hidden=True)
     async def viewallmaps(self, ctx: Context):
         em = discord.Embed(
             color=self._color(ctx.channel),
@@ -398,12 +413,12 @@ class CheckMap:
             if "text" not in skips and ext.lower() in [".txt", ".csv"]:
                 return await CheckMap.from_text(attachment, filename, msg.author.mention)
 
-        s_awl = re_awl.search(msg.content)
+        s_awl = RE_AWL.search(msg.content)
 
         if "link" not in skips and s_awl:
             return CheckMap.from_id(s_awl.group(3))
 
-        s_csv = re_csv.search(msg.content)
+        s_csv = RE_CSV.search(msg.content)
 
         if s_csv:
 
@@ -431,7 +446,7 @@ class CheckMap:
             awmap = AWMap().from_awbw(map_csv, title=filename)
             awmap.author = author
         except AssertionError:
-            raise AWBWDimensionsException
+            raise AWBWDimensionsError
         else:
             return awmap
 
@@ -441,7 +456,7 @@ class CheckMap:
             int(awbw_id)
             awmap = AWMap().from_awbw(awbw_id=awbw_id)
         except Exception:
-            raise InvalidMapException
+            raise InvalidMapError
         else:
             return awmap
 
@@ -451,7 +466,7 @@ class CheckMap:
             awmap = AWMap().from_awbw(data=msg_csv, title=title)
             awmap.author = author
         except AssertionError:
-            raise AWBWDimensionsException
+            raise AWBWDimensionsError
         else:
             return awmap
 
