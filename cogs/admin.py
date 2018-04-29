@@ -5,21 +5,21 @@ Mostly stolen from Luc:
 
 Copyright (c) 2015 Rapptz
 """
-from discord.ext import commands
-import discord
+
+import os
+import sys
 import traceback
 from asyncio import sleep
-import sys
-import os
+from contextlib import contextmanager
 from io import StringIO
-import contextlib
+
+import discord
+from discord.ext import commands
+
 from cogs.utils import checks
-from main import APP_NAME
-
-config = f'{APP_NAME}:admin'
 
 
-@contextlib.contextmanager
+@contextmanager
 def stdoutio(stdout=None):  # TODO: Refactor this for out and err
     old = sys.stdout
     if stdout is None:
@@ -30,25 +30,12 @@ def stdoutio(stdout=None):  # TODO: Refactor this for out and err
 
 
 class Admin:
+    """Administrative Commands"""
 
     def __init__(self, bot):
         self.bot = bot
-        # self.config = bot.config
-
-    # def env(self, ctx):
-    #     import random
-    #     environment = {
-    #         'bot': self.bot,
-    #         'ctx': ctx,
-    #         'message': ctx.message,
-    #         'guild': ctx.message.guild,
-    #         'channel': ctx.message.channel,
-    #         'author': ctx.message.author,
-    #         'discord': discord,
-    #         'random': random
-    #     }
-    #     environment.update(globals())
-    #     return environment
+        self.db = bot.db
+        self.config = f"{bot.APP_NAME}:admin"
 
     def pull(self):
         resp = os.popen("git pull").read()
@@ -56,8 +43,14 @@ class Admin:
         return resp
 
     @checks.sudo()
-    @commands.command(hidden=True)
-    async def load(self, ctx, *, cog: str, verbose: bool=False):
+    @commands.command(name="load")
+    async def load(
+            self,
+            ctx: commands.Context,
+            *,
+            cog: str,
+            verbose: bool=False
+    ):
         """load a module"""
         cog = 'cogs.{}'.format(cog)
         try:
@@ -71,16 +64,38 @@ class Admin:
             await ctx.send(content="Module loaded successfully.")
 
     @checks.sudo()
-    @commands.command(hidden=True)
-    async def unload(self, ctx, *, cog: str):
+    @commands.command(name="unload")
+    async def unload(
+            self,
+            ctx: commands.Context,
+            *,
+            cog: str
+    ):
         """Unloads a module."""
-        cog = 'cogs.{}'.format(cog)
+
+        cog = f"cogs.{cog}"
+
         try:
             self.bot.unload_extension(cog)
         except Exception as e:
-            await ctx.send(content='{}: {}'.format(type(e).__name__, e))
+            msg = await ctx.send(
+                embed=discord.Embed(
+                    title="Administration: Unload Cog Failed",
+                    description=f"{type(e).__name__}: {e}",
+                    color=0xFF0000
+                )
+            )
         else:
-            await ctx.send(content='Module unloaded successfully.')
+            msg = await ctx.send(
+                embed=discord.Embed(
+                    title="Administration",
+                    description=f"Module `{cog}` unloaded successfully",
+                    color=0x00FF00
+                )
+            )
+            await sleep(5)
+        finally:
+            await msg.delete()
 
     @checks.sudo()
     @commands.command(hidden=True)
@@ -105,92 +120,6 @@ class Admin:
         else:
             ctx.author.send(f"Couldn't find channel {ch_id}.")
 
-    # @checks.sudo()
-    # @commands.command(hidden=True, name='await')
-    # async def _await(self, ctx, *, code):
-    #
-    #     env = self.env(ctx)
-    #
-    #     try:
-    #         await eval(code, env)
-    #     except Exception as e:
-    #         await ctx.send(str(e))
-
-    # @checks.sudo()
-    # @commands.command(hidden=True, name='eval')
-    # async def _eval(self, ctx, *, code: str):
-    #     """Run eval() on an input."""
-    #
-    #     code = code.strip('` ')
-    #     python = '```py\n{0}\n```'
-    #     env = self.env(ctx)
-    #
-    #     try:
-    #         result = eval(code, env)
-    #         if inspect.isawaitable(result):
-    #             result = await result
-    #         result = str(result)[:1014]
-    #         color = 0x00FF00
-    #         field = {
-    #             'inline': False,
-    #             'name': 'Yielded result:',
-    #             'value': python.format(result)
-    #         }
-    #     except Exception as e:
-    #         color = 0xFF0000
-    #         field = {
-    #             'inline': False,
-    #             'name': 'Yielded exception "{0.__name__}":'.format(type(e)),
-    #             'value': '{0} '.format(e)
-    #         }
-    #
-    #     embed = discord.Embed(
-    #         title="Eval on:",
-    #         description=python.format(code),
-    #         color=color
-    #     )
-    #     embed.add_field(**field)
-    #
-    #     await ctx.send(embed=embed)
-
-    # @checks.sudo()
-    # @commands.command(hidden=True, name='exec')
-    # async def _exec(self, ctx, *, code: str):
-    #     """Run exec() on an input."""
-    #
-    #     code = code.strip('```\n ')
-    #     python = '```py\n{0}\n```'
-    #
-    #     env = self.env(ctx)
-    #
-    #     try:
-    #         with stdoutio() as s:
-    #             exec(code, env)
-    #             result = str(s.getvalue())
-    #         result = str(result)[:1014]
-    #         color = 0x00FF00
-    #         field = {
-    #             'inline': False,
-    #             'name': 'Yielded result(s):',
-    #             'value': python.format(result)
-    #         }
-    #     except Exception as e:
-    #         color = 0xFF0000
-    #         field = {
-    #             'inline': False,
-    #             'name': 'Yielded exception "{0.__name__}":'.format(type(e)),
-    #             'value': str(e)
-    #         }
-    #
-    #     embed = discord.Embed(
-    #         title="Exec on:",
-    #         description=python.format(code),
-    #         color=color
-    #     )
-    #     embed.add_field(**field)
-    #
-    #     await ctx.send(embed=embed)
-
     @checks.sudo()
     @commands.command(name='invite', hidden=True)
     async def invite(self, ctx):
@@ -206,10 +135,10 @@ class Admin:
     @checks.sudo()
     @commands.command(name='game', hidden=True)
     async def game(self, ctx, *, game: str=None):
-        """
-        Changes status to 'Playing <game>'
+        """Changes status to 'Playing <game>'.
+        Command without argument will remove status.
 
-        [p]game string"""
+        `[p]game <string>`"""
         if game:
             await self.bot.change_presence(game=discord.Game(name=game))
         else:
@@ -242,5 +171,5 @@ class Admin:
         await self.bot.logout()
 
 
-def setup(bot):
+def setup(bot: commands.Bot):
     bot.add_cog(Admin(bot))
