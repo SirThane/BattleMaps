@@ -41,9 +41,10 @@ class AdvanceWars:
     on. See `[p]help map listen` for more details.
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.db = bot.db
+        self.CONFIG = f"{bot.APP_NAME}"
         self.listen_for_maps = self.db.get(
             f"{CONFIG}:listen_for_maps"
         ) or False
