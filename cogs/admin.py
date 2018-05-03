@@ -32,7 +32,7 @@ def stdoutio(stdout=None):  # TODO: Refactor this for out and err
 class Admin:
     """Administrative Commands"""
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.db = bot.db
         self.config = f"{bot.APP_NAME}:admin"
