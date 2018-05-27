@@ -64,7 +64,7 @@ async def on_ready():
         id=bot.app_info.owner.id
     )
 
-    await bot.change_presence(game=discord.Game(name="setting up shop."))
+    await bot.change_presence(activity=discord.Game(name="setting up shop."))
 
     bot.loop.create_task(init_timed_events(bot))
 
@@ -87,7 +87,7 @@ async def on_ready():
     print(f'#-------------------------------#\n')
 
     await bot.change_presence(
-        game=discord.Game(
+        activity=discord.Game(
             name=f'{bot.command_prefix}help'
         )
     )
