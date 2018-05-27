@@ -17,13 +17,22 @@ class Events:
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        # self.awbw = bot.get_guild(184502171117551617)       # Not Skype
+        self.awbw = bot.get_guild(313453805150928906)       # AWBW Guild
         # self.channel = bot.get_channel(315232431835709441)  # Circlejerk Py
         self.channel = bot.get_channel(313453805150928906)  # AWBW General
+        self.sad_andy = discord.utils.get(  # :sad_andy: emoji
+            self.awbw.emojis, id=325608374526017536
+        )
 
     async def on_member_join(self, member: discord.Member) -> None:
+        if member.guild.id != self.awbw.id:
+            return
         await self.channel.send(WELCOME.format(member.mention))
 
     async def on_member_remove(self, member: discord.Member) -> None:
+        if member.guild.id != self.awbw.id:
+            return
         await self.channel.send(LEAVE.format(member.display_name))
 
     async def on_member_ban(self, member: discord.Member) -> None:
@@ -33,6 +42,10 @@ class Events:
     async def on_member_unban(self, member: discord.Member) -> None:
         pass
         # await self.channel.send(f"{member.display_name} test. (unban)")
+
+    async def on_message(self, message: discord.Message) -> None:
+        if "airport" in message.content.lower():
+            await message.add_reaction(self.sad_andy)
 
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.NoPrivateMessage):
