@@ -3,11 +3,11 @@ maps on the AWBW Discord server"""
 
 import asyncio
 import json
-import sys
-import traceback
+
 import discord
 from discord.ext import commands
-from cogs.utils import utils, errors
+
+from cogs.utils import utils
 
 
 LOOP = asyncio.get_event_loop()

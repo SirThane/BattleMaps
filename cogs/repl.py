@@ -1,15 +1,19 @@
 """Cog to provide REPL-like functionality"""
 
-from discord.ext import commands
-from .utils import checks, utils
-import discord
 import inspect
 import sys
+from contextlib import contextmanager
 from io import StringIO
-import contextlib
+
+import discord
+from discord.ext import commands
+from .utils import checks, utils
 
 
-@contextlib.contextmanager
+MD = "```py\n{0}\n```"
+
+
+@contextmanager
 def stdoutio(stdout=None):
     old = sys.stdout
     if stdout is None:
@@ -22,7 +26,7 @@ def stdoutio(stdout=None):
 class REPL:
     """Read-Eval-Print Loop debugging commands"""
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.db = bot.db
         self.ret = None
@@ -33,17 +37,13 @@ class REPL:
             header_extender='Cont.'
         )
 
-    def emb_dict(self, title, desc):
+    def emb_dict(self, title: str, desc: str) -> dict:
         d = {
             "title": title,
             "description": desc,
             "fields": []
         }
         return d
-
-    @property
-    def py(self):
-        return '```py\n{0}\n```'
 
     def _env(self, ctx):
         import random
@@ -64,7 +64,7 @@ class REPL:
 
     @checks.sudo()
     @commands.group(hidden=True, name='env')
-    async def env(self, ctx):
+    async def env(self, ctx: commands.Context) -> None:
         pass
 
     @checks.sudo()
@@ -73,7 +73,7 @@ class REPL:
         name='update',
         aliases=['store', 'add', 'append']
     )
-    async def _update(self, ctx, name):
+    async def _update(self, ctx: commands.Context, name: str) -> None:
         if name:
             self._env_store[name] = self.ret
             emb = discord.Embed(
@@ -98,7 +98,7 @@ class REPL:
         name='remove',
         aliases=['rem', 'del', 'pop']
     )
-    async def _remove(self, ctx, name):
+    async def _remove(self, ctx: commands.Context, name: str) -> None:
         if name:
             v = self._env_store.pop(name, None)
         else:
@@ -123,7 +123,7 @@ class REPL:
 
     @checks.sudo()
     @env.command(hidden=True, name='list')
-    async def _list(self, ctx):
+    async def _list(self, ctx: commands.Context) -> None:
         if len(self._env_store.keys()):
             emb = discord.Embed(
                 title='Environment Store List',
@@ -144,7 +144,7 @@ class REPL:
 
     @checks.sudo()
     @commands.command(hidden=True, name='await')
-    async def _await(self, ctx, *, code):
+    async def _await(self, ctx: commands.Context, *, code: str) -> None:
 
         try:
             resp = eval(code, self._env(ctx))
@@ -159,13 +159,13 @@ class REPL:
 
     @checks.sudo()
     @commands.command(hidden=True, name='eval')
-    async def _eval(self, ctx, *, code: str):
+    async def _eval(self, ctx: commands.Context, *, code: str) -> None:
         """Run eval() on an input."""
 
         code = code.strip('` ')
         emb = self.emb_dict(
             title='Eval on',
-            desc=self.py.format(code)
+            desc=MD.format(code)
         )
 
         try:
@@ -178,7 +178,7 @@ class REPL:
             for h, v in self.emb_pag.paginate(result):
                 field = {
                     'name': h,
-                    'value': self.py.format(v),
+                    'value': MD.format(v),
                     'inline': False
                 }
                 emb['fields'].append(field)
@@ -199,11 +199,11 @@ class REPL:
 
     @checks.sudo()
     @commands.command(hidden=True, name='exec')
-    async def _exec(self, ctx, *, code: str):
+    async def _exec(self, ctx: commands.Context, *, code: str) -> None:
         """Run exec() on an input."""
 
         code = code.strip('```\n ')
-        emb = self.emb_dict(title='Exec on', desc=self.py.format(code))
+        emb = self.emb_dict(title='Exec on', desc=MD.format(code))
 
         try:
             with stdoutio() as s:
@@ -214,7 +214,7 @@ class REPL:
             for h, v in self.emb_pag.paginate(result):
                 field = {
                     'name': h,
-                    'value': self.py.format(v),
+                    'value': MD.format(v),
                     'inline': False,
                 }
                 emb['fields'].append(field)
@@ -233,5 +233,5 @@ class REPL:
         await ctx.send(embed=embed)
 
 
-def setup(bot):
+def setup(bot: commands.Bot) -> None:
     bot.add_cog(REPL(bot))

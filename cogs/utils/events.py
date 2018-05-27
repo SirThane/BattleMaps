@@ -21,7 +21,6 @@ class Events:
         self.channel = bot.get_channel(313453805150928906)  # AWBW General
 
     async def on_member_join(self, member: discord.Member) -> None:
-
         await self.channel.send(WELCOME.format(member.mention))
 
     async def on_member_remove(self, member: discord.Member) -> None:
