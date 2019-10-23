@@ -12,7 +12,7 @@ class General:
         self.bot = bot
 
     @commands.command(name='userinfo', no_private=True)
-    async def userinfo(self, ctx, member: discord.Member=None):
+    async def userinfo(self, ctx, member: discord.Member = None):
         """Gets current server information for a given user
 
          [p]userinfo @user

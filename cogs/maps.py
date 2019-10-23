@@ -10,7 +10,7 @@ import subprocess
 from urllib.parse import quote
 from cogs.utils import checks
 from AWSMapConverter.awmap import AWMap
-from cogs.utils.errors import *
+from cogs.utils.errors import AWBWDimensionsError, InvalidMapError
 
 config = f"{APP_NAME}:maps"
 
@@ -29,16 +29,16 @@ class Maps:
         self.buffer_channel = self.bot.get_channel(id=434551085185630218)
 
     @commands.group(name="map", invoke_without_command=True)
-    async def _map(self, ctx, *, arg: str=""):
+    async def _map(self, ctx, *, arg: str = ""):
         ctx.message.content = f"{self.bot.command_prefix[0]}map info {arg}"
         await self.bot.process_commands(ctx.message)
 
     @_map.command(name="info")
-    async def _info(self, ctx, title: str=None, *, arg: str=""):
+    async def _info(self, ctx, title: str = None, *, arg: str = ""):
         awmap = await self.check_map(ctx.message, title)
 
         if not awmap:
-            raise InvalidMapException
+            raise InvalidMapError
 
         author = awmap.author
         awbw_id = awmap.awbw_id
@@ -58,7 +58,7 @@ class Maps:
         msg = await self.buffer_channel.send(file=file)
         return msg.attachments[0].url
 
-    async def check_map(self, msg: discord.Message, title: str=None):  # TODO: This whole bitch gon get a refactor
+    async def check_map(self, msg: discord.Message, title: str = None):  # TODO: This whole bitch gon get a refactor
         if msg.attachments:
             attachment = msg.attachments[0]
             filename, ext = os.path.splitext(attachment.filename)
@@ -76,7 +76,7 @@ class Maps:
                     awmap = AWMap().from_awbw(map_csv, title=filename)
                     return awmap
                 except AssertionError:
-                    raise AWBWDimensionsException
+                    raise AWBWDimensionsError
         else:
             search = re_awl.search(msg.content)
             if search:
@@ -87,7 +87,7 @@ class Maps:
                 except TypeError:
                     return
                 else:
-                    return AWMap().from_awbw(awbw_id=search.group(3))
+                    return AWMap().from_awbw(awbw_id=int(search.group(3)))
             else:
                 try:
                     search = re_csv.search(msg.content)
@@ -101,7 +101,7 @@ class Maps:
                         except ValueError:
                             return
                 except AssertionError:
-                    raise AWBWDimensionsException
+                    raise AWBWDimensionsError
 
     def open_aws(self, aws: bytes):
         return AWMap().from_aws(aws)
@@ -178,7 +178,7 @@ class Maps:
                                  "value": f"[{title}]({csv})",
                                  "inline": True}]
 
-        return discord.Embed.from_data(embed)
+        return discord.Embed.from_dict(embed)
 
     @checks.awbw_staff()
     @_map.command(name="listen", hidden=True)

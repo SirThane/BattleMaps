@@ -62,7 +62,7 @@ class AdvanceWars:
         invoke_without_command=True,
         usage="[map file or link]"
     )
-    async def _map(self, ctx: Context, arg: str="", *, args: str=""):
+    async def _map(self, ctx: Context, arg: str = "", *, args: str = ""):
         """The base command for working with maps
 
         This command will retrieve map information
@@ -99,7 +99,7 @@ class AdvanceWars:
             await self.bot.invoke(ctx)
 
     @_map.command(name="load", usage="[title]")
-    async def _load(self, ctx: Context, title: str=None, *, _: str=""):
+    async def _load(self, ctx: Context, title: str = None, *, _: str = ""):
         """Load a map to be worked with
 
         This command will load a map to be worked with.
@@ -615,7 +615,7 @@ class CheckMap:
         :return: `AWMap` instance with collected map data"""
         try:
             int(awbw_id)
-            awmap = AWMap().from_awbw(awbw_id=awbw_id)
+            awmap = AWMap().from_awbw(awbw_id=int(awbw_id))
         except Exception:
             raise errors.InvalidMapError
         else:
