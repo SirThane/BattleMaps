@@ -192,7 +192,7 @@ class REPL(commands.Cog):
             }
             emb['fields'].append(field)
 
-        embed = discord.Embed().from_data(emb)
+        embed = discord.Embed().from_dict(emb)
 
         await ctx.message.delete()
         await ctx.channel.send(embed=embed)
@@ -227,7 +227,7 @@ class REPL(commands.Cog):
             }
             emb['fields'].append(field)
 
-        embed = discord.Embed().from_data(emb)
+        embed = discord.Embed().from_dict(emb)
 
         await ctx.message.delete()
         await ctx.send(embed=embed)
