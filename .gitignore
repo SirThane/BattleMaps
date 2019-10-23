@@ -1,0 +1,13 @@
+# Created by .ignore support plugin (hsz.mobi)
+.idea/
+.idea/.gitignore
+.idea/BattleMaps.iml
+.idea/codeStyles/
+.idea/dictionaries/
+.idea/discord.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml
+__pycache__/
+cogs/__pycache__/
+cogs/utils/__pycache__/
