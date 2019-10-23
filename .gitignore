@@ -4,3 +4,4 @@
 redis.json
 /AWSMapConverter/
 BattleMaps.sh
+/cogs/maps.py

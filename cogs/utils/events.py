@@ -13,7 +13,7 @@ WELCOME = "Welcome to AWBW Discord Server {}! Present yourself and have fun!"
 LEAVE = "{} has left our army... Be happy in peace."
 
 
-class Events:
+class Events(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -21,9 +21,10 @@ class Events:
         self.awbw = bot.get_guild(313453805150928906)       # AWBW Guild
         # self.channel = bot.get_channel(315232431835709441)  # Circlejerk Py
         self.channel = bot.get_channel(313453805150928906)  # AWBW General
-        self.sad_andy = discord.utils.get(  # :sad_andy: emoji
-            self.awbw.emojis, id=325608374526017536
-        )
+        if self.awbw:
+            self.sad_andy = discord.utils.get(  # :sad_andy: emoji
+                self.awbw.emojis, id=325608374526017536
+            )
 
     async def on_member_join(self, member: discord.Member) -> None:
         if member.guild.id != self.awbw.id:

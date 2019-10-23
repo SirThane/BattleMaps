@@ -23,7 +23,7 @@ def stdoutio(stdout=None):
     sys.stdout = old
 
 
-class REPL:
+class REPL(commands.Cog):
     """Read-Eval-Print Loop debugging commands"""
 
     def __init__(self, bot: commands.Bot):

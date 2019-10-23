@@ -29,7 +29,7 @@ def stdoutio(stdout=None):  # TODO: Refactor this for out and err
     sys.stdout = old
 
 
-class Admin:
+class Admin(commands.Cog):
     """Administrative Commands"""
 
     def __init__(self, bot: commands.Bot):

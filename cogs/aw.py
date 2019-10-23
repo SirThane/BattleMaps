@@ -1,8 +1,6 @@
 """Commands for Advance Wars Maps"""
 
-import re
-import os
-import subprocess
+import os, re, subprocess
 from asyncio import sleep
 from datetime import datetime
 from io import BytesIO
@@ -14,8 +12,7 @@ from discord.ext import commands
 from discord.ext.commands.context import Context
 
 from AWSMapConverter.awsmapconverter.awmap import AWMap
-from cogs.utils import checks
-from cogs.utils import errors
+from cogs.utils import checks, errors
 from main import APP_NAME
 
 
@@ -29,7 +26,7 @@ RE_AWL = re.compile(
 RE_CSV = re.compile(r"(([0-9])+(,[0-9]*)*(\n[0-9]+(,[0-9]*)*)*){1}")
 
 
-class AdvanceWars:
+class AdvanceWars(commands.Cog):
     """
     Commands for working with Advance Wars maps.
     Will currently support AWS map files and
@@ -148,7 +145,7 @@ class AdvanceWars:
         await self.timed_store(ctx.author, awmap)
 
     @_map.command(name="download", usage=" ")
-    async def download(self, ctx: Context, *, _: str=""):
+    async def download(self, ctx: Context, *, _: str = ""):
         """Download your currently loaded map
 
         Use this command when you have a map loaded
@@ -166,7 +163,7 @@ class AdvanceWars:
         await self.em_download(ctx.channel, awmap)
 
     @_map.command(name="info", usage=" ")
-    async def info(self, ctx: Context, *, _: str=""):
+    async def info(self, ctx: Context, *, _: str = ""):
         """Something something information about a map"""
         raise errors.UnimplementedError
 
