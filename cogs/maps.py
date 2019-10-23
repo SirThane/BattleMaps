@@ -3,13 +3,13 @@
 import discord
 from discord.ext import commands
 from main import APP_NAME
-from io import BytesIO, StringIO
+from io import BytesIO
 import re
 import os
 import subprocess
 from urllib.parse import quote
 from cogs.utils import checks
-from AWSMapConverter.awmap import AWMap
+from AWSMapConverter.awsmapconverter.awmap import AWMap
 from cogs.utils.errors import AWBWDimensionsError, InvalidMapError
 
 config = f"{APP_NAME}:maps"

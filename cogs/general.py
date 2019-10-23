@@ -5,7 +5,7 @@ from discord.ext import commands
 from cogs.utils import checks
 
 
-class General:
+class General(commands.Cog):
     """General use and utility commands."""
 
     def __init__(self, bot):

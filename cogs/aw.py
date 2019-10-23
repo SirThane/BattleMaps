@@ -13,7 +13,7 @@ import discord
 from discord.ext import commands
 from discord.ext.commands.context import Context
 
-from AWSMapConverter.awmap import AWMap
+from AWSMapConverter.awsmapconverter.awmap import AWMap
 from cogs.utils import checks
 from cogs.utils import errors
 from main import APP_NAME
