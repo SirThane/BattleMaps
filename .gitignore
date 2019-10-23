@@ -1,7 +1,12 @@
 *.idea*
 *__pycache__*
+*AWSMapConverter*
+*boardgames*
+*venv*
+*testing*
 *.log
 redis.json
-/AWSMapConverter/
 BattleMaps.sh
 /cogs/maps.py
+/venv/
+/cogs/boardgames/

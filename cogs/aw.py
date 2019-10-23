@@ -13,8 +13,9 @@ import discord
 from discord.ext import commands
 from discord.ext.commands.context import Context
 
-from AWSMapConverter.awmapconverter.awmap import AWMap
-from cogs.utils import checks, errors
+from AWSMapConverter import AWMap
+from cogs.utils import checks
+from cogs.utils.errors import InvalidMapError, UnimplementedError, NoLoadedMapError, FileSaveFailureError, AWBWDimensionsError
 from main import APP_NAME
 
 
@@ -141,7 +142,7 @@ class AdvanceWars(commands.Cog):
         awmap = await CheckMap.check(ctx.message, title)
 
         if not awmap:
-            raise errors.InvalidMapError
+            raise InvalidMapError
 
         await self.em_load(ctx.channel, awmap)
         await self.timed_store(ctx.author, awmap)
@@ -160,14 +161,14 @@ class AdvanceWars(commands.Cog):
         awmap = self.get_loaded_map(ctx.author)
 
         if not awmap:
-            raise errors.NoLoadedMapError
+            raise NoLoadedMapError
 
         await self.em_download(ctx.channel, awmap)
 
     @_map.command(name="info", usage=" ")
     async def info(self, ctx: Context, *, _: str = ""):
         """Something something information about a map"""
-        raise errors.UnimplementedError
+        raise UnimplementedError
 
     """
         ##########################
@@ -393,7 +394,7 @@ class AdvanceWars(commands.Cog):
         ###############################################
     """
 
-    @checks.awbw_staff()
+    @checks.sudo()
     @_map.command(name="listen", hidden=True, usage="[on / off]")
     async def listen(self, ctx: Context, *, arg: str=""):
         """Toggle active listening for maps
@@ -562,7 +563,7 @@ class CheckMap:
             aws_bytes.seek(0)
             awmap = AWMap().from_aws(aws_bytes.read())
         except discord.HTTPException:
-            raise errors.FileSaveFailureError
+            raise FileSaveFailureError
         else:
             return awmap
 
@@ -595,7 +596,7 @@ class CheckMap:
             awmap = AWMap().from_awbw(map_csv, title=filename)
             awmap.author = author
         except AssertionError:
-            raise errors.AWBWDimensionsError
+            raise AWBWDimensionsError
         else:
             return awmap
 
@@ -616,7 +617,7 @@ class CheckMap:
             int(awbw_id)
             awmap = AWMap().from_awbw(awbw_id=int(awbw_id))
         except Exception:
-            raise errors.InvalidMapError
+            raise InvalidMapError
         else:
             return awmap
 
@@ -641,7 +642,7 @@ class CheckMap:
             awmap = AWMap().from_awbw(data=msg_csv, title=title)
             awmap.author = author
         except AssertionError:
-            raise errors.AWBWDimensionsError
+            raise AWBWDimensionsError
         else:
             return awmap
 
@@ -649,3 +650,4 @@ class CheckMap:
 def setup(bot: commands.Bot) -> None:
     AdvanceWars.pull()
     bot.add_cog(AdvanceWars(bot))
+    pass
