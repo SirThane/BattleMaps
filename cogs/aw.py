@@ -492,8 +492,8 @@ class CheckMap:
     @staticmethod
     async def check(
             msg: discord.Message,
-            title: str="[Untitled]",
-            skips: list=None
+            title: str = "[Untitled]",
+            skips: list = None
     ) -> Union[AWMap, None]:
         """Takes a discord.Message object and checks
         for valid maps that can be loaded.

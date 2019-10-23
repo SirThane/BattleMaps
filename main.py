@@ -31,6 +31,7 @@ bot = commands.Bot(
 )
 bot.db = db
 bot.APP_NAME = APP_NAME
+db.scan_iter()
 
 
 @bot.listen()
