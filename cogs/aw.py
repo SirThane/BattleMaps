@@ -1,6 +1,8 @@
 """Commands for Advance Wars Maps"""
 
-import os, re, subprocess
+import os
+import re
+import subprocess
 from asyncio import sleep
 from datetime import datetime
 from io import BytesIO
@@ -644,6 +646,6 @@ class CheckMap:
             return awmap
 
 
-def setup(bot):
+def setup(bot: commands.Bot) -> None:
     AdvanceWars.pull()
     bot.add_cog(AdvanceWars(bot))
