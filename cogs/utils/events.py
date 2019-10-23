@@ -43,9 +43,9 @@ class Events:
         pass
         # await self.channel.send(f"{member.display_name} test. (unban)")
 
-    async def on_message(self, message: discord.Message) -> None:
-        if "airport" in message.content.lower():
-            await message.add_reaction(self.sad_andy)
+    # async def on_message(self, message: discord.Message) -> None:
+    #     if "airport" in message.content.lower():
+    #         await message.add_reaction(self.sad_andy)
 
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.NoPrivateMessage):
