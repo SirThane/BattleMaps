@@ -1,9 +1,12 @@
 """Cog containing all global bot events"""
 
-import traceback
 import sys
+import traceback
+
 import discord
 from discord.ext import commands
+
+from classes.bot import Bot
 from cogs.utils import errors
 
 # TODO: Create events cog
@@ -15,31 +18,39 @@ LEAVE = "{} has left our army... Be happy in peace."
 
 class Events(commands.Cog):
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
+        self.db = bot.db
+        self.config = f"{bot.APP_NAME}:events"
+
         # self.awbw = bot.get_guild(184502171117551617)       # Not Skype
         self.awbw = bot.get_guild(313453805150928906)       # AWBW Guild
         # self.channel = bot.get_channel(315232431835709441)  # Circlejerk Py
         self.channel = bot.get_channel(313453805150928906)  # AWBW General
+
         if self.awbw:
             self.sad_andy = discord.utils.get(  # :sad_andy: emoji
                 self.awbw.emojis, id=325608374526017536
             )
 
+    @commands.Cog.listener(name="on_member_join")
     async def on_member_join(self, member: discord.Member) -> None:
         if member.guild.id != self.awbw.id:
             return
         await self.channel.send(WELCOME.format(member.mention))
 
+    @commands.Cog.listener(name="on_member_remove")
     async def on_member_remove(self, member: discord.Member) -> None:
         if member.guild.id != self.awbw.id:
             return
         await self.channel.send(LEAVE.format(member.display_name))
 
+    @commands.Cog.listener(name="on_member_ban")
     async def on_member_ban(self, member: discord.Member) -> None:
         pass
         # await self.channel.send(f"{member.display_name} test. (ban)")
 
+    @commands.Cog.listener(name="on_member_unban")
     async def on_member_unban(self, member: discord.Member) -> None:
         pass
         # await self.channel.send(f"{member.display_name} test. (unban)")
@@ -48,6 +59,7 @@ class Events(commands.Cog):
     #     if "airport" in message.content.lower():
     #         await message.add_reaction(self.sad_andy)
 
+    @commands.Cog.listener(name="on_command_error")
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.NoPrivateMessage):
             await ctx.send(
@@ -60,14 +72,16 @@ class Events(commands.Cog):
             )
 
         elif isinstance(error, commands.MissingRequiredArgument):
-            await self.bot.formatter.format_help_for(
-                ctx, ctx.command, "You are missing required arguments."
-            )
+            pass
+            # await self.bot.formatter.format_help_for(
+            #     ctx, ctx.command, "You are missing required arguments."
+            # )
 
         elif isinstance(error, commands.CommandNotFound):
-            await self.bot.formatter.format_help_for(
-                ctx, self.bot.get_command("help"), "Command not found."
-            )
+            pass
+            # await self.bot.formatter.format_help_for(
+            #     ctx, self.bot.get_command("help"), "Command not found."
+            # )
 
         elif isinstance(error, commands.CheckFailure):
             em = discord.Embed(
@@ -150,5 +164,5 @@ class Events(commands.Cog):
             )
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: Bot) -> None:
     bot.add_cog(Events(bot))

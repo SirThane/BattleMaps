@@ -5,9 +5,11 @@ import sys
 from contextlib import contextmanager
 from io import StringIO
 
-import discord
-from discord.ext import commands
-from .utils import checks, utils
+from discord import Colour, Embed
+from discord.ext.commands import Cog, command, Context, group
+
+from classes.bot import Bot
+from cogs.utils import checks, utils
 
 
 MD = "```py\n{0}\n```"
@@ -23,12 +25,14 @@ def stdoutio(stdout=None):
     sys.stdout = old
 
 
-class REPL(commands.Cog):
+class REPL(Cog):
     """Read-Eval-Print Loop debugging commands"""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
         self.db = bot.db
+        self.config = f"{bot.APP_NAME}:REPL"
+
         self.ret = None
         self._env_store = {}
         self.emb_pag = utils.Paginator(
@@ -45,7 +49,8 @@ class REPL(commands.Cog):
         }
         return d
 
-    def _env(self, ctx):
+    def _env(self, ctx: Context):
+        import discord
         import random
         env = {
             'bot': self.bot,
@@ -63,89 +68,51 @@ class REPL(commands.Cog):
         return env
 
     @checks.sudo()
-    @commands.group(hidden=True, name='env')
-    async def env(self, ctx: commands.Context) -> None:
+    @group(hidden=True, name='env')
+    async def env(self, ctx: Context):
         pass
 
     @checks.sudo()
-    @env.command(
-        hidden=True,
-        name='update',
-        aliases=['store', 'add', 'append']
-    )
-    async def _update(self, ctx: commands.Context, name: str) -> None:
+    @env.command(hidden=True, name='update', aliases=['store', 'add', 'append'])
+    async def _update(self, ctx: Context, name: str):
         if name:
             self._env_store[name] = self.ret
-            emb = discord.Embed(
-                title='Environment Updated',
-                color=discord.Colour.green()
-            )
-            emb.add_field(
-                name=name,
-                value=repr(self.ret)
-            )
+            emb = Embed(title='Environment Updated', color=Colour.green())
+            emb.add_field(name=name, value=repr(self.ret))
         else:
-            emb = discord.Embed(
-                title='Environment Update',
-                description='You must enter a name',
-                color=discord.Colour.red()
-            )
+            emb = Embed(title='Environment Update', description='You must enter a name', color=Colour.red())
         await ctx.send(embed=emb)
 
     @checks.sudo()
-    @env.command(
-        hidden=True,
-        name='remove',
-        aliases=['rem', 'del', 'pop']
-    )
-    async def _remove(self, ctx: commands.Context, name: str) -> None:
+    @env.command(hidden=True, name='remove', aliases=['rem', 'del', 'pop'])
+    async def _remove(self, ctx: Context, name: str):
         if name:
             v = self._env_store.pop(name, None)
         else:
             v = None
             name = 'You must enter a name'
         if v:
-            emb = discord.Embed(
-                title='Environment Item Removed',
-                color=discord.Colour.green()
-            )
-            emb.add_field(
-                name=name,
-                value=repr(v)
-            )
+            emb = Embed(title='Environment Item Removed', color=Colour.green())
+            emb.add_field(name=name, value=repr(v))
         else:
-            emb = discord.Embed(
-                title='Environment Item Not Found',
-                description=name,
-                color=discord.Colour.red()
-            )
+            emb = Embed(title='Environment Item Not Found', description=name, color=Colour.red())
         await ctx.send(embed=emb)
 
     @checks.sudo()
     @env.command(hidden=True, name='list')
-    async def _list(self, ctx: commands.Context) -> None:
+    async def _list(self, ctx: Context) -> None:
         if len(self._env_store.keys()):
-            emb = discord.Embed(
-                title='Environment Store List',
-                color=discord.Colour.green()
-            )
+            emb = Embed(title='Environment Store List', color=Colour.green())
             for k, v in self._env_store.items():
-                emb.add_field(
-                    name=k,
-                    value=repr(v)
-                )
+                emb.add_field(name=k, value=repr(v))
         else:
-            emb = discord.Embed(
-                title='Environment Store List',
-                description='Environment Store is currently empty',
-                color=discord.Colour.green()
-            )
+            emb = Embed(title='Environment Store List', description='Environment Store is currently empty',
+                        color=Colour.green())
         await ctx.send(embed=emb)
 
     @checks.sudo()
-    @commands.command(hidden=True, name='await')
-    async def _await(self, ctx: commands.Context, *, code: str) -> None:
-
+    @command(hidden=True, name='await')
+    async def _await(self, ctx: Context, *, code: str) -> None:
         try:
             resp = eval(code, self._env(ctx))
             if inspect.isawaitable(resp):
@@ -158,15 +125,12 @@ class REPL(commands.Cog):
             await ctx.message.delete()
 
     @checks.sudo()
-    @commands.command(hidden=True, name='eval')
-    async def _eval(self, ctx: commands.Context, *, code: str) -> None:
+    @command(hidden=True, name='eval')
+    async def _eval(self, ctx: Context, *, code: str) -> None:
         """Run eval() on an input."""
 
         code = code.strip('` ')
-        emb = self.emb_dict(
-            title='Eval on',
-            desc=MD.format(code)
-        )
+        emb = self.emb_dict(title='Eval on', desc=MD.format(code))
 
         try:
             result = eval(code, self._env(ctx))
@@ -192,14 +156,14 @@ class REPL(commands.Cog):
             }
             emb['fields'].append(field)
 
-        embed = discord.Embed().from_dict(emb)
+        embed = Embed().from_dict(emb)
 
         await ctx.message.delete()
         await ctx.channel.send(embed=embed)
 
     @checks.sudo()
-    @commands.command(hidden=True, name='exec')
-    async def _exec(self, ctx: commands.Context, *, code: str) -> None:
+    @command(hidden=True, name='exec')
+    async def _exec(self, ctx: Context, *, code: str) -> None:
         """Run exec() on an input."""
 
         code = code.strip('```\n ')
@@ -227,11 +191,11 @@ class REPL(commands.Cog):
             }
             emb['fields'].append(field)
 
-        embed = discord.Embed().from_dict(emb)
+        embed = Embed().from_dict(emb)
 
         await ctx.message.delete()
         await ctx.send(embed=embed)
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: Bot) -> None:
     bot.add_cog(REPL(bot))

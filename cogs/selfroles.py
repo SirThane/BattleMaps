@@ -1,16 +1,21 @@
 
 from asyncio import sleep
-import discord
-from discord.ext import commands
+
+from discord import Embed
+from discord.ext.commands import Cog, command, Context, group, RoleConverter
+from discord.ext.commands.errors import BadArgument
+
+from classes.bot import Bot
 from cogs.utils import checks
 
 
-class SelfRoles(commands.Cog):
+class SelfRoles(Cog):
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
         self.db = bot.db
         self.config = f"{bot.APP_NAME}:selfroles"
+
         self._selfroles = {g.id: [] for g in bot.guilds}
 
         for key in self.db.scan_iter(match=f"{self.config}:*"):
@@ -23,8 +28,8 @@ class SelfRoles(commands.Cog):
                 if role.id in r_ids:
                     self._selfroles[guild.id].append(role.id)
 
-    @commands.command(name="iam")
-    async def iam(self, ctx: commands.Context, *, role) -> None:
+    @command(name="iam")
+    async def iam(self, ctx: Context, *, role) -> None:
         """Add a self-assignable role
 
         If the `role` is configured as an assignable
@@ -36,11 +41,11 @@ class SelfRoles(commands.Cog):
         `[p]iam role id`"""
 
         try:
-            role = await commands.RoleConverter().convert(ctx, role)
+            role = await RoleConverter().convert(ctx, role)
 
-        except commands.errors.BadArgument:
+        except BadArgument:
             await ctx.send(
-                embed=discord.Embed(
+                embed=Embed(
                     color=ctx.guild.me.color,
                     title="⚠ Selfroles",
                     description=f"Could not recognize role."
@@ -50,7 +55,7 @@ class SelfRoles(commands.Cog):
         else:
             if role in ctx.author.roles:
                 await ctx.send(
-                    embed=discord.Embed(
+                    embed=Embed(
                         color=ctx.guild.me.color,
                         title="⚠ Selfroles",
                         description="You already have this role assigned."
@@ -71,7 +76,7 @@ class SelfRoles(commands.Cog):
                     atomic=True
                 )
                 await ctx.send(
-                    embed=discord.Embed(
+                    embed=Embed(
                         color=role.color,
                         title="Role Assigned",
                         description=f"Congratulations, {ctx.author.mention}!"
@@ -81,16 +86,15 @@ class SelfRoles(commands.Cog):
                 )
             else:
                 await ctx.send(
-                    embed=discord.Embed(
+                    embed=Embed(
                         color=0xFF0000,
                         title="⚠ Selfroles",
                         description="That role is not self-assignable."
                     )
                 )
 
-    @commands.group(name="selfroles", aliases=["selfrole"],
-                    invoke_without_command=True)
-    async def selfroles(self, ctx: commands.Context):
+    @group(name="selfroles", aliases=["selfrole"], invoke_without_command=True)
+    async def selfroles(self, ctx: Context):
         """View all selfroles"""
 
         r_ids = self._selfroles.get(ctx.guild.id)
@@ -104,7 +108,7 @@ class SelfRoles(commands.Cog):
             roles = "\n".join(roles)
 
             await ctx.send(
-                embed=discord.Embed(
+                embed=Embed(
                     color=ctx.guild.me.color,
                     title="Selfroles",
                     description=f"The following roles are self-assignable:\n"
@@ -115,7 +119,7 @@ class SelfRoles(commands.Cog):
 
         else:
             await ctx.send(
-                embed=discord.Embed(
+                embed=Embed(
                     color=ctx.guild.me.color,
                     title="Selfroles",
                     description="There are currently no assignable selfroles."
@@ -126,16 +130,16 @@ class SelfRoles(commands.Cog):
 
     @checks.awbw_staff()
     @selfroles.command(name="add")
-    async def _add(self, ctx: commands.Context, *, role) -> None:
+    async def _add(self, ctx: Context, *, role) -> None:
         """Configures a role as a selfrole"""
 
         r_ids = [i for i in self._selfroles.get(ctx.guild.id)]
 
         try:
-            role = await commands.RoleConverter().convert(ctx, role)
-        except commands.errors.BadArgument:
+            role = await RoleConverter().convert(ctx, role)
+        except BadArgument:
             await ctx.send(
-                embed=discord.Embed(
+                embed=Embed(
                     color=ctx.guild.me.color,
                     title="⚠ Selfroles Management",
                     description=f"Could not recognize role."
@@ -144,7 +148,7 @@ class SelfRoles(commands.Cog):
         else:
             if role.id in r_ids:
                 await ctx.send(
-                    embed=discord.Embed(
+                    embed=Embed(
                         color=ctx.guild.me.color,
                         title="⚠ Selfroles Management",
                         description=f"Role {role.mention} is already "
@@ -155,7 +159,7 @@ class SelfRoles(commands.Cog):
                 self.db.sadd(f"{self.config}:{ctx.guild.id}", str(role.id))
                 self._selfroles[ctx.guild.id].append(role.id)
                 await ctx.send(
-                    embed=discord.Embed(
+                    embed=Embed(
                         color=ctx.guild.me.color,
                         title="Selfroles Management",
                         description=f"Role {role.mention} has been added to "
@@ -165,17 +169,17 @@ class SelfRoles(commands.Cog):
 
     @checks.awbw_staff()
     @selfroles.command(name="rem", aliases=["del", "remove", "delete"])
-    async def _rem(self, ctx: commands.Context, *, role) -> None:
+    async def _rem(self, ctx: Context, *, role):
         """Removes a role from selfroles"""
 
         r_ids = [i for i in self._selfroles.get(ctx.guild.id)]
 
         try:
-            role = await commands.RoleConverter().convert(ctx, role)
+            role = await RoleConverter().convert(ctx, role)
 
-        except commands.errors.BadArgument:
+        except BadArgument:
             await ctx.send(
-                embed=discord.Embed(
+                embed=Embed(
                     color=ctx.guild.me.color,
                     title="⚠ Selfroles Management",
                     description=f"Could not recognize role."
@@ -187,7 +191,7 @@ class SelfRoles(commands.Cog):
                 self.db.srem(f"{self.config}:{ctx.guild.id}", role.id)
                 self._selfroles[ctx.guild.id].remove(role.id)
                 await ctx.send(
-                    embed=discord.Embed(
+                    embed=Embed(
                         color=ctx.guild.me.color,
                         title="Selfroles Management",
                         description=f"Role {role.mention} has been removed "
@@ -196,7 +200,7 @@ class SelfRoles(commands.Cog):
                 )
             else:
                 await ctx.send(
-                    embed=discord.Embed(
+                    embed=Embed(
                         color=ctx.guild.me.color,
                         title="⚠ Selfroles Management",
                         description=f"Role {role.mention} is not configured as"
@@ -205,5 +209,5 @@ class SelfRoles(commands.Cog):
                 )
 
 
-def setup(bot: commands.Bot) -> None:
+def setup(bot: Bot):
     bot.add_cog(SelfRoles(bot))

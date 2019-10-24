@@ -8,8 +8,8 @@ class Paginator:
 
     def __init__(
             self,
-            page_limit: int=1000,
-            trunc_limit: int=2000,
+            page_limit: int = 1000,
+            trunc_limit: int = 2000,
             headers=None,
             header_extender=u'\u200b'
     ):

@@ -4,8 +4,7 @@ import requests
 
 from io import BytesIO
 from math import cos, sin, pi, trunc
-from PIL import Image, ImageDraw, ImageSequence
-from pprint import pprint
+from PIL import Image, ImageDraw  # , ImageSequence
 from typing import Union, Tuple, List
 
 

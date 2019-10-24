@@ -1,18 +1,22 @@
 """General Commands"""
 
-import discord
-from discord.ext import commands
+from discord import Colour, Embed, Member
+from discord.ext.commands import Cog, command, Context
+
+from classes.bot import Bot
 from cogs.utils import checks
 
 
-class General(commands.Cog):
+class General(Cog):
     """General use and utility commands."""
 
-    def __init__(self, bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
+        self.db = bot.db
+        self.config = f"{bot.APP_NAME}:general"
 
-    @commands.command(name='userinfo', no_private=True)
-    async def userinfo(self, ctx, member: discord.Member = None):
+    @command(name='userinfo', no_private=True)
+    async def userinfo(self, ctx: Context, member: Member = None):
         """Gets current server information for a given user
 
          [p]userinfo @user
@@ -35,7 +39,7 @@ class General(commands.Cog):
             'embed': {
                 'title': 'User Information For:',
                 'description': '{0.name}#{0.discriminator}'.format(member),
-                'color': getattr(discord.Colour, member.default_avatar.name)()
+                'color': getattr(Colour, member.default_avatar.name)()
             },
             'author': {
                 'name': '{0.name} || #{1.name}'.format(ctx.guild, ctx.channel),
@@ -73,7 +77,7 @@ class General(commands.Cog):
             ]
         }
 
-        embed = discord.Embed(**emb['embed'])  # TODO: EMBED FUNCTION/CLASS
+        embed = Embed(**emb['embed'])  # TODO: EMBED FUNCTION/CLASS
         embed.set_author(**emb['author'])
         embed.set_thumbnail(url=member.avatar_url_as(format='png'))
         for field in emb['fields']:
@@ -82,11 +86,11 @@ class General(commands.Cog):
         await ctx.channel.send(embed=embed)
 
     @checks.sudo()
-    @commands.command(name='ping', hidden=True)
-    async def ping(self, ctx):
+    @command(name='ping', hidden=True)
+    async def ping(self, ctx: Context):
         """Your basic `ping`"""
         await ctx.send('Pong')
 
 
-def setup(bot):
+def setup(bot: Bot):
     bot.add_cog(General(bot))

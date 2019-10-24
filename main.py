@@ -7,6 +7,7 @@ import json
 import discord
 from discord.ext import commands
 
+from classes.bot import Bot
 from cogs.utils import utils
 
 
@@ -25,7 +26,7 @@ except FileNotFoundError:
 
 db = utils.StrictRedis(**conf)
 config = f'{APP_NAME}:config'
-bot = commands.Bot(
+bot = Bot(
     command_prefix=db.hget(f'{config}:prefix', 'default'),
     **db.hgetall(f'{config}:instance')  # TODO: Refactor
 )

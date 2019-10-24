@@ -2,34 +2,27 @@
 
 import os
 import re
-import subprocess
 from asyncio import sleep
 from datetime import datetime
 from io import BytesIO
 from typing import Union
 from urllib.parse import quote
 
-import discord
-from discord.ext import commands
+from discord import Attachment, DMChannel, Embed, File, HTTPException, Member, Message
+from discord.ext.commands import Cog, command, group
 from discord.ext.commands.context import Context
 
+from classes.bot import Bot
 from cogs.utils import checks
 from cogs.utils.awmap import AWMap
-from cogs.utils.errors import InvalidMapError, UnimplementedError, NoLoadedMapError, FileSaveFailureError, AWBWDimensionsError
-from main import APP_NAME
+from cogs.utils.errors import *
 
 
-CONFIG = f"{APP_NAME}:maps"
+RE_AWL = re.compile(r"(http[s]?://)?awbw.amarriner.com/(glenstorm/)?prevmaps.php\?maps_id=([0-9]+)(?i)")
+RE_CSV = re.compile(r"(([0-9])+(,[0-9]*)*(\n[0-9]+(,[0-9]*)*)*)")  # {1}")
 
 
-RE_AWL = re.compile(
-    r"(http[s]?://)?awbw.amarriner.com/(glenstorm/)"
-    r"?prevmaps.php\?maps_id=([0-9]+)(?i)"
-)
-RE_CSV = re.compile(r"(([0-9])+(,[0-9]*)*(\n[0-9]+(,[0-9]*)*)*){1}")
-
-
-class AdvanceWars(commands.Cog):
+class AdvanceWars(Cog):
     """
     Commands for working with Advance Wars maps.
     Will currently support AWS map files and
@@ -41,13 +34,14 @@ class AdvanceWars(commands.Cog):
     on. See `[p]help map listen` for more details.
     """
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
         self.db = bot.db
-        self.CONFIG = f"{bot.APP_NAME}"
-        self.listen_for_maps = self.db.get(
-            f"{CONFIG}:listen_for_maps"
-        ) or False
+        self.config = f"{bot.APP_NAME}:maps"
+
+        self.listen_for_maps = (self.db.get(
+            f"{self.config}:listen_for_maps"
+        ) == "True") or False
         self.buffer_channel = self.bot.get_channel(id=434551085185630218)
         self.loaded_maps = {}
 
@@ -57,11 +51,7 @@ class AdvanceWars(commands.Cog):
         #################################
     """
 
-    @commands.group(
-        name="map",
-        invoke_without_command=True,
-        usage="[map file or link]"
-    )
+    @group(name="map", invoke_without_command=True, usage="[map file or link]")
     async def _map(self, ctx: Context, arg: str = "", *, args: str = ""):
         """The base command for working with maps
 
@@ -79,9 +69,9 @@ class AdvanceWars(commands.Cog):
             # Subcommands available to ctx.author
             avail_cmds = []
 
-            for command in ctx.command.walk_commands():
-                if await command.can_run(ctx):
-                    avail_cmds.append(command.name)
+            for cmd in ctx.command.walk_commands():
+                if await cmd.can_run(ctx):
+                    avail_cmds.append(cmd.name)
 
             if arg in avail_cmds:
                 ctx.message.content = f"{self._inv(ctx)} {arg} {args}"
@@ -165,7 +155,7 @@ class AdvanceWars(commands.Cog):
 
         await self.em_download(ctx.channel, awmap)
 
-    @_map.command(name="info", usage=" ")
+    @_map.command(name="info", usage=" ", enabled=False)
     async def info(self, ctx: Context, *, _: str = ""):
         """Something something information about a map"""
         raise UnimplementedError
@@ -176,11 +166,7 @@ class AdvanceWars(commands.Cog):
         ##########################
     """
 
-    async def timed_store(
-            self,
-            user: discord.Member,
-            awmap: AWMap
-    ):
+    async def timed_store(self, user: Member, awmap: AWMap) -> None:
         """
         Stores an AWMap by user ID with a expiry of 1 minute.
         Loading another map will reset the timer. Stored in
@@ -205,10 +191,7 @@ class AdvanceWars(commands.Cog):
         if self.loaded_maps[user.id]["ts"] == ts:
             self.loaded_maps.pop(user.id)
 
-    def get_loaded_map(
-            self,
-            user: discord.Member
-    ) -> Union[AWMap, None]:
+    def get_loaded_map(self, user: Member) -> Union[AWMap, None]:
         """Will retrieve loaded map object for a given user.
 
         :param user: `discord.Member` instance for user
@@ -222,10 +205,7 @@ class AdvanceWars(commands.Cog):
         else:
             return None
 
-    async def get_hosted_file(
-            self,
-            file: discord.File
-    ) -> str:
+    async def get_hosted_file(self, file: File) -> str:
         """Sends a message to Discord containing a file to
         return the file URL hosted on Discord
 
@@ -235,10 +215,7 @@ class AdvanceWars(commands.Cog):
         msg = await self.buffer_channel.send(file=file)
         return msg.attachments[0].url
 
-    async def get_aws(
-            self,
-            awmap: AWMap
-    ) -> str:
+    async def get_aws(self, awmap: AWMap) -> str:
         """Uses `AWMap`'s `to_aws` parameter to export a map
         as AWS file then returns a link to the file hosted on
         Discord using `get_hosted_file` method
@@ -252,7 +229,7 @@ class AdvanceWars(commands.Cog):
         else:
             title = "Untitled"
 
-        attachment = discord.File(
+        attachment = File(
             fp=BytesIO(awmap.to_aws),
             filename=f"{title}.aws"
         )
@@ -260,10 +237,7 @@ class AdvanceWars(commands.Cog):
 
         return url
 
-    async def get_awbw(
-            self,
-            awmap: AWMap
-    ) -> str:
+    async def get_awbw(self, awmap: AWMap) -> str:
         """Uses `AWMap`'s `to_awbw` parameter to export a map
         to an AWBW CSV text file then returns a link to the file
         hosted on Discord using `get_hosted_file` method
@@ -277,7 +251,7 @@ class AdvanceWars(commands.Cog):
         else:
             title = "Untitled"
 
-        attachment = discord.File(
+        attachment = File(
             fp=BytesIO(
                 awmap.to_awbw.encode("utf-8")
             ),
@@ -287,10 +261,7 @@ class AdvanceWars(commands.Cog):
 
         return url
 
-    async def get_minimap(
-            self,
-            awmap: AWMap
-    ) -> str:
+    async def get_minimap(self, awmap: AWMap) -> str:
         """Uses `AWMap`'s `minimap` parameter to generate a
         `PIL` image of a minimap representing the loaded map
         then returns a link to the file hosted on Discord
@@ -309,7 +280,7 @@ class AdvanceWars(commands.Cog):
         awmap.minimap.save(img, "GIF", save_all=True)
         img.seek(0)
 
-        attachment = discord.File(fp=img, filename=f"{title}.gif")
+        attachment = File(fp=img, filename=f"{title}.gif")
         url = await self.get_hosted_file(attachment)
 
         return url
@@ -320,13 +291,15 @@ class AdvanceWars(commands.Cog):
         ######################################
     """
 
-    def _color(self, channel) -> int:
-        if isinstance(channel, discord.DMChannel):
+    @staticmethod
+    def _color(channel) -> int:
+        if isinstance(channel, DMChannel):
             return 0
         else:
             return channel.guild.me.color.value
 
-    def _inv(self, ctx: Context):
+    @staticmethod
+    def _inv(ctx: Context):
         return f"{ctx.prefix}{ctx.invoked_with}"
 
     """
@@ -335,29 +308,22 @@ class AdvanceWars(commands.Cog):
         #####################
     """
 
-    def base_embed(self, channel, awmap: AWMap) -> discord.Embed:
+    def base_embed(self, channel, awmap: AWMap) -> Embed:
         """Formats and returns the base embed with map
         title and author."""
 
         if awmap.awbw_id:
-            a_url = f'http://awbw.amarriner.com/profile.php?username=' \
-                    f'{quote(awmap.author)}'
+            a_url = f"http://awbw.amarriner.com/profile.php?username={quote(awmap.author)}"
             if awmap.author == "[Unknown]":
                 author = "Design Map by [Unknown]"
             else:
                 author = f"Design map by [{awmap.author}]({a_url})"
-            m_url = f"http://awbw.amarriner.com/prevmaps.php?maps_id=" \
-                    f"{awmap.awbw_id}"
+            m_url = f"http://awbw.amarriner.com/prevmaps.php?maps_id={awmap.awbw_id}"
         else:
             author = f"Design map by {awmap.author}"
             m_url = ""
 
-        return discord.Embed(
-            color=self._color(channel),
-            title=awmap.title,
-            description=author,
-            url=m_url
-        )
+        return Embed(color=self._color(channel), title=awmap.title, description=author, url=m_url)
 
     async def em_load(self, channel, awmap: AWMap):
         """Formats and sends an embed to `channel` appropriate
@@ -380,10 +346,7 @@ class AdvanceWars(commands.Cog):
         csv = await self.get_awbw(awmap)
         thumb = await self.get_minimap(awmap)
 
-        em.add_field(
-            name="Downloads",
-            value=f"[AWS]({aws})\n[AWBW CSV]({csv})"
-        )
+        em.add_field(name="Downloads", value=f"[AWS]({aws})\n[AWBW CSV]({csv})")
         em.set_thumbnail(url=thumb)
 
         await channel.send(embed=em)
@@ -396,7 +359,7 @@ class AdvanceWars(commands.Cog):
 
     @checks.sudo()
     @_map.command(name="listen", hidden=True, usage="[on / off]")
-    async def listen(self, ctx: Context, *, arg: str=""):
+    async def listen(self, ctx: Context, *, arg: str = ""):
         """Toggle active listening for maps
 
         With this option turned on, all messages
@@ -404,19 +367,16 @@ class AdvanceWars(commands.Cog):
         containing valid maps will be treated as
         a `[p]map load` command."""
 
-        if arg.strip(" ").lower() in "on yes true y t".split(" "):
-            self.db.set(f"{CONFIG}:listen_for_maps", True)
+        if arg.strip(" ").lower() in "on yes true y t 1".split(" "):
+            self.db.set(f"{self.config}:listen_for_maps", "True")
             self.listen_for_maps = True
 
-        elif arg.strip(" ").lower() in "off no false n f".split(" "):
-            self.db.set(f"{CONFIG}:listen_for_maps", False)
+        elif arg.strip(" ").lower() in "off no false n f 0".split(" "):
+            self.db.set(f"{self.config}:listen_for_maps", "False")
             self.listen_for_maps = False
 
-        em = discord.Embed(
-            color=self._color(ctx.channel),
-            title="BattleMaps Config",
-            description=f"Active Listen For Maps: `{self.listen_for_maps}`"
-        )
+        em = Embed(color=self._color(ctx.channel), title="BattleMaps Config",
+                   description=f"Active Listen For Maps: `{self.listen_for_maps}`")
         await ctx.send(embed=em)
 
     @checks.sudo()
@@ -427,58 +387,58 @@ class AdvanceWars(commands.Cog):
         Administrative command that will display
         Map titles and user IDs for all currently
         loaded maps"""
-        em = discord.Embed(
-            color=self._color(ctx.channel),
-            title="All Currently Loaded Maps",
-            description="\n".join(
-                f"{k} @ {v['ts']}: {v['awmap'].title}"
-                for k, v in self.loaded_maps.items()
-            )
-        )
+        em = Embed(color=self._color(ctx.channel), title="All Currently Loaded Maps",
+                   description="\n".join(f"{k} @ {v['ts']}: {v['awmap'].title}" for k, v in self.loaded_maps.items()))
         await ctx.send(embed=em)
 
     @checks.sudo()
-    @_map.command(name="pull", hidden=True, aliases=["update"], enabled=False)
-    async def _pull(self, ctx: Context):
-        """Update the converter core
+    @command(name="viewconfig", hidden=True)
+    async def viewconfig(self, ctx: Context):
+        await ctx.send(f"{self.listen_for_maps}")
 
-        Uses `pull` method to update AWSMapConvert
-        and reload the cog."""
-        if self.pull():
-            await ctx.send("Converter core updated.\nReloading cog.")
-            self.bot.remove_cog("AdvanceWars")
-            self.bot.add_cog(AdvanceWars(self.bot))
-        else:
-            await ctx.send("Converter core already up-to-date.")
+    # @checks.sudo()
+    # @_map.command(name="pull", hidden=True, aliases=["update"], enabled=False)
+    # async def _pull(self, ctx: Context):
+    #     """Update the converter core
+    #
+    #     Uses `pull` method to update AWSMapConvert
+    #     and reload the cog."""
+    #     if self.pull():
+    #         await ctx.send("Converter core updated.\nReloading cog.")
+    #         self.bot.remove_cog("AdvanceWars")
+    #         self.bot.add_cog(AdvanceWars(self.bot))
+    #     else:
+    #         await ctx.send("Converter core already up-to-date.")
 
-    @staticmethod
-    def pull() -> bool:
-        """Git Pull the AWSMapConverter. If it is not
-        found, will Git Clone
+    # @staticmethod
+    # def pull() -> bool:
+    #     """Git Pull the AWSMapConverter. If it is not
+    #     found, will Git Clone
+    #
+    #     :returns bool: `True` if converter was updated
+    #     successfully. `False` otherwise"""
+    #
+    #     cmd = "git -C AWSMapConverter --no-pager pull".split(" ")
+    #     params = {
+    #         "universal_newlines":   True,
+    #         "cwd":                  os.getcwd(),
+    #         "stdout":               subprocess.PIPE,
+    #         "stderr":               subprocess.STDOUT
+    #     }
+    #
+    #     ret = subprocess.run(cmd, **params)
+    #     if "up-to-date" in ret.stdout:
+    #         return False
+    #     elif "fatal: Not a git repository" in ret.stdout:
+    #         cmd = "git clone --no-pager" \
+    #               "https://github.com/SirThane/AWSMapConverter.git".split(" ")
+    #         subprocess.run(cmd, **params)
+    #         return True
+    #     else:
+    #         return True
 
-        :returns bool: `True` if converter was updated
-        successfully. `False` otherwise"""
-
-        cmd = "git -C AWSMapConverter --no-pager pull".split(" ")
-        params = {
-            "universal_newlines":   True,
-            "cwd":                  os.getcwd(),
-            "stdout":               subprocess.PIPE,
-            "stderr":               subprocess.STDOUT
-        }
-
-        ret = subprocess.run(cmd, **params)
-        if "up-to-date" in ret.stdout:
-            return False
-        elif "fatal: Not a git repository" in ret.stdout:
-            cmd = "git clone --no-pager" \
-                  "https://github.com/SirThane/AWSMapConverter.git".split(" ")
-            subprocess.run(cmd, **params)
-            return True
-        else:
-            return True
-
-    async def on_message(self, msg):
+    @Cog.listener("on_message")
+    async def on_message(self, msg: Message):
         if self.listen_for_maps and not msg.author.bot:
             if not msg.content.startswith(self.bot.command_prefix[0]):
                 awmap = await CheckMap.check(msg, skips=["msg_csv", "id"])
@@ -490,11 +450,7 @@ class AdvanceWars(commands.Cog):
 class CheckMap:
 
     @staticmethod
-    async def check(
-            msg: discord.Message,
-            title: str = "[Untitled]",
-            skips: list = None
-    ) -> Union[AWMap, None]:
+    async def check(msg: Message, title: str = "[Untitled]", skips: list = None) -> Union[AWMap, None]:
         """Takes a discord.Message object and checks
         for valid maps that can be loaded.
 
@@ -545,9 +501,7 @@ class CheckMap:
         return
 
     @staticmethod
-    async def from_aws(
-            attachment: discord.Attachment
-    ) -> Union[AWMap, None]:
+    async def from_aws(attachment: Attachment) -> Union[AWMap, None]:
         """Take an attachment with an 'AWS' extension
         and return an `AWMap` instance of the map data
 
@@ -562,17 +516,13 @@ class CheckMap:
             await attachment.save(fp=aws_bytes)
             aws_bytes.seek(0)
             awmap = AWMap().from_aws(aws_bytes.read())
-        except discord.HTTPException:
+        except HTTPException:
             raise FileSaveFailureError
         else:
             return awmap
 
     @staticmethod
-    async def from_text(
-            attachment: discord.Attachment,
-            filename: str,
-            author: str
-    ) -> Union[AWMap, None]:
+    async def from_text(attachment: Attachment, filename: str, author: str) -> Union[AWMap, None]:
         """Format an `AWMap` from a message attachment
         with "CSV" extension containing AWBW map
         data
@@ -601,9 +551,7 @@ class CheckMap:
             return awmap
 
     @staticmethod
-    def from_id(
-            awbw_id: str
-    ) -> Union[AWMap, None]:
+    def from_id(awbw_id: str) -> Union[AWMap, None]:
         """Use `AWMap`'s `from_awbw` method to collect
         a map from AWBW using it's map ID
 
@@ -622,11 +570,7 @@ class CheckMap:
             return awmap
 
     @staticmethod
-    def from_csv(
-            msg_csv: str,
-            title: str,
-            author: str
-    ) -> Union[AWMap, None]:
+    def from_csv(msg_csv: str, title: str, author: str) -> Union[AWMap, None]:
         """Format an `AWMap` from a message containing raw
         AWBW CSV text
 
@@ -647,7 +591,6 @@ class CheckMap:
             return awmap
 
 
-def setup(bot: commands.Bot) -> None:
-    AdvanceWars.pull()
+def setup(bot: Bot) -> None:
     bot.add_cog(AdvanceWars(bot))
     pass
