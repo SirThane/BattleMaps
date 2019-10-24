@@ -1,22 +1,21 @@
 """Cog containing all global bot events"""
 
-import sys
-import traceback
+from sys import stderr
+from traceback import print_tb
 
-import discord
-from discord.ext import commands
+from discord import Embed, Member
+from discord.utils import get
+from discord.ext.commands import CheckFailure, Cog, CommandInvokeError, CommandNotFound, Context, DisabledCommand, MissingRequiredArgument, NoPrivateMessage
 
 from classes.bot import Bot
-from cogs.utils import errors
-
-# TODO: Create events cog
+from cogs.utils.errors import *
 
 
 WELCOME = "Welcome to AWBW Discord Server {}! Present yourself and have fun!"
 LEAVE = "{} has left our army... Be happy in peace."
 
 
-class Events(commands.Cog):
+class Events(Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
@@ -29,62 +28,58 @@ class Events(commands.Cog):
         self.channel = bot.get_channel(313453805150928906)  # AWBW General
 
         if self.awbw:
-            self.sad_andy = discord.utils.get(  # :sad_andy: emoji
-                self.awbw.emojis, id=325608374526017536
-            )
+            self.sad_andy = get(self.awbw.emojis, id=325608374526017536)  # :sad_andy: emoji
 
-    @commands.Cog.listener(name="on_member_join")
-    async def on_member_join(self, member: discord.Member) -> None:
+    @Cog.listener(name="on_member_join")
+    async def on_member_join(self, member: Member):
         if member.guild.id != self.awbw.id:
             return
         await self.channel.send(WELCOME.format(member.mention))
 
-    @commands.Cog.listener(name="on_member_remove")
-    async def on_member_remove(self, member: discord.Member) -> None:
+    @Cog.listener(name="on_member_remove")
+    async def on_member_remove(self, member: Member):
         if member.guild.id != self.awbw.id:
             return
         await self.channel.send(LEAVE.format(member.display_name))
 
-    @commands.Cog.listener(name="on_member_ban")
-    async def on_member_ban(self, member: discord.Member) -> None:
+    @Cog.listener(name="on_member_ban")
+    async def on_member_ban(self, member: Member):
         pass
-        # await self.channel.send(f"{member.display_name} test. (ban)")
 
-    @commands.Cog.listener(name="on_member_unban")
-    async def on_member_unban(self, member: discord.Member) -> None:
+    @Cog.listener(name="on_member_unban")
+    async def on_member_unban(self, member: Member):
         pass
-        # await self.channel.send(f"{member.display_name} test. (unban)")
 
     # async def on_message(self, message: discord.Message) -> None:
     #     if "airport" in message.content.lower():
     #         await message.add_reaction(self.sad_andy)
 
-    @commands.Cog.listener(name="on_command_error")
-    async def on_command_error(self, ctx, error):
-        if isinstance(error, commands.NoPrivateMessage):
+    @Cog.listener(name="on_command_error")
+    async def on_command_error(self, ctx: Context, error):
+        if isinstance(error, NoPrivateMessage):
             await ctx.send(
                 content='This command cannot be used in private messages.'
             )
 
-        elif isinstance(error, commands.DisabledCommand):
+        elif isinstance(error, DisabledCommand):
             await ctx.send(
                 content='This command is disabled and cannot be used.'
             )
 
-        elif isinstance(error, commands.MissingRequiredArgument):
+        elif isinstance(error, MissingRequiredArgument):
             pass
             # await self.bot.formatter.format_help_for(
             #     ctx, ctx.command, "You are missing required arguments."
             # )
 
-        elif isinstance(error, commands.CommandNotFound):
+        elif isinstance(error, CommandNotFound):
             pass
             # await self.bot.formatter.format_help_for(
             #     ctx, self.bot.get_command("help"), "Command not found."
             # )
 
-        elif isinstance(error, commands.CheckFailure):
-            em = discord.Embed(
+        elif isinstance(error, CheckFailure):
+            em = Embed(
                 color=ctx.guild.me.color,
                 title="⚠  Woah there, buddy!",
                 description="Get your hands off that! \n"
@@ -95,8 +90,8 @@ class Events(commands.Cog):
             )
             await ctx.send(embed=em)
 
-        elif isinstance(error, errors.AWBWDimensionsError):
-            em = discord.Embed(
+        elif isinstance(error, AWBWDimensionsError):
+            em = Embed(
                 color=ctx.guild.me.color,
                 title="⚠  Woah there, buddy!",
                 description="I can't take that map. The edges are all wrong.\n"
@@ -107,8 +102,8 @@ class Events(commands.Cog):
             )
             await ctx.send(embed=em)
 
-        elif isinstance(error, errors.InvalidMapError):
-            em = discord.Embed(
+        elif isinstance(error, InvalidMapError):
+            em = Embed(
                 color=ctx.guild.me.color,
                 title="⚠  Woah there, buddy!",
                 description="What are you trying to sell here? Is that even\n"
@@ -120,8 +115,8 @@ class Events(commands.Cog):
             )
             await ctx.send(embed=em)
 
-        elif isinstance(error, errors.NoLoadedMapError):
-            em = discord.Embed(
+        elif isinstance(error, NoLoadedMapError):
+            em = Embed(
                 color=ctx.guild.me.color,
                 title="⚠  Woah there, buddy!",
                 description="You can try that that all you like, but you\n"
@@ -132,8 +127,8 @@ class Events(commands.Cog):
                             "in `$$help`\n```")
             await ctx.send(embed=em)
 
-        elif isinstance(error, errors.UnimplementedError):
-            em = discord.Embed(
+        elif isinstance(error, UnimplementedError):
+            em = Embed(
                 color=ctx.guild.me.color,
                 title="⚠  Woah there, buddy!",
                 description="I ain't got the stuff to do that quite yet.\n"
@@ -143,26 +138,14 @@ class Events(commands.Cog):
             )
             await ctx.send(embed=em)
 
-        elif isinstance(error, commands.CommandInvokeError):
-            print(
-                'In {0.command.qualified_name}:'.format(ctx),
-                file=sys.stderr
-            )
-            print(
-                '{0.__class__.__name__}: {0}'.format(error.original),
-                file=sys.stderr
-            )
-            traceback.print_tb(
-                error.__traceback__,
-                file=sys.stderr
-            )
+        elif isinstance(error, CommandInvokeError):  # TODO: Make this send to a debug channel instead
+            print('In {0.command.qualified_name}:'.format(ctx), file=stderr)
+            print('{0.__class__.__name__}: {0}'.format(error.original), file=stderr)
+            print_tb(error.__traceback__, file=stderr)
 
         else:
-            traceback.print_tb(
-                error.__traceback__,
-                file=sys.stderr
-            )
+            print_tb(error.__traceback__, file=stderr)
 
 
-def setup(bot: Bot) -> None:
+def setup(bot: Bot):
     bot.add_cog(Events(bot))
