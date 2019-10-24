@@ -65,12 +65,12 @@ def main_terr_to_awbw(terr: int = 1, ctry: int = 0) -> list:
         return default_value
 
 
-def main_unit_to_awbw(unit: int = 1, ctry: int = 1) -> list:
-    pass
+# def main_unit_to_awbw(unit: int = 1, ctry: int = 1) -> list:
+#     pass
 
 
-def get_awareness_override(terr: int) -> int:
-    pass
+# def get_awareness_override(terr: int) -> int:
+#     pass
 
 
 """#########################################
@@ -1947,7 +1947,8 @@ class AWMap:
         unit, u_ctry = AWS_UNIT.get(data[offset], (0, 0))
         return {"unit": unit, "u_ctry": u_ctry}
 
-    def meta_from_aws(self, data):  # TODO: This needs refactoring. Can be optimized.
+    @staticmethod
+    def meta_from_aws(data):  # TODO: This needs refactoring. Can be optimized.
         t_size = int.from_bytes(data[:4], 'little')
         a_size = int.from_bytes(data[t_size + 4:t_size + 8], 'little')
         d_size = int.from_bytes(data[t_size + a_size + 8:t_size + a_size + 12], 'little')
@@ -1957,7 +1958,8 @@ class AWMap:
         desc = data[12 + t_size + a_size:12 + t_size + a_size + d_size].decode('utf-8')
         return title, author, desc
 
-    def terr_from_awbw(self, terr: int):
+    @staticmethod
+    def terr_from_awbw(terr: int):
         if terr == "":
             main_id, main_ctry = 999, 0
         else:
@@ -1998,13 +2000,7 @@ class AWMap:
         except KeyError:
             return AWTile(self, x, y, 999, 0)
 
-    def mod_terr(
-            self,
-            x: int,
-            y: int,
-            terr: int,
-            t_ctry: int
-    ) -> None:
+    def mod_terr(self, x: int, y: int, terr: int, t_ctry: int) -> None:
         self.tile(x, y).mod_terr(terr, t_ctry)
 
     @property
