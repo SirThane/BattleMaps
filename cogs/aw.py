@@ -13,8 +13,8 @@ import discord
 from discord.ext import commands
 from discord.ext.commands.context import Context
 
-from AWSMapConverter import AWMap
 from cogs.utils import checks
+from cogs.utils.awmap import AWMap
 from cogs.utils.errors import InvalidMapError, UnimplementedError, NoLoadedMapError, FileSaveFailureError, AWBWDimensionsError
 from main import APP_NAME
 
@@ -438,7 +438,7 @@ class AdvanceWars(commands.Cog):
         await ctx.send(embed=em)
 
     @checks.sudo()
-    @_map.command(name="pull", hidden=True, aliases=["update"])
+    @_map.command(name="pull", hidden=True, aliases=["update"], enabled=False)
     async def _pull(self, ctx: Context):
         """Update the converter core
 
