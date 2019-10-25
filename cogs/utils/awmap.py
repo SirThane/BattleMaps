@@ -4,6 +4,7 @@ import requests
 
 from io import BytesIO
 from math import cos, sin, pi, trunc
+from numpy import transpose
 from PIL import Image, ImageDraw  # , ImageSequence
 from typing import Union, Tuple, List
 
@@ -1885,7 +1886,8 @@ class AWMap:
             j_map = r_map.json()
 
             if not j_map.get("err", False):
-                self._parse_awbw_csv(data=j_map["Terrain Map"])
+                self._parse_awbw_csv(data=transpose(j_map["Terrain Map"]).tolist())
+                # self._parse_awbw_csv(data=map_data)
 
                 if j_map["Predeployed Units"]:
                     for unit in j_map["Predeployed Units"]:
