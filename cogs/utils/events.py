@@ -3,7 +3,7 @@
 from sys import stderr
 from traceback import print_tb
 
-from discord import Embed, Member
+from discord import Colour, Embed, Member
 from discord.utils import get
 from discord.ext.commands import CheckFailure, Cog, CommandInvokeError, CommandNotFound, Context, DisabledCommand, MissingRequiredArgument, NoPrivateMessage
 
@@ -22,13 +22,29 @@ class Events(Cog):
         self.db = bot.db
         self.config = f"{bot.APP_NAME}:events"
 
-        # self.awbw = bot.get_guild(184502171117551617)       # Not Skype
-        self.awbw = bot.get_guild(313453805150928906)       # AWBW Guild
-        # self.channel = bot.get_channel(315232431835709441)  # Circlejerk Py
-        self.channel = bot.get_channel(313453805150928906)  # AWBW General
+        # self.awbw = bot.get_guild(184502171117551617)           # Not Skype
+        self.awbw = bot.get_guild(313453805150928906)           # AWBW Guild
+        # self.channel = bot.get_channel(315232431835709441)      # Circlejerk Py
+        self.channel = bot.get_channel(313453805150928906)      # AWBW General
+        self.errorlog = bot.get_channel(637150067525943296)     # BattleMaps-ErrorLog
 
         if self.awbw:
             self.sad_andy = get(self.awbw.emojis, id=325608374526017536)  # :sad_andy: emoji
+
+    async def error_to_log(self, error, ctx: Context = None):
+        if ctx:
+            title = f"In [p]{ctx.command.qualified_name}"
+            description = f"{error.original.__class__.__name__}: {error.original}\n"
+        else:
+            title = f"Unspecified Error"
+            description = ""
+
+        em = Embed(
+            color=Colour.red(),
+            title=title,
+            description=f"{description}```\n{error.__traceback__}\n```"
+        )
+        await self.errorlog.send(embed=em)
 
     @Cog.listener(name="on_member_join")
     async def on_member_join(self, member: Member):
@@ -139,12 +155,14 @@ class Events(Cog):
             await ctx.send(embed=em)
 
         elif isinstance(error, CommandInvokeError):  # TODO: Make this send to a debug channel instead
-            print('In {0.command.qualified_name}:'.format(ctx), file=stderr)
-            print('{0.__class__.__name__}: {0}'.format(error.original), file=stderr)
-            print_tb(error.__traceback__, file=stderr)
+            # print('In {0.command.qualified_name}:'.format(ctx), file=stderr)
+            # print('{0.__class__.__name__}: {0}'.format(error.original), file=stderr)
+            # print_tb(error.__traceback__, file=stderr)
+            await self.error_to_log(error, ctx=ctx)
 
         else:
-            print_tb(error.__traceback__, file=stderr)
+            # print_tb(error.__traceback__, file=stderr)
+            await self.error_to_log(error)
 
 
 def setup(bot: Bot):
