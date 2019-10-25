@@ -1,6 +1,10 @@
 """Utility functions and classes.
 """
 
+import sys
+from contextlib import contextmanager
+from io import StringIO
+
 import redis
 
 
@@ -16,6 +20,7 @@ class Paginator:
         self.page_limit = page_limit
         self.trunc_limit = trunc_limit
         self._pages = None
+        self._headers = None
         self._header_extender = header_extender
         self.set_headers(headers)
 
@@ -33,17 +38,17 @@ class Paginator:
     def set_headers(self, headers=None):
         self._headers = headers
 
-    def set_header_extender(self, header_extender: str=u'\u200b'):
+    def set_header_extender(self, header_extender: str = u'\u200b'):
         self._header_extender = header_extender
 
     def _extend_headers(self, length: int):
         while len(self._headers) < length:
             self._headers.append(self._header_extender)
 
-    def set_trunc_limit(self, limit: int=2000):
+    def set_trunc_limit(self, limit: int = 2000):
         self.trunc_limit = limit
 
-    def set_page_limit(self, limit: int=1000):
+    def set_page_limit(self, limit: int = 1000):
         self.page_limit = limit
 
     def paginate(self, value):
@@ -87,6 +92,26 @@ class Paginator:
             ret.append(page)
         self._pages = ret
         return self.pages
+
+
+@contextmanager
+def stdoutio(stdout=None):
+    old = sys.stdout
+    if stdout is None:
+        stdout = StringIO()
+    sys.stdout = stdout
+    yield stdout
+    sys.stdout = old
+
+
+@contextmanager
+def stderrio(stderr=None):
+    old = sys.stderr
+    if stderr is None:
+        stderr = StringIO()
+    sys.stderr = stderr
+    yield stderr
+    sys.stderr = old
 
 
 def bool_str(arg):

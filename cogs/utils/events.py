@@ -9,6 +9,7 @@ from discord.ext.commands import CheckFailure, Cog, CommandInvokeError, CommandN
 
 from classes.bot import Bot
 from cogs.utils.errors import *
+from cogs.utils.utils import stderrio
 
 
 WELCOME = "Welcome to AWBW Discord Server {}! Present yourself and have fun!"
@@ -33,17 +34,23 @@ class Events(Cog):
 
     async def error_to_log(self, error, ctx: Context = None):
         if ctx:
-            title = f"In [p]{ctx.command.qualified_name}"
-            description = f"{error.original.__class__.__name__}: {error.original}\n"
+            prefix = await self.bot.get_prefix(ctx.message)
+            title = f"In {prefix}{ctx.command.qualified_name}"
+            description = f"{error.original.__class__.__name__}: {error.original}"
         else:
-            title = f"Unspecified Error"
-            description = ""
+            title = f"{type(error).__name__}"
+            description = str(error)
+
+        with stderrio() as s:
+            print_tb(error.__traceback__)
+            traceback_str = str(s.getvalue())
 
         em = Embed(
             color=Colour.red(),
             title=title,
-            description=f"{description}```\n{error.__traceback__}\n```"
+            description=f"{description}```\n{traceback_str}\n```"
         )
+
         await self.errorlog.send(embed=em)
 
     @Cog.listener(name="on_member_join")

@@ -1,28 +1,16 @@
 """Cog to provide REPL-like functionality"""
 
 import inspect
-import sys
-from contextlib import contextmanager
-from io import StringIO
 
 from discord import Colour, Embed
 from discord.ext.commands import Cog, command, Context, group
 
 from classes.bot import Bot
 from cogs.utils import checks, utils
+from cogs.utils.utils import stdoutio
 
 
 MD = "```py\n{0}\n```"
-
-
-@contextmanager
-def stdoutio(stdout=None):
-    old = sys.stdout
-    if stdout is None:
-        stdout = StringIO()
-    sys.stdout = stdout
-    yield stdout
-    sys.stdout = old
 
 
 class REPL(Cog):
@@ -61,6 +49,7 @@ class REPL(Cog):
             'author': ctx.message.author,
             'discord': discord,
             'random': random,
+            'db': self.db,
             'ret': self.ret,
         }
         env.update(globals())
