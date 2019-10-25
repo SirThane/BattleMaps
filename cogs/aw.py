@@ -39,9 +39,7 @@ class AdvanceWars(Cog):
         self.db = bot.db
         self.config = f"{bot.APP_NAME}:maps"
 
-        self.listen_for_maps = (self.db.get(
-            f"{self.config}:listen_for_maps"
-        ) == "True") or False
+        self.listen_for_maps = bool(self.db.get(f"{self.config}:listen_for_maps")) or False
         self.buffer_channel = self.bot.get_channel(id=434551085185630218)
         self.loaded_maps = {}
 
@@ -591,6 +589,5 @@ class CheckMap:
             return awmap
 
 
-def setup(bot: Bot) -> None:
+def setup(bot: Bot):
     bot.add_cog(AdvanceWars(bot))
-    pass
