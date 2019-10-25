@@ -86,6 +86,8 @@ PALETTE = {
     "green2":   (104, 232, 56),     # Plain dark
     "green3":   (88,  200, 16),     # Wood light; GE
     "green4":   (82,  164, 16),     # Wood dark
+    "green5":   (157, 175, 18),     # AR light
+    "green6":   (96,  107, 13),     # AR dark
 
     "blue1":    (112, 176, 248),    # Shoal
     "blue2":    (56,  120, 248),    # Reef medium
@@ -106,6 +108,8 @@ PALETTE = {
     "red2":     (248, 72,  48),     # OS
     "red3":     (208, 70,  93),     # RF light
     "red4":     (119, 11,  35),     # RF dark
+    "red5":     (190, 137, 136),    # WN light
+    "red6":     (169, 63,  63),     # WN dark
 
     "pink":     (255, 102, 204),    # PC
 
@@ -443,24 +447,24 @@ SPEC = {
             "fill": PALETTE["purple2"]
         }
     ],
-    "arprop":   [  # TODO: Create bitmap for Acid Rain properties
+    "arprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["purple1"]
+            "fill": PALETTE["green5"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["purple2"]
+            "fill": PALETTE["green6"]
         }
     ],
-    "wnprop":   [  # TODO: Create bitmap for White Nova properties
+    "wnprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["purple1"]
+            "fill": PALETTE["red5"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["purple2"]
+            "fill": PALETTE["red6"]
         }
     ],
     # "seam":     [
@@ -633,20 +637,20 @@ SPEC = {
             "fill": PALETTE["BLINK"]
         }
     ],
-    "arhq":     [  # TODO: Create bitmap for Acid Rain HQ
+    "arhq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["purple1"]] * 8
+            "fill": [PALETTE["green5"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
             "fill": PALETTE["BLINK"]
         }
     ],
-    "wnhq":     [  # TODO: Create bitmap for White Nova HQ
+    "wnhq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["purple1"]] * 8
+            "fill": [PALETTE["red5"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
@@ -859,28 +863,28 @@ SPEC = {
             "fill": PALETTE["white"]
         }
     ],
-    "arunit":   [  # TODO: Create bitmap Acid Rain units
+    "arunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["purple1"]
+            "fill": PALETTE["green5"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["purple2"]
+            "fill": PALETTE["green6"]
         },
         {
             "xy":   layer("0000010000000000b0"),
             "fill": PALETTE["white"]
         }
     ],
-    "wnunit":   [  # TODO: Create bitmap for White Nova units
+    "wnunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["purple1"]
+            "fill": PALETTE["red5"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["purple2"]
+            "fill": PALETTE["red6"]
         },
         {
             "xy":   layer("0000010000000000b0"),
@@ -940,6 +944,8 @@ ANIM_ID_TO_SPEC = {
     "pchq":     [221, 227],
     "tghq":     [231, 237],
     "plhq":     [241, 247],
+    "arhq":     [251, 257],
+    "wnhq":     [261, 267]
 }
 
 
