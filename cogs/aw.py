@@ -250,9 +250,7 @@ class AdvanceWars(Cog):
             title = "Untitled"
 
         attachment = File(
-            fp=BytesIO(
-                awmap.to_awbw.encode("utf-8")
-            ),
+            fp=BytesIO(awmap.to_awbw.encode("utf-8")),
             filename=f"{title}.csv"
         )
         url = await self.get_hosted_file(attachment)
@@ -272,13 +270,15 @@ class AdvanceWars(Cog):
         if awmap.title:
             title = awmap.title
         else:
-            title = "Untitled"
+            title = "[Untitled]"
 
-        img = BytesIO()
-        awmap.minimap.save(img, "GIF", save_all=True)
-        img.seek(0)
+        # # This is what was causing the issue with the funky gifs
+        # # Saving to BytesIO(), loading in Image.Image(), then resaving
+        # img = BytesIO()
+        # awmap.minimap.save(img, "GIF", save_all=True)
+        # img.seek(0)
 
-        attachment = File(fp=img, filename=f"{title}.gif")
+        attachment = File(fp=awmap.minimap, filename=f"{title}.gif")
         url = await self.get_hosted_file(attachment)
 
         return url
@@ -388,11 +388,6 @@ class AdvanceWars(Cog):
         em = Embed(color=self._color(ctx.channel), title="All Currently Loaded Maps",
                    description="\n".join(f"{k} @ {v['ts']}: {v['awmap'].title}" for k, v in self.loaded_maps.items()))
         await ctx.send(embed=em)
-
-    @checks.sudo()
-    @command(name="viewconfig", hidden=True)
-    async def viewconfig(self, ctx: Context):
-        await ctx.send(f"{self.listen_for_maps}")
 
     # @checks.sudo()
     # @_map.command(name="pull", hidden=True, aliases=["update"], enabled=False)

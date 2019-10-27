@@ -1,15 +1,13 @@
 
 import csv
-import requests
 
 from io import BytesIO
 from math import cos, sin, pi, trunc
-from numpy import transpose
-from PIL import Image, ImageDraw  # , ImageSequence
-from typing import Union, Tuple, List
+from PIL import Image, ImageDraw
+from typing import Dict, List, Tuple, Union
 
-
-MAPS_API = "https://awbw.amarriner.com/matsuzen/api/map/map_info.php"
+from cogs.utils import awbw_api
+# from cogs.utils.utils import flatten
 
 
 def layer(bitmask: Union[str, int]) -> List[Tuple[int, int]]:
@@ -22,14 +20,18 @@ def layer(bitmask: Union[str, int]) -> List[Tuple[int, int]]:
 
 
 def main_terr_to_aws(terr: int = 1, ctry: int = 0) -> list:
+
     default_value = [0]
+
+    # Some possible terrains do not have an equivalent in
+    # AWS Map Editor. Override them to closest equivalent
     override = {
         14:  350,  # EmptySilo overridden to Silo
         15:  167,  # Ruin      overridden to BrokenSeam
         101: 102,  # NHQ       overridden to NCity
         999: 921,  # NullTile  overridden to MinicannonSouth
     }
-    match = []
+    match = list()
     for k, v in AWS_TERR.items():
         if terr in override.keys():
             match.append(override[terr])
@@ -44,7 +46,7 @@ def main_terr_to_aws(terr: int = 1, ctry: int = 0) -> list:
 
 def main_unit_to_aws(unit: int = 0, ctry: int = 1) -> list:
     default_value = [65535]
-    match = []
+    match = list()
     for k, v in AWS_UNIT.items():
         if (unit, ctry) == v:
             match.append(k)
@@ -54,9 +56,18 @@ def main_unit_to_aws(unit: int = 0, ctry: int = 1) -> list:
         return default_value
 
 
-def main_terr_to_awbw(terr: int = 1, ctry: int = 0) -> list:
+def main_terr_to_awbw(terr: int = 1, ctry: int = 0) -> List[Union[str, int]]:
+    """Takes internal terrain and country IDs and turns them into
+    appropriate terrain IDs for AWBW. Tiles with more than one AWBW
+    ID due to having multiple variations (e.g. River), will be
+    returned in a list. If no match is found, return empty string
+    which will be interpreted as a blank (teleport) tile.
+
+    :param terr: internal terrain ID
+    :param ctry: internal country ID
+    :return: list of matching AWBW terrain IDs or empty string"""
     default_value = [""]
-    match = []
+    match = list()
     for k, v in AWBW_TERR.items():
         if (terr, ctry) == v:
             match.append(k)
@@ -74,12 +85,128 @@ def main_terr_to_awbw(terr: int = 1, ctry: int = 0) -> list:
 #     pass
 
 
+"""IDs and other tile data necessary constructing
+and manipulating `AWMap` instances"""
+
+"""###########################################
+   # Advance Wars Map Converter Internal IDs #
+   ###########################################"""
+
+# Internal Terrain IDs with internal names
+MAIN_TERR = {
+    1:      "Plain",
+    2:      "Wood",
+    3:      "Mountain",
+    4:      "Road",
+    5:      "Bridge",
+    6:      "Sea",
+    7:      "Shoal",
+    8:      "Reef",
+    9:      "River",
+    10:     "Pipe",
+    11:     "Seam",
+    12:     "BrokenSeam",
+    13:     "Silo",
+    14:     "SiloEmpty",
+    15:     "Ruins",
+
+    101:    "HQ",
+    102:    "City",
+    103:    "Base",
+    104:    "Airport",
+    105:    "Seaport",
+    106:    "Tower",
+    107:    "Lab",
+
+    500:    "Volcano",
+    501:    "GiantMissile",
+    502:    "Fortress",
+    503:    "FlyingFortressLand",
+    504:    "FlyingFortressSea",
+    505:    "BlackCannonNorth",
+    506:    "BlackCannonSouth",
+    507:    "MiniCannonNorth",
+    508:    "MiniCannonSouth",
+    509:    "MiniCannonEast",
+    510:    "MiniCannonWest",
+    511:    "LaserCannon",
+    512:    "Deathray",
+    513:    "Crystal",
+    514:    "BlackCrystal",
+
+    999:    "NullTile",
+}
+
+
+# Create "Categories" for terrain type for tile awareness
+MAIN_TERR_CAT = {
+    "land":         [1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 15],
+    "sea":          [6, 8],
+    "properties":   [101, 102, 103, 104, 105, 106, 107],
+}
+MAIN_TERR_CAT["land"].append(MAIN_TERR_CAT["properties"])
+
+
+# Internal Unit IDs with internal names
+MAIN_UNIT = {
+    0:      "Empty",
+    1:      "Infantry",
+    2:      "Mech",
+    11:     "APC",
+    12:     "Recon",
+    13:     "Tank",
+    14:     "MDTank",
+    15:     "Neotank",
+    16:     "Megatank",
+    17:     "AntiAir",
+    21:     "Artillery",
+    22:     "Rocket",
+    23:     "Missile",
+    24:     "PipeRunner",
+    25:     "Oozium",
+    31:     "TCopter",
+    32:     "BCopter",
+    33:     "Fighter",
+    34:     "Bomber",
+    35:     "Stealth",
+    36:     "BBomb",
+    41:     "BBoat",
+    42:     "Lander",
+    43:     "Cruiser",
+    44:     "Submarine",
+    45:     "Battleship",
+    46:     "Carrier",
+}
+
+
+# Internal Country IDs in country order
+MAIN_CTRY = {
+    0:      "Neutral",
+    1:      "Orange Star",
+    2:      "Blue Moon",
+    3:      "Green Earth",
+    4:      "Yellow Comet",
+    5:      "Black Hole",
+    6:      "Red Fire",
+    7:      "Grey Sky",
+    8:      "Brown Desert",
+    9:      "Amber Blaze",
+    10:     "Jade Sun",
+    11:     "Cobalt Ice",
+    12:     "Pink Cosmos",
+    13:     "Teal Galaxy",
+    14:     "Purple Lightning",
+    15:     "Acid Rain",
+    16:     "White Nova"
+}
+
+
 """#########################################
    # Palette and Bitmap Tables for Sprites #
    #########################################"""
 
 # Color names mapped to RGB values
-PALETTE = {
+BITMAP_PALETTE = {
     "white":    (255, 255, 255),
 
     "green1":   (168, 240, 80),     # Plain light
@@ -150,33 +277,33 @@ PALETTE = {
 }
 
 
-SPEC = {
+BITMAP_SPEC = {
     "plain":    [
         {
             "xy":   layer("1111110111110111b0"),
-            "fill": PALETTE["green1"]
+            "fill": BITMAP_PALETTE["green1"]
         },
         {
             "xy":   layer("0000001000001000b0"),
-            "fill": PALETTE["green2"]
+            "fill": BITMAP_PALETTE["green2"]
         }
     ],
     "mountain": [
         {
             "xy":   layer("1111100100000000b0"),
-            "fill": PALETTE["green1"]
+            "fill": BITMAP_PALETTE["green1"]
         },
         {
             "xy":   layer("0000010011001000b0"),
-            "fill": PALETTE["orange1"]
+            "fill": BITMAP_PALETTE["orange1"]
         },
         {
             "xy":   layer("0000000000000100b0"),
-            "fill": PALETTE["orange4"]
+            "fill": BITMAP_PALETTE["orange4"]
         },
         {
             "xy":   layer("0000001000110011b0"),
-            "fill": PALETTE["brown1"]
+            "fill": BITMAP_PALETTE["brown1"]
         }
     ],
     # "wood":     [  # Original cart colors
@@ -196,15 +323,15 @@ SPEC = {
     "wood":     [
         {
             "xy":   layer("1001000000001001b0"),
-            "fill": PALETTE["green1"]
+            "fill": BITMAP_PALETTE["green1"]
         },
         {
             "xy":   layer("0110111011000000b0"),
-            "fill": PALETTE["green3"]
+            "fill": BITMAP_PALETTE["green3"]
         },
         {
             "xy":   layer("0000000100110110b0"),
-            "fill": PALETTE["green4"]
+            "fill": BITMAP_PALETTE["green4"]
         }
     ],
     # "river":    [  # Original cart colors
@@ -220,251 +347,251 @@ SPEC = {
     "river":    [
         {
             "xy":   layer("1111001111111000b0"),
-            "fill": PALETTE["blue6"]
+            "fill": BITMAP_PALETTE["blue6"]
         },
         {
             "xy":   layer("0000110000000111b0"),
-            "fill": PALETTE["blue3"]
+            "fill": BITMAP_PALETTE["blue3"]
         }
     ],
     "road":     [
         {
             "xy":   layer("1111111111111111b0"),
-            "fill": PALETTE["grey2"]
+            "fill": BITMAP_PALETTE["grey2"]
         }
     ],
     "sea":      [
         {
             "xy":   layer("1111111111111111b0"),
-            "fill": PALETTE["blue3"]
+            "fill": BITMAP_PALETTE["blue3"]
         }
     ],
     "shoal":    [
         {
             "xy":   layer("1111111111111111b0"),
-            "fill": PALETTE["blue1"]
+            "fill": BITMAP_PALETTE["blue1"]
         }
     ],
     "reef":     [
         {
             "xy":   layer("1000001000000000b0"),
-            "fill": PALETTE["orange1"]
+            "fill": BITMAP_PALETTE["orange1"]
         },
         {
             "xy":   layer("0000100000100000b0"),
-            "fill": PALETTE["orange4"]
+            "fill": BITMAP_PALETTE["orange4"]
         },
         {
             "xy":   layer("0000010010010010b0"),
-            "fill": PALETTE["blue1"]
+            "fill": BITMAP_PALETTE["blue1"]
         },
         {
             "xy":   layer("0000000001000001b0"),
-            "fill": PALETTE["blue2"]
+            "fill": BITMAP_PALETTE["blue2"]
         },
         {
             "xy":   layer("0111000100001100b0"),
-            "fill": PALETTE["blue3"]
+            "fill": BITMAP_PALETTE["blue3"]
         },
     ],
     "pipe":     [
         {
             "xy":   layer("1010010110100101b0"),
-            "fill": PALETTE["brown1"]
+            "fill": BITMAP_PALETTE["brown1"]
         },
         {
             "xy":   layer("0101101001011010b0"),
-            "fill": PALETTE["orange4"]
+            "fill": BITMAP_PALETTE["orange4"]
         }
     ],
     "silo":     [
         {
             "xy":   layer("1010101010100000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         },
         {
             "xy":   layer("0100010001000000b0"),
-            "fill": PALETTE["grey2"]
+            "fill": BITMAP_PALETTE["grey2"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         }
     ],
     "tele":     [
         {
             "xy":   layer("1111111111111111b0"),
-            "fill": PALETTE["black"]
+            "fill": BITMAP_PALETTE["black"]
         }
     ],
     "nprop":    [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         }
     ],
     "osprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["red2"]
+            "fill": BITMAP_PALETTE["red2"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         }
     ],
     "bmprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["blue3"]
+            "fill": BITMAP_PALETTE["blue3"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         }
     ],
     "geprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["green3"]
+            "fill": BITMAP_PALETTE["green3"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         }
     ],
     "ycprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["yellow"]
+            "fill": BITMAP_PALETTE["yellow"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         }
     ],
     "bhprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["purple3"]
+            "fill": BITMAP_PALETTE["purple3"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["purple4"]
+            "fill": BITMAP_PALETTE["purple4"]
         }
     ],
     "rfprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["red2"]
+            "fill": BITMAP_PALETTE["red2"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["red4"]
+            "fill": BITMAP_PALETTE["red4"]
         }
     ],
     "gsprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["grey3"]
+            "fill": BITMAP_PALETTE["grey3"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["grey4"]
+            "fill": BITMAP_PALETTE["grey4"]
         }
     ],
     "bdprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["orange2"]
+            "fill": BITMAP_PALETTE["orange2"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["orange5"]
+            "fill": BITMAP_PALETTE["orange5"]
         }
     ],
     "abprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["orange3"]
+            "fill": BITMAP_PALETTE["orange3"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         }
     ],
     "jsprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["grey1"]
+            "fill": BITMAP_PALETTE["grey1"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         }
     ],
     "ciprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["blue4"]
+            "fill": BITMAP_PALETTE["blue4"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["blue5"]
+            "fill": BITMAP_PALETTE["blue5"]
         }
     ],
     "pcprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["pink"]
+            "fill": BITMAP_PALETTE["pink"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         }
     ],
     "tgprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["teal1"]
+            "fill": BITMAP_PALETTE["teal1"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["teal2"]
+            "fill": BITMAP_PALETTE["teal2"]
         }
     ],
     "plprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["purple1"]
+            "fill": BITMAP_PALETTE["purple1"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["purple2"]
+            "fill": BITMAP_PALETTE["purple2"]
         }
     ],
     "arprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["green5"]
+            "fill": BITMAP_PALETTE["green5"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["green6"]
+            "fill": BITMAP_PALETTE["green6"]
         }
     ],
     "wnprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": PALETTE["red5"]
+            "fill": BITMAP_PALETTE["red5"]
         },
         {
             "xy":   layer("0001000100011111b0"),
-            "fill": PALETTE["red6"]
+            "fill": BITMAP_PALETTE["red6"]
         }
     ],
     # "seam":     [
@@ -480,415 +607,415 @@ SPEC = {
     "seam":     [  # Changed to static
         {
             "xy":   layer("1010010110100101b0"),
-            "fill": PALETTE["brown1"]
+            "fill": BITMAP_PALETTE["brown1"]
         },
         {
             "xy":   layer("0101101001011010b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "nhq":      [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["white"]] * 8
+            "fill": [BITMAP_PALETTE["white"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "oshq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["red2"]] * 8
+            "fill": [BITMAP_PALETTE["red2"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "bmhq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["blue3"]] * 8
+            "fill": [BITMAP_PALETTE["blue3"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "gehq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["green3"]] * 8
+            "fill": [BITMAP_PALETTE["green3"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "ychq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["yellow"]] * 8
+            "fill": [BITMAP_PALETTE["yellow"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "bhhq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["purple3"]] * 8
+            "fill": [BITMAP_PALETTE["purple3"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "rfhq":     [  # ALTERED FROM red2 TO red4 TO AVOID CONFLICT WITH OS
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["red4"]] * 8
+            "fill": [BITMAP_PALETTE["red4"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "gshq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["grey3"]] * 8
+            "fill": [BITMAP_PALETTE["grey3"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "bdhq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["orange2"]] * 8
+            "fill": [BITMAP_PALETTE["orange2"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "abhq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["orange3"]] * 8
+            "fill": [BITMAP_PALETTE["orange3"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "jshq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["grey1"]] * 8
+            "fill": [BITMAP_PALETTE["grey1"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "cihq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["blue4"]] * 8
+            "fill": [BITMAP_PALETTE["blue4"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "pchq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["pink"]] * 8
+            "fill": [BITMAP_PALETTE["pink"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "tghq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["teal1"]] * 8
+            "fill": [BITMAP_PALETTE["teal1"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "plhq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["purple1"]] * 8
+            "fill": [BITMAP_PALETTE["purple1"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "arhq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["green5"]] * 8
+            "fill": [BITMAP_PALETTE["green5"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "wnhq":     [
         {
             "xy":   [layer("0000011001100000b0")] * 8,
-            "fill": [PALETTE["red5"]] * 8
+            "fill": [BITMAP_PALETTE["red5"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
-            "fill": PALETTE["BLINK"]
+            "fill": BITMAP_PALETTE["BLINK"]
         }
     ],
     "nunit":    [
         {
             "xy":   layer("0000011001100000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         }
     ],
     "osunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["red2"]
+            "fill": BITMAP_PALETTE["red2"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "bmunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["blue3"]
+            "fill": BITMAP_PALETTE["blue3"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "geunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["green3"]
+            "fill": BITMAP_PALETTE["green3"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "ycunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["yellow"]
+            "fill": BITMAP_PALETTE["yellow"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "bhunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["purple3"]
+            "fill": BITMAP_PALETTE["purple3"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["purple4"]
+            "fill": BITMAP_PALETTE["purple4"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "rfunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["red2"]
+            "fill": BITMAP_PALETTE["red2"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["red4"]
+            "fill": BITMAP_PALETTE["red4"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "gsunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["grey3"]
+            "fill": BITMAP_PALETTE["grey3"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["grey4"]
+            "fill": BITMAP_PALETTE["grey4"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "bdunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["orange2"]
+            "fill": BITMAP_PALETTE["orange2"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["orange5"]
+            "fill": BITMAP_PALETTE["orange5"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "abunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["orange3"]
+            "fill": BITMAP_PALETTE["orange3"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "jsunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["grey1"]
+            "fill": BITMAP_PALETTE["grey1"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "ciunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["blue4"]
+            "fill": BITMAP_PALETTE["blue4"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["blue5"]
+            "fill": BITMAP_PALETTE["blue5"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "pcunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["pink"]
+            "fill": BITMAP_PALETTE["pink"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["brown2"]
+            "fill": BITMAP_PALETTE["brown2"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "tgunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["teal1"]
+            "fill": BITMAP_PALETTE["teal1"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["teal2"]
+            "fill": BITMAP_PALETTE["teal2"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "plunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["purple1"]
+            "fill": BITMAP_PALETTE["purple1"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["purple2"]
+            "fill": BITMAP_PALETTE["purple2"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "arunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["green5"]
+            "fill": BITMAP_PALETTE["green5"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["green6"]
+            "fill": BITMAP_PALETTE["green6"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "wnunit":   [
         {
             "xy":   layer("0000001001100000b0"),
-            "fill": PALETTE["red5"]
+            "fill": BITMAP_PALETTE["red5"]
         },
         {
             "xy":   layer("0110100110010110b0"),
-            "fill": PALETTE["red6"]
+            "fill": BITMAP_PALETTE["red6"]
         },
         {
             "xy":   layer("0000010000000000b0"),
-            "fill": PALETTE["white"]
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
 }
@@ -969,127 +1096,11 @@ UNIT_ID_TO_SPEC = {
 }
 
 
-"""IDs and other tile data necessary constructing
-and manipulating `AWMap` instances"""
-
-"""###########################################
-   # Advance Wars Map Converter Internal IDs #
-   ###########################################"""
-
-# MAIN terrain IDs with internal names
-MAIN_TERR = {
-    1:      "Plain",
-    2:      "Wood",
-    3:      "Mountain",
-    4:      "Road",
-    5:      "Bridge",
-    6:      "Sea",
-    7:      "Shoal",
-    8:      "Reef",
-    9:      "River",
-    10:     "Pipe",
-    11:     "Seam",
-    12:     "BrokenSeam",
-    13:     "Silo",
-    14:     "SiloEmpty",
-    15:     "Ruins",
-
-    101:    "HQ",
-    102:    "City",
-    103:    "Base",
-    104:    "Airport",
-    105:    "Seaport",
-    106:    "Tower",
-    107:    "Lab",
-
-    500:    "Volcano",
-    501:    "GiantMissile",
-    502:    "Fortress",
-    503:    "FlyingFortressLand",
-    504:    "FlyingFortressSea",
-    505:    "BlackCannonNorth",
-    506:    "BlackCannonSouth",
-    507:    "MiniCannonNorth",
-    508:    "MiniCannonSouth",
-    509:    "MiniCannonEast",
-    510:    "MiniCannonWest",
-    511:    "LaserCannon",
-    512:    "Deathray",
-    513:    "Crystal",
-    514:    "BlackCrystal",
-
-    999:    "NullTile",
-}
-
-
-# Create "Categories" for terrain type for tile awareness
-MAIN_TERR_CAT = {
-    "land":         [1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 15],
-    "sea":          [6, 8],
-    "properties":   [101, 102, 103, 104, 105, 106, 107],
-}
-MAIN_TERR_CAT["land"].append(MAIN_TERR_CAT["properties"])
-
-
-# MAIN unit IDs with internal names
-MAIN_UNIT = {
-    0:      "Empty",
-    1:      "Infantry",
-    2:      "Mech",
-    11:     "APC",
-    12:     "Recon",
-    13:     "Tank",
-    14:     "MDTank",
-    15:     "Neotank",
-    16:     "Megatank",
-    17:     "AntiAir",
-    21:     "Artillery",
-    22:     "Rocket",
-    23:     "Missile",
-    24:     "PipeRunner",
-    25:     "Oozium",
-    31:     "TCopter",
-    32:     "BCopter",
-    33:     "Fighter",
-    34:     "Bomber",
-    35:     "Stealth",
-    36:     "BBomb",
-    41:     "BBoat",
-    42:     "Lander",
-    43:     "Cruiser",
-    44:     "Submarine",
-    45:     "Battleship",
-    46:     "Carrier",
-}
-
-
-# Country IDs in country order
-MAIN_CTRY = {
-    0:      "Neutral",
-    1:      "Orange Star",
-    2:      "Blue Moon",
-    3:      "Green Earth",
-    4:      "Yellow Comet",
-    5:      "Black Hole",
-    6:      "Red Fire",
-    7:      "Grey Sky",
-    8:      "Brown Desert",
-    9:      "Amber Blaze",
-    10:     "Jade Sun",
-    11:     "Cobalt Ice",
-    12:     "Pink Cosmos",
-    13:     "Teal Galaxy",
-    14:     "Purple Lightning",
-    15:     "Acid Rain",
-    16:     "White Nova"
-}
-
-
 """###########################
    # Advance Wars By Web IDs #
    ###########################"""
 
-# Relate AWS terrain IDs to MAIN terrain IDs
+# Relate AWS Terrain IDs (keys) to Internal Terrain, Country ID pairs (values)
 AWS_TERR = {
     0:      (1,   0),  # Plain
     1:      (4,   0),  # Road
@@ -1255,7 +1266,7 @@ AWS_TERR = {
 }
 
 
-# Relate AWS unit IDs to MAIN unit IDs
+# Relate AWS Unit IDs (keys) to Internal Unit, Country ID pairs (values)
 AWS_UNIT = {
     65535:  (0,  0),     # Empty
 
@@ -1400,7 +1411,7 @@ AWS_UNIT = {
    # Advance Wars Series Map Editor IDs #
    ######################################"""
 
-# Relate AWBW terrain IDs to MAIN terrain IDs
+# Relate AWBW Terrain IDs (keys) to Internal Terrain, Country ID pairs (values)
 AWBW_TERR = {
     "":     (999,  0),  # Teleport Tile
     1:      (1,    0),  # Plain
@@ -1573,6 +1584,7 @@ AWBW_TERR = {
 }
 
 
+# Relate AWBW Unit IDs (keys) to Internal Unit IDs (values)
 AWBW_UNIT_CODE = {
     1:          1,      # Infantry
     2:          2,      # Mech
@@ -1622,7 +1634,7 @@ AWBW_COUNTRY_CODE = {
 }
 
 
-# From MAIN terrain IDs, find the offset for appropriate tile orientation based on surroundings.
+# From Internal Terrain IDs, find the offset for appropriate tile orientation based on surroundings.
 AWBW_AWARENESS = {
     # Roads: Offset from 15
     # Additionally aware of Bridge and Properties
@@ -1788,7 +1800,7 @@ class AWMap:
 
     def __init__(self):
         self.raw_data = None
-        self.map = {}
+        self.map = dict()
         self.size_w = 0
         self.size_h = 0
         self.map_size = 0
@@ -1799,15 +1811,15 @@ class AWMap:
 
         # TODO: Buffer tile coords to skip for multi-tile objects
         # e.g. Volcano, Deathray, Flying Fortress
-        self.pass_buffer = []
+        self.pass_buffer = list()
 
         # Params used from outside class instance
         self.awbw_id = ""
         self.override_awareness = True
         self.nyv = False
 
-        self.countries = []
-        self.custom_countries = []
+        self.countries = list()
+        self.custom_countries = list()
         self.country_conversion = dict()
 
     def __repr__(self):
@@ -1825,6 +1837,10 @@ class AWMap:
         return ret
 
     def __iter__(self):
+        """Iterate through each tile object by row by column
+
+        :yields: AWTile stored at current slot
+        """
         for y in range(self.size_h):
             for x in range(self.size_w):
                 yield self.tile(x, y)
@@ -1862,94 +1878,117 @@ class AWMap:
             } for x in range(self.size_w)
         }
 
-        self.map = self.correct_map_axis(map_data)
+        # self.map = self.correct_map_axis(map_data)
 
-        self.title, self.author, self.desc = self.meta_from_aws(
-            self.raw_data[13 + (self.map_size * 4):]
-        )
-
-        return self
-
-    def correct_map_axis(self, inverted_map: dict):
-        return {
+        self.map = {
             y: {
-                x: inverted_map[x][y]
+                x: map_data[x][y]
                 for x in range(self.size_w)
             } for y in range(self.size_h)
         }
 
-    def from_awbw(
-            self,
-            data: str = "",
-            title: str = "",
-            awbw_id: int = None
-    ):
+        self.title, self.author, self.desc = self.meta_from_aws(self.raw_data[13 + (self.map_size * 4):])
+
+        return self
+
+    # def correct_map_axis(self, inverted_map: dict):
+    #     return {
+    #         y: {
+    #             x: inverted_map[x][y]
+    #             for x in range(self.size_w)
+    #         } for y in range(self.size_h)
+    #     }
+
+    def from_awbw(self, data: str = "", title: str = "", awbw_id: int = None):
+        """Loads a map from AWBW data
+
+        Maps can be loaded two ways, either from raw CSV array with AWBW terrain
+        IDs, or, using the AWBW API, by a map ID
+
+                        If CSV Map
+        :param data: multiline string CSV of AWBW terrain data
+        :param title: Optional title for map
+
+                        If from AWBW site
+        :param awbw_id: MAPS_ID of map on AWBW
+
+        :return: AWMap instance for generated map or None
+        """
         if awbw_id:
-            payload = {"maps_id": awbw_id}
 
-            # Get map info JSON
-            r_map = requests.get(MAPS_API, params=payload)
-            j_map = r_map.json()
+            # Use AWBW Maps API to get map info JSON
+            awbw_map = awbw_api.get_map(maps_id=awbw_id)
 
-            if not j_map.get("err", False):
-                self._parse_awbw_csv(data=transpose(j_map["Terrain Map"]).tolist())
-                # self._parse_awbw_csv(data=map_data)
+            # Create the AWMap terrain map from the JSON terrain data
+            self._parse_awbw_csv(csvdata=awbw_map["terr"])
 
-                if j_map["Predeployed Units"]:
-                    for unit in j_map["Predeployed Units"]:
-                        main_id = AWBW_UNIT_CODE.get(unit["Unit ID"])
-                        main_ctry = AWBW_COUNTRY_CODE.get(unit["Country Code"])
-                        coords = {
-                            "x":    unit["Unit X"],
-                            "y":    unit["Unit Y"]
-                        }
+            # Check if units are present and add them
+            if awbw_map["unit"]:
+                for unit in awbw_map["unit"]:
+                    main_id = AWBW_UNIT_CODE.get(unit["id"])
+                    main_ctry = AWBW_COUNTRY_CODE.get(unit["ctry"])
+                    self.tile(unit["x"], unit["y"]).mod_unit(main_id, main_ctry)
 
-                        self.tile(**coords).mod_unit(main_id, main_ctry)
+            # Add all the map metadata
+            self.author = awbw_map["author"]
+            self.title = awbw_map["name"]
+            self.awbw_id = str(awbw_id)
+            self.desc = f"https://awbw.amarriner.com/prevmaps.php?maps_id={awbw_id}"
 
-                self.author = j_map["Author"]
-                self.title = j_map["Name"]
-                self.awbw_id = str(awbw_id)
-                self.desc = f"https://awbw.amarriner.com/prevmaps.php?maps_id={awbw_id}"
-
-                return self
+            return self
 
         elif data:
-            self._parse_awbw_csv(strcsv=data)  # TODO: Refactor these names
 
+            # Since the map is a CSV, parse into 2D array
+            csv_map = [*csv.reader(data.strip('\n').split('\n'))]
+            self._parse_awbw_csv(csvdata=csv_map)
+
+            # CSVs by virtue don't have a title set, so use provided
+            # title or none at all
             self.title = title if title else "[Untitled]"
 
             return self
 
         return
 
-    def _parse_awbw_csv(self, strcsv: str = None, data: List[List[int]] = None):
-        if strcsv:
-            csv_map = [*csv.reader(strcsv.strip('\n').split('\n'))]
-        elif data:
-            csv_map = data
-        else:
-            raise Exception
+    def _parse_awbw_csv(self, csvdata: List[List[int]]) -> None:
+        """Loads an AWMap with terrain from an AWBW CSV
+
+        This creates a map of AWTile objects in the self.map attribute
+
+        :param csvdata: 2D list of int awbw terrain IDs
+        :return: None"""
 
         # Make sure all rows passed are equal length
         # Calling method will need to catch AssertionError
-        assert all(map(lambda r: len(r) == len(csv_map[0]), csv_map))
+        assert all(map(lambda r: len(r) == len(csvdata[0]), csvdata))
 
-        self.size_h, self.size_w = len(csv_map), len(csv_map[0])
+        # Use the CSV dimensions instead of the provided X and Y
+        # to set dimension attributes. This is used for assertion
+        # so nothing is accidentally misreported
+        self.size_h, self.size_w = len(csvdata), len(csvdata[0])
 
+        # Our maps are lists of rows, not lists of columns ([y][x])
+        # so start with Y, then X
         for y in range(self.size_h):
-            self.map[y] = {}
+            self.map[y] = dict()
             for x in range(self.size_w):
-                self.map[y][x] = AWTile(
-                    self, x, y, **self.terr_from_awbw(csv_map[y][x])
-                )
+                self.map[y][x] = AWTile(self, x, y, **self.terr_from_awbw(csvdata[y][x]))
 
-    def terr_from_aws(self, x, y, data) -> dict:
+    def terr_from_aws(self, x: int, y: int, data) -> dict:
         # Return 2 byte terrain value from binary data for coordinate (x, y)
         offset = y + (x * self.size_h)
         terr, t_ctry = AWS_TERR.get(data[offset], (0, 0))
         return {"terr": terr, "t_ctry": t_ctry}
 
-    def unit_from_aws(self, x, y, data) -> dict:
+    def unit_from_aws(self, x: int, y: int, data) -> Dict[str, int]:
+        """
+
+        :param x: X coordinate of terrain tile
+        :param y: Y coordinate of terrain tile
+        :param data: bytes sequence of terrain data from AWS
+        :return:
+        """
         # Return 2 byte unit value from binary data for coordinate (x, y)
         offset = y + (x * self.size_h)
         unit, u_ctry = AWS_UNIT.get(data[offset], (0, 0))
@@ -2148,11 +2187,12 @@ class AWTile:  # TODO: Account for multi-tile terrain objects e.g. death ray, vo
 
 class AWMinimap:
 
-    def __init__(self, awmap: AWMap) -> None:
+    def __init__(self, awmap: AWMap):
         self.im = Image.new("RGBA", (4 * awmap.size_w, 4 * awmap.size_h))
         self.ims = []
         self.animated = False
         self.anim_buffer = []
+        self.final_im = None
 
         # Add all terrain sprites (buffer animated sprites)
         for x in range(awmap.size_w):
@@ -2192,13 +2232,26 @@ class AWMinimap:
             if self.animated:
                 for i, f in enumerate(self.ims):
                     self.ims[i] = f.resize(
+                        (awmap.size_w * 16, awmap.size_h * 16)
+                    )
+            else:
+                self.im = self.im.resize((awmap.size_w * 16, awmap.size_h * 16))
+        elif awmap.size_w * awmap.size_h <= 3200:
+            if self.animated:
+                for i, f in enumerate(self.ims):
+                    self.ims[i] = f.resize(
                         (awmap.size_w * 8, awmap.size_h * 8)
                     )
             else:
                 self.im = self.im.resize((awmap.size_w * 8, awmap.size_h * 8))
 
         if self.animated:
-            self.im = AWMinimap.compile_gif(self.ims)
+            self.final_im = AWMinimap.compile_gif(self.ims)
+        else:
+            img = BytesIO()
+            self.im.save(fp=img, format="PNG", )
+            img.seek(0)
+            self.final_im = img
 
     @staticmethod
     def get_sprite(
@@ -2230,7 +2283,7 @@ class AWMinimap:
     def get_static_sprite(sprite_name: str) -> Tuple[List[Image.Image], bool]:
         im = Image.new("RGBA", (4, 4))
         draw = ImageDraw.Draw(im)
-        spec = SPEC[sprite_name]
+        spec = BITMAP_SPEC[sprite_name]
         for _layer in spec:
             draw.point(**_layer)
         return im, False  # .resize((8, 8))
@@ -2240,7 +2293,7 @@ class AWMinimap:
         ims = []
         for _ in range(8):
             ims.append(Image.new("RGBA", (4, 4)))
-        spec = SPEC[sprite_name]
+        spec = BITMAP_SPEC[sprite_name]
         for frame in range(8):
             draw = ImageDraw.Draw(ims[frame])
             for _layer in spec:
@@ -2252,7 +2305,7 @@ class AWMinimap:
         ims = []
         for _ in range(8):
             ims.append(Image.new("RGBA", (4, 4)))
-        spec = SPEC[sprite_name]
+        spec = BITMAP_SPEC[sprite_name]
         for i in range(8):
             if 1 < i < 6:
                 draw = ImageDraw.Draw(ims[i])
@@ -2260,23 +2313,70 @@ class AWMinimap:
                     draw.point(**_layer)
         return ims, True
 
-    @staticmethod
-    def compile_gif(frames):
+    @staticmethod  # Current working
+    def compile_gif(frames: List[Image.Image]) -> BytesIO:
         img_bytes = BytesIO()
         first_frame = frames.pop(0)
         first_frame.save(
-            img_bytes, "GIF", save_all=True, append_images=frames, loop=0,
-            duration=150, optimize=True, version='GIF89a'
+            img_bytes,
+            "GIF",
+            save_all=True,
+            append_images=frames,
+            loop=0,
+            duration=150,
+            optimize=False,
+            version='GIF89a'
         )
         img_bytes.seek(0)
-        compiled_gif = Image.open(img_bytes)
-        return compiled_gif
+        return img_bytes
+
+    # @staticmethod
+    # def compile_gif(frames: List[Image.Image]) -> Image.Image:
+    #     palette = list(flatten(PALETTE.values()))
+    #     for i in range(8):
+    #         frames[i].putpalette(palette, rawmode="PA")
+    #     img_bytes = BytesIO()
+    #     first_frame = frames.pop(0)
+    #     first_frame.save(
+    #         img_bytes,
+    #         "GIF",
+    #         save_all=True,
+    #         append_images=frames,
+    #         loop=0,
+    #         duration=150,
+    #         optimize=True,
+    #         version='GIF89a'
+    #     )
+    #     img_bytes.seek(0)
+    #     compiled_gif = Image.open(img_bytes)
+    #     return compiled_gif
+
+    # @staticmethod
+    # def compile_gif(frames: List[Image.Image]):
+    #     cvt_frames = list()
+    #     img_bytes = BytesIO()
+    #     for frame in frames:
+    #         cvt_frames.append(frame.convert(mode="CMYK"))
+    #     first_frame = cvt_frames.pop(0)
+    #     first_frame.save(
+    #         img_bytes,
+    #         "GIF",
+    #         save_all=True,
+    #         append_images=cvt_frames,
+    #         loop=0,
+    #         duration=150,
+    #         optimize=True,
+    #         version='GIF89a'
+    #     )
+    #     img_bytes.seek(0)
+    #     compiled_gif = Image.open(img_bytes)
+    #     return compiled_gif
 
     # @staticmethod
     # def compile_gif(frames: List[Image.Image]) -> Image.Image:
     #
     #     # List for frames converted to "P" and frame palettes
-    #     cvt_frames, frame_palettes = [], []
+    #     cvt_frames, frame_palettes = list(), dict()
     #
     #     # Convert frames to "P" and create frame palettes
     #     for i, frame in enumerate(frames):
@@ -2288,7 +2388,7 @@ class AWMinimap:
     #         # Create palette from frame and add to frame palettes list
     #         pal = cvt_frame.resize((256, 1))
     #         pal.putdata(range(256))
-    #         frame_palettes.append(pal.convert("RGB").getdata())
+    #         frame_palettes[i] = pal.convert("RGB").getdata()
     #
     #     # __import__("time").sleep(1)
     #     # for frame in cvt_frames:
@@ -2299,14 +2399,21 @@ class AWMinimap:
     #     img_bytes = BytesIO()
     #     first_frame = cvt_frames.pop(0)
     #     first_frame.save(
-    #         img_bytes, "GIF", save_all=True, append_images=cvt_frames, loop=0,
-    #         duration=150, optimize=False, version='GIF89a'
+    #         img_bytes,
+    #         "GIF",
+    #         save_all=True,
+    #         append_images=cvt_frames,
+    #         loop=0,
+    #         duration=150,
+    #         optimize=False,
+    #         version='GIF89a'
     #     )
     #     img_bytes.seek(0)
     #
     #     # Open GIF and apply palette to each frame
     #     compiled_gif = Image.open(img_bytes)
     #     iterator = ImageSequence.Iterator(compiled_gif)
+    #
     #     for i, frame in enumerate(iterator):
     #         frame.putpalette(frame_palettes[i])
     #
@@ -2321,5 +2428,5 @@ class AWMinimap:
     #     return compiled_gif
 
     @property
-    def map(self) -> Image.Image:
-        return self.im
+    def map(self) -> BytesIO:
+        return self.final_im
