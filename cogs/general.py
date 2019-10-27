@@ -91,6 +91,15 @@ class General(Cog):
         """Your basic `ping`"""
         await ctx.send('Pong')
 
+    @command(name="discordid", aliases=["myid", "userid"])
+    async def _discordid(self, ctx: Context, member: Member = None):
+        if member:
+            target = member
+        else:
+            target = ctx.author
+
+        await ctx.send(f"{target.mention}'s Discord User ID: `{target.id}`")
+
 
 def setup(bot: Bot):
     bot.add_cog(General(bot))
