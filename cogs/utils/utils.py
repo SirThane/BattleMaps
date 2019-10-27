@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from io import StringIO
 
 import redis
+from typing import Iterable
 
 
 class Paginator:
@@ -121,6 +122,16 @@ def bool_str(arg):
         return False
     else:
         return arg
+
+
+def flatten(items):
+    """Yield items from any nested iterable; see Reference."""
+    for x in items:
+        if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
+            for sub_x in flatten(x):
+                yield sub_x
+        else:
+            yield x
 
 
 def bool_transform(arg):
