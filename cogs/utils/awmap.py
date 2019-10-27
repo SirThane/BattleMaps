@@ -7,49 +7,116 @@ from PIL import Image, ImageDraw
 from typing import Dict, List, Tuple, Union
 
 from cogs.utils import awbw_api
-# from cogs.utils.utils import flatten
 
 
 def layer(bitmask: Union[str, int]) -> List[Tuple[int, int]]:
+    """Turn a string with a binary number into a list of coordinates for 4x4
+
+    When given a number from 0 to 65534 or a string representing a 16 bit unsigned
+    binary integer, returns a list of tuples of x, y pairs for each bit in the
+    integer that is turned on. Bits will be considered as 4 rows of 4 top to
+    bottom
+
+    e.g. >>> layer('1000010010100001b0')
+    [(0, 0), (1, 1), (2, 0), (2, 2), (3, 3)]
+
+    :param bitmask: int value or string binary number
+    :return: list of tuples of active x, y coordinates in 4x4 area
+    """
+
+    # If the bitmask is a string, remove the 'b0' at the end
     if isinstance(bitmask, str):
         if bitmask[-2] == "b":
             bitmask = bitmask[::-1]
         bitmask = int(bitmask, 2)
+
+    # Catch any incompatible ints
+    if bitmask < 0 or bitmask > 65535:
+        raise ValueError(
+            f"Bitmask must be 16-bit unsigned integer: {str(int(bitmask))} less than 0 or greater than 65535"
+        )
+
+    # Create the list of all tuples from (0, 0) to (3, 3)
     key = [(x, y) for y in range(4) for x in range(4)]
+
+    # Return a list of only those tuples that correspond ot ON bits in the bitmask
     return [key[i] for i in range(16) if 2 ** i & bitmask]
 
 
-def main_terr_to_aws(terr: int = 1, ctry: int = 0) -> list:
+def main_terr_to_aws(terr: int = 1, ctry: int = 0) -> List[int]:
+    """Takes internal terrain and country IDs and turns them into
+    appropriate terrain IDs for AWS. If no match is found, return
+    single item list [0] (0x00) which will be interpreted as plains
 
+    :param terr: internal terrain ID
+    :param ctry: internal country ID
+    :return: list of matching AWS unit IDs or 65535 (no unit)"""
+
+    # Default value: Plains
     default_value = [0]
 
+    # Relate Internal Terrain ID (keys) to AWS Terrain ID (values)
     # Some possible terrains do not have an equivalent in
     # AWS Map Editor. Override them to closest equivalent
     override = {
-        14:  350,  # EmptySilo overridden to Silo
-        15:  167,  # Ruin      overridden to BrokenSeam
-        101: 102,  # NHQ       overridden to NCity
-        999: 921,  # NullTile  overridden to MinicannonSouth
+        14:     350,  # EmptySilo overridden to Silo
+        15:     167,  # Ruin      overridden to BrokenSeam
+        101:    102,  # NHQ       overridden to NCity
+        999:    921,  # NullTile  overridden to MinicannonSouth
     }
+
+    # Can have multiple matches
     match = list()
+
+    # Add all matching keys (AWS Terrain IDs) to list
     for k, v in AWS_TERR.items():
+
+        # Apply overrides if present
         if terr in override.keys():
             match.append(override[terr])
             break
         if (terr, ctry) == v:
             match.append(k)
+
+    # No match: empty list. Send default
     if match:
         return match
     else:
         return default_value
 
 
-def main_unit_to_aws(unit: int = 0, ctry: int = 1) -> list:
+def main_unit_to_aws(unit: int = 0, ctry: int = 1) -> List[int]:
+    """Takes internal unit and country IDs and turns them into
+    appropriate unit IDs for AWS. If no match is found, return
+    single item list [65535] (0xFF) to represent no unit for tile
+
+    :param unit: internal unit ID
+    :param ctry: internal country ID
+    :return: list of matching AWS unit IDs or 65535 (no unit)"""
+
+    # Default value: No Unit
     default_value = [65535]
+
+    # Relate Internal Unit ID (keys) to AWS Unit ID (values)
+    # I do not currently know a use case for overriding to a different unit
+    override = {  # TODO: Consider overriding extra AWBW countries to existing AWS (cart) countries?
+        999999:     999999,  # No overrides
+    }
+
+    # Can have multiple matches
     match = list()
+
+    # Add all matching keys (AWS Unit IDs) to list
     for k, v in AWS_UNIT.items():
+
+        # Apply overrides if present
+        if unit in override.keys():
+            match.append(override[unit])
+            break
         if (unit, ctry) == v:
             match.append(k)
+
+    # No match: empty list. Send default
     if match:
         return match
     else:
@@ -66,11 +133,31 @@ def main_terr_to_awbw(terr: int = 1, ctry: int = 0) -> List[Union[str, int]]:
     :param terr: internal terrain ID
     :param ctry: internal country ID
     :return: list of matching AWBW terrain IDs or empty string"""
+
+    # Default value: Blank/Teleport Tile
     default_value = [""]
+
+    # Relate Internal Terrain ID (keys) to AWS Terrain ID (values)
+    # Some possible terrains do not have an equivalent in
+    # AWS Map Editor. Override them to closest equivalent
+    override = {
+        999999:     999999,  # No overrides
+    }
+
+    # Can have multiple matches
     match = list()
+
+    # Add all matching keys (AWBW Terrain IDs) to list
     for k, v in AWBW_TERR.items():
+
+        # Apply overrides if present
+        if terr in override.keys():
+            match.append(override[terr])
+            break
         if (terr, ctry) == v:
             match.append(k)
+
+    # No match: emtpy list. Send default
     if match:
         return match
     else:
@@ -277,6 +364,8 @@ BITMAP_PALETTE = {
 }
 
 
+# For each named element, define the pixels (xy) to receive color (fill)
+# Looped over in the get_sprite methods
 BITMAP_SPEC = {
     "plain":        [
         {
@@ -1027,6 +1116,9 @@ BITMAP_SPEC = {
 }
 
 
+# Relating Bitmap Spec names (keys) to Internal terrain IDs (values)
+# Will do a reverse lookup in get_sprite to return corresponding str name for
+# Internal Terrain ID for terrain with static sprites
 STATIC_ID_TO_SPEC = {
     "plain":        [1, 12],
     "mountain":     [3],
@@ -1061,6 +1153,8 @@ STATIC_ID_TO_SPEC = {
 }
 
 
+# Relating Bitmap Spec names (keys) to Internal terrain IDs (values)
+# Same as STATIC_ID_TO_SPEC, but for terrain with animated sprites
 ANIM_ID_TO_SPEC = {
     # "seam":     [11],  # Changed to static
     "nhq":      [101, 107],
@@ -1083,6 +1177,10 @@ ANIM_ID_TO_SPEC = {
 }
 
 
+# Relating Bitmap Spec names (keys) to Internal unit IDs (values)
+# Same as ANIM_ID_TO_SPEC, but for units. IDs are added to country number
+# times 100 so all will have a unique number instead of multiple IDs for
+# unit and country
 UNIT_ID_TO_SPEC = {
     "osunit":   list(range(101,  147)),
     "bmunit":   list(range(201,  247)),
@@ -1621,6 +1719,7 @@ AWBW_UNIT_CODE = {
 }
 
 
+# Relating 2 character AWBW country ID (keys) to Internal country ID (values)
 AWBW_COUNTRY_CODE = {
     "os":   1,
     "bm":   2,
@@ -1806,12 +1905,28 @@ AWBW_AWARENESS = {
 class AWMap:
 
     def __init__(self):
+
+        # The data that the class is instantiated with will be stored in
+        # raw_data and can later be referenced
         self.raw_data = None
+
+        # The actual 2D dictionary containing the AWTiles with terrain and unit
+        # data. Stored as a list of rows ([y][x]) which can be pretty printed
+        # so that the string representation will be the same orientation as the
+        # map. Keys are the index (coordinate values). Dictionaries used to
+        # avoid potential mistakes of indices. Retrieving AWTile at a given
+        # coordinate is abstracted out to self.tile(x, y)
         self.map = dict()
+
+        # Map dimensions, Width and Height
         self.size_w = 0
         self.size_h = 0
-        self.map_size = 0
+
+        # AWS Style information. Currently unused
         self.style = 0
+
+        # Metadata will be taken from AWBW, AWS, or manually passed to
+        # constructor methods
         self.title = ""
         self.author = ""
         self.desc = ""
@@ -1823,9 +1938,14 @@ class AWMap:
         # Params used from outside class instance
         self.awbw_id = ""
         self.override_awareness = True
+
+        # TODO: Go back and find the convo to figure out what I was going to do for AWBW Nyvelion
         self.nyv = False
 
+        # TODO: I don't remember what I was going to with self.countries. Can probably be made into @property
         self.countries = list()
+
+        # TODO: Obviously backburner for BattleMaps commands for modifying maps in Discord
         self.custom_countries = list()
         self.country_conversion = dict()
 
@@ -1857,24 +1977,32 @@ class AWMap:
     """
 
     def from_aws(self, data: Union[bytes, bytearray]):
+        # Take the bytes data and make into bytearray so it can be indexed and store it back in self.raw_data
         self.raw_data = bytearray(data)
 
         # Width, Height, and graphic style
         self.size_w, self.size_h, self.style = self.raw_data[10:13]
-        self.map_size = self.size_w * self.size_h
 
-        # Chop out the terrain data as a list of ints
-        terr_data = [int.from_bytes(self.raw_data[x + 13:x + 15], 'little')
-                     for x in range(0, self.map_size * 2, 2)]
-
-        # Chop out the unit data as a list of ints
-        unit_data = [
+        # Chop out the terrain data as bytes and convert to a list of ints
+        # Terrain data is stored as 2-byte IDs in sequence as a series of columns
+        terr_data = [
             int.from_bytes(
-                self.raw_data[x+(self.map_size*2)+13:x+(self.map_size*2)+15],
+                self.raw_data[x + 13:x + 15],
                 'little'
             ) for x in range(0, self.map_size * 2, 2)
         ]
 
+        # Chop out the unit data as bytes and convert to a list of ints
+        # Same as terrain data, and every tile will have unit data
+        # Tiles with no unit will be 0xFF (65535)
+        unit_data = [
+            int.from_bytes(
+                self.raw_data[x + (self.map_size*2) + 13:x + (self.map_size*2) + 15],
+                'little'
+            ) for x in range(0, self.map_size * 2, 2)
+        ]
+
+        # Create the 2D dictionary of AWTiles by iterating over the terrain and unit data
         map_data = {
             x: {
                 y: AWTile(
@@ -1885,8 +2013,8 @@ class AWMap:
             } for x in range(self.size_w)
         }
 
-        # self.map = self.correct_map_axis(map_data)
-
+        # AWS files store terrain data as a list of columns ([x][y]) instead of a list of rows ([y][x])
+        # Transpose it before storing
         self.map = {
             y: {
                 x: map_data[x][y]
@@ -1894,17 +2022,10 @@ class AWMap:
             } for y in range(self.size_h)
         }
 
+        # The rest of the AWS data is metadata
         self.title, self.author, self.desc = self.meta_from_aws(self.raw_data[13 + (self.map_size * 4):])
 
         return self
-
-    # def correct_map_axis(self, inverted_map: dict):
-    #     return {
-    #         y: {
-    #             x: inverted_map[x][y]
-    #             for x in range(self.size_w)
-    #         } for y in range(self.size_h)
-    #     }
 
     def from_awbw(self, data: str = "", title: str = "", awbw_id: int = None):
         """Loads a map from AWBW data
@@ -2056,6 +2177,10 @@ class AWMap:
 
     def mod_terr(self, x: int, y: int, terr: int, t_ctry: int) -> None:
         self.tile(x, y).mod_terr(terr, t_ctry)
+
+    @property
+    def map_size(self):
+        return self.size_h * self.size_w
 
     @property
     def to_awbw(self):
@@ -2293,7 +2418,7 @@ class AWMinimap:
         spec = BITMAP_SPEC[sprite_name]
         for _layer in spec:
             draw.point(**_layer)
-        return im, False  # .resize((8, 8))
+        return im, False
 
     @staticmethod
     def get_anim_sprite(sprite_name: str) -> Tuple[List[Image.Image], bool]:
@@ -2320,7 +2445,7 @@ class AWMinimap:
                     draw.point(**_layer)
         return ims, True
 
-    @staticmethod  # Current working
+    @staticmethod
     def compile_gif(frames: List[Image.Image]) -> BytesIO:
         img_bytes = BytesIO()
         first_frame = frames.pop(0)
@@ -2336,103 +2461,6 @@ class AWMinimap:
         )
         img_bytes.seek(0)
         return img_bytes
-
-    # @staticmethod
-    # def compile_gif(frames: List[Image.Image]) -> Image.Image:
-    #     palette = list(flatten(PALETTE.values()))
-    #     for i in range(8):
-    #         frames[i].putpalette(palette, rawmode="PA")
-    #     img_bytes = BytesIO()
-    #     first_frame = frames.pop(0)
-    #     first_frame.save(
-    #         img_bytes,
-    #         "GIF",
-    #         save_all=True,
-    #         append_images=frames,
-    #         loop=0,
-    #         duration=150,
-    #         optimize=True,
-    #         version='GIF89a'
-    #     )
-    #     img_bytes.seek(0)
-    #     compiled_gif = Image.open(img_bytes)
-    #     return compiled_gif
-
-    # @staticmethod
-    # def compile_gif(frames: List[Image.Image]):
-    #     cvt_frames = list()
-    #     img_bytes = BytesIO()
-    #     for frame in frames:
-    #         cvt_frames.append(frame.convert(mode="CMYK"))
-    #     first_frame = cvt_frames.pop(0)
-    #     first_frame.save(
-    #         img_bytes,
-    #         "GIF",
-    #         save_all=True,
-    #         append_images=cvt_frames,
-    #         loop=0,
-    #         duration=150,
-    #         optimize=True,
-    #         version='GIF89a'
-    #     )
-    #     img_bytes.seek(0)
-    #     compiled_gif = Image.open(img_bytes)
-    #     return compiled_gif
-
-    # @staticmethod
-    # def compile_gif(frames: List[Image.Image]) -> Image.Image:
-    #
-    #     # List for frames converted to "P" and frame palettes
-    #     cvt_frames, frame_palettes = list(), dict()
-    #
-    #     # Convert frames to "P" and create frame palettes
-    #     for i, frame in enumerate(frames):
-    #
-    #         # Convert frame and add to converted frames list
-    #         cvt_frame = frame.convert("P", palette=Image.ADAPTIVE)
-    #         cvt_frames.append(cvt_frame)
-    #
-    #         # Create palette from frame and add to frame palettes list
-    #         pal = cvt_frame.resize((256, 1))
-    #         pal.putdata(range(256))
-    #         frame_palettes[i] = pal.convert("RGB").getdata()
-    #
-    #     # __import__("time").sleep(1)
-    #     # for frame in cvt_frames:
-    #     #     frame.show()
-    #     #     pprint(frame.palette.getdata())
-    #
-    #     # Create bytes object and save all frames to it as GIF data
-    #     img_bytes = BytesIO()
-    #     first_frame = cvt_frames.pop(0)
-    #     first_frame.save(
-    #         img_bytes,
-    #         "GIF",
-    #         save_all=True,
-    #         append_images=cvt_frames,
-    #         loop=0,
-    #         duration=150,
-    #         optimize=False,
-    #         version='GIF89a'
-    #     )
-    #     img_bytes.seek(0)
-    #
-    #     # Open GIF and apply palette to each frame
-    #     compiled_gif = Image.open(img_bytes)
-    #     iterator = ImageSequence.Iterator(compiled_gif)
-    #
-    #     for i, frame in enumerate(iterator):
-    #         frame.putpalette(frame_palettes[i])
-    #
-    #     return compiled_gif
-
-    # @staticmethod
-    # def compile_gif(frames):
-    #     first_frame = frames.pop(0)
-    #     first_frame.save("temp.gif", "GIF", save_all=True, append_images=frames, loop=0, duration=150,
-    #                      palette=Image.LANCZOS, transparency=255)
-    #     compiled_gif = Image.open("temp.gif")
-    #     return compiled_gif
 
     @property
     def map(self) -> BytesIO:
