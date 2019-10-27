@@ -278,7 +278,7 @@ BITMAP_PALETTE = {
 
 
 BITMAP_SPEC = {
-    "plain":    [
+    "plain":        [
         {
             "xy":   layer("1111110111110111b0"),
             "fill": BITMAP_PALETTE["green1"]
@@ -288,7 +288,7 @@ BITMAP_SPEC = {
             "fill": BITMAP_PALETTE["green2"]
         }
     ],
-    "mountain": [
+    "mountain":     [
         {
             "xy":   layer("1111100100000000b0"),
             "fill": BITMAP_PALETTE["green1"]
@@ -320,7 +320,7 @@ BITMAP_SPEC = {
     #         "fill": PALETTE["green3"]
     #     }
     # ],
-    "wood":     [
+    "wood":         [
         {
             "xy":   layer("1001000000001001b0"),
             "fill": BITMAP_PALETTE["green1"]
@@ -344,7 +344,7 @@ BITMAP_SPEC = {
     #         "fill": PALETTE["blue3"]
     #     }
     # ],
-    "river":    [
+    "river":        [
         {
             "xy":   layer("1111001111111000b0"),
             "fill": BITMAP_PALETTE["blue6"]
@@ -354,25 +354,25 @@ BITMAP_SPEC = {
             "fill": BITMAP_PALETTE["blue3"]
         }
     ],
-    "road":     [
+    "road":         [
         {
             "xy":   layer("1111111111111111b0"),
             "fill": BITMAP_PALETTE["grey2"]
         }
     ],
-    "sea":      [
+    "sea":          [
         {
             "xy":   layer("1111111111111111b0"),
             "fill": BITMAP_PALETTE["blue3"]
         }
     ],
-    "shoal":    [
+    "shoal":        [
         {
             "xy":   layer("1111111111111111b0"),
             "fill": BITMAP_PALETTE["blue1"]
         }
     ],
-    "reef":     [
+    "reef":         [
         {
             "xy":   layer("1000001000000000b0"),
             "fill": BITMAP_PALETTE["orange1"]
@@ -394,7 +394,7 @@ BITMAP_SPEC = {
             "fill": BITMAP_PALETTE["blue3"]
         },
     ],
-    "pipe":     [
+    "pipe":         [
         {
             "xy":   layer("1010010110100101b0"),
             "fill": BITMAP_PALETTE["brown1"]
@@ -404,7 +404,7 @@ BITMAP_SPEC = {
             "fill": BITMAP_PALETTE["orange4"]
         }
     ],
-    "silo":     [
+    "silo":         [
         {
             "xy":   layer("1010101010100000b0"),
             "fill": BITMAP_PALETTE["white"]
@@ -416,6 +416,12 @@ BITMAP_SPEC = {
         {
             "xy":   layer("0001000100011111b0"),
             "fill": BITMAP_PALETTE["brown2"]
+        }
+    ],
+    "siloempty":    [
+        {
+            "xy":   layer("1111111111111111b0"),
+            "fill": BITMAP_PALETTE["white"]
         }
     ],
     "tele":     [
@@ -487,7 +493,7 @@ BITMAP_SPEC = {
     "rfprop":   [
         {
             "xy":   layer("1110111011100000b0"),
-            "fill": BITMAP_PALETTE["red2"]
+            "fill": BITMAP_PALETTE["red3"]
         },
         {
             "xy":   layer("0001000100011111b0"),
@@ -1022,35 +1028,36 @@ BITMAP_SPEC = {
 
 
 STATIC_ID_TO_SPEC = {
-    "plain":    [1, 12],
-    "mountain": [3],
-    "wood":     [2],
-    "river":    [9],
-    "road":     [4, 5],
-    "sea":      [6],
-    "shoal":    [7],
-    "reef":     [8],
-    "pipe":     [10],
-    "seam":     [11],
-    "silo":     [13, 14],
-    "tele":     [999],  # TODO
-    "nprop":    [102, 103, 104, 105, 106],
-    "osprop":   [112, 113, 114, 115, 116],
-    "bmprop":   [122, 123, 124, 125, 126],
-    "geprop":   [132, 133, 134, 135, 136],
-    "ycprop":   [142, 143, 144, 145, 146],
-    "bhprop":   [152, 153, 154, 155, 156],
-    "rfprop":   [162, 163, 164, 165, 166],
-    "gsprop":   [172, 173, 174, 175, 176],
-    "bdprop":   [182, 183, 184, 185, 186],
-    "abprop":   [192, 193, 194, 195, 196],
-    "jsprop":   [202, 203, 204, 205, 206],
-    "ciprop":   [212, 213, 214, 215, 216],
-    "pcprop":   [222, 223, 224, 225, 226],
-    "tgprop":   [232, 233, 234, 235, 236],
-    "plprop":   [242, 243, 244, 245, 246],
-    "arprop":   [252, 253, 254, 255, 256],
-    "wnprop":   [262, 263, 264, 265, 266],
+    "plain":        [1, 12],
+    "mountain":     [3],
+    "wood":         [2],
+    "river":        [9],
+    "road":         [4, 5],
+    "sea":          [6],
+    "shoal":        [7],
+    "reef":         [8],
+    "pipe":         [10],
+    "seam":         [11],
+    "silo":         [13],  # Moved siloempty to it's own for pure white tile
+    "siloempty":    [14],
+    "tele":         [999],  # TODO
+    "nprop":        [102, 103, 104, 105, 106],
+    "osprop":       [112, 113, 114, 115, 116],
+    "bmprop":       [122, 123, 124, 125, 126],
+    "geprop":       [132, 133, 134, 135, 136],
+    "ycprop":       [142, 143, 144, 145, 146],
+    "bhprop":       [152, 153, 154, 155, 156],
+    "rfprop":       [162, 163, 164, 165, 166],
+    "gsprop":       [172, 173, 174, 175, 176],
+    "bdprop":       [182, 183, 184, 185, 186],
+    "abprop":       [192, 193, 194, 195, 196],
+    "jsprop":       [202, 203, 204, 205, 206],
+    "ciprop":       [212, 213, 214, 215, 216],
+    "pcprop":       [222, 223, 224, 225, 226],
+    "tgprop":       [232, 233, 234, 235, 236],
+    "plprop":       [242, 243, 244, 245, 246],
+    "arprop":       [252, 253, 254, 255, 256],
+    "wnprop":       [262, 263, 264, 265, 266],
 }
 
 

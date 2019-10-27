@@ -26,14 +26,17 @@ Experimental: compatibility with 0.16.8
 Copyrights to logic of code belong to Rapptz (Danny)
 Everything else credit to SirThane#1780"""
 
-import discord
-from discord.ext import commands
-from discord.ext.commands import formatter, Context
 import sys
 import re
 import inspect
 import itertools
 import traceback
+
+import discord
+from discord.ext import commands
+from discord.ext.commands import Context, help
+
+from classes.bot import Bot
 
 
 empty = u'\u200b'
@@ -55,7 +58,7 @@ _mention_pattern = re.compile('|'.join(_mentions_transforms.keys()))
 orig_help = None
 
 
-class Help(formatter.HelpFormatter):
+class Help(help.HelpCommand):
     """Formats help for commands."""
 
     def __init__(self, bot: commands.Bot, *args, **kwargs):
@@ -403,9 +406,9 @@ class Help(formatter.HelpFormatter):
         )
 
     def __unload(self):
-        self.bot.formatter = formatter.HelpFormatter()
+        self.bot.formatter = help.HelpCommand()
         self.bot.add_command(orig_help)
 
 
-def setup(bot):
+def setup(bot: Bot):
     bot.add_cog(Help(bot))
