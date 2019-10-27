@@ -1,12 +1,12 @@
 """Cog containing all global bot events"""
 
-from sys import stderr
 from traceback import print_tb
 
 from datetime import datetime
 from discord import Colour, Embed, Member, Message
 from discord.utils import get
-from discord.ext.commands import CheckFailure, Cog, CommandInvokeError, CommandNotFound, Context, DisabledCommand, MissingRequiredArgument, NoPrivateMessage
+from discord.ext.commands import CheckFailure, Cog, CommandInvokeError, CommandNotFound, Context, DisabledCommand,\
+    MissingRequiredArgument, NoPrivateMessage
 from pytz import timezone
 
 from classes.bot import Bot
@@ -180,7 +180,6 @@ class Events(Cog):
     @Cog.listener("on_message")
     async def _on_message(self, msg: Message):
         if str(msg.guild.me.id) in msg.content:
-            print(msg.mentions)
             ts = tz.localize(datetime.now()).strftime("%b. %d, %Y %I:%M %p")
             author = msg.author
             display_name = f' ({author.display_name})' if author.display_name != author.name else ''
