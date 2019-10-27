@@ -3,9 +3,11 @@
 from sys import stderr
 from traceback import print_tb
 
-from discord import Colour, Embed, Member
+from datetime import datetime
+from discord import Colour, Embed, Member, Message
 from discord.utils import get
 from discord.ext.commands import CheckFailure, Cog, CommandInvokeError, CommandNotFound, Context, DisabledCommand, MissingRequiredArgument, NoPrivateMessage
+from pytz import timezone
 
 from classes.bot import Bot
 from cogs.utils.errors import *
@@ -16,6 +18,9 @@ WELCOME = "Welcome to AWBW Discord Server {}! Present yourself and have fun!"
 LEAVE = "{} has left our army... Be happy in peace."
 
 
+tz = timezone('America/Kentucky/Louisville')
+
+
 class Events(Cog):
 
     def __init__(self, bot: Bot):
@@ -23,11 +28,12 @@ class Events(Cog):
         self.db = bot.db
         self.config = f"{bot.APP_NAME}:events"
 
-        # self.awbw = bot.get_guild(184502171117551617)           # Not Skype
-        self.awbw = bot.get_guild(313453805150928906)           # AWBW Guild
-        # self.channel = bot.get_channel(315232431835709441)      # Circlejerk Py
-        self.channel = bot.get_channel(313453805150928906)      # AWBW General
-        self.errorlog = bot.get_channel(637150067525943296)     # BattleMaps-ErrorLog
+        # self.awbw = bot.get_guild(184502171117551617)               # Not Skype
+        self.awbw = bot.get_guild(313453805150928906)               # AWBW Guild
+        # self.channel = bot.get_channel(315232431835709441)          # Circlejerk Py
+        self.channel = bot.get_channel(313453805150928906)          # AWBW General
+        self.errorlog = bot.get_channel(637150067525943296)         # BattleMaps-ErrorLog
+        self.notifchannel = bot.get_channel(637877898560143363)     # BattleMaps-Notifs
 
         if self.awbw:
             self.sad_andy = get(self.awbw.emojis, id=325608374526017536)  # :sad_andy: emoji
@@ -170,6 +176,24 @@ class Events(Cog):
         else:
             # print_tb(error.__traceback__, file=stderr)
             await self.error_to_log(error)
+
+    @Cog.listener("on_message")
+    async def _on_message(self, msg: Message):
+        if str(msg.guild.me.id) in msg.content:
+            print(msg.mentions)
+            ts = tz.localize(datetime.now()).strftime("%b. %d, %Y %I:%M %p")
+            author = msg.author
+            display_name = f' ({author.display_name})' if author.display_name != author.name else ''
+            em = Embed(
+                title=f"{msg.guild}: #{msg.channel} at {ts}",
+                description=msg.content,
+                color=author.color
+            )
+            em.set_author(
+                name=f"{author.name}#{author.discriminator}{display_name}",
+                icon_url=author.avatar_url_as(format="png")
+            )
+            await self.notifchannel.send(msg.jump_url, embed=em)
 
 
 def setup(bot: Bot):
