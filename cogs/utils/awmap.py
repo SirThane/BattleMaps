@@ -1,12 +1,17 @@
 
+from __future__ import annotations
+
+
 import csv
 
 from io import BytesIO
 from math import cos, sin, pi, trunc
+
 from PIL import Image, ImageDraw
-from typing import Dict, List, Tuple, Union
+from typing import Dict, Generator, List, Tuple, Union
 
 from cogs.utils import awbw_api
+from cogs.utils.utils import bytespop
 
 
 def layer(bitmask: Union[str, int]) -> List[Tuple[int, int]]:
@@ -1904,7 +1909,7 @@ AWBW_AWARENESS = {
 
 class AWMap:
 
-    def __init__(self):
+    def __init__(self) -> None:
 
         # The data that the class is instantiated with will be stored in
         # raw_data and can later be referenced
@@ -1949,11 +1954,11 @@ class AWMap:
         self.custom_countries = list()
         self.country_conversion = dict()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{self.__class__.__name__}:" \
                f"Title='{self.title}' Author='{self.author}>'"
 
-    def __str__(self):
+    def __str__(self) -> str:
         ret = ""
         if self.title:
             ret += f"Map Title: {self.title}\n"
@@ -1963,7 +1968,7 @@ class AWMap:
             ret += f"Map Description: {self.desc}\n"
         return ret
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[AWTile, None, None]:
         """Iterate through each tile object by row by column
 
         :yields: AWTile stored at current slot
@@ -1972,11 +1977,13 @@ class AWMap:
             for x in range(self.size_w):
                 yield self.tile(x, y)
 
-    """
+    """ ########################
         # Opening File Methods #
-    """
+        ######################## """
 
-    def from_aws(self, data: Union[bytes, bytearray]):
+    # These methods are used to instantiate an AWMap from either AWS data or AWBW data
+
+    def from_aws(self, data: Union[bytes, bytearray]) -> AWMap:
         # Take the bytes data and make into bytearray so it can be indexed and store it back in self.raw_data
         self.raw_data = bytearray(data)
 
@@ -2003,12 +2010,12 @@ class AWMap:
         ]
 
         # Create the 2D dictionary of AWTiles by iterating over the terrain and unit data
-        map_data = {
+        map_data = {  # TODO: Refactor whole process to chunk map and unit data into 2D list and transpose first
             x: {
                 y: AWTile(
                     self, x, y,
-                    **self.terr_from_aws(x, y, terr_data),
-                    **self.unit_from_aws(x, y, unit_data),
+                    **self._terr_from_aws(x, y, terr_data),
+                    **self._unit_from_aws(x, y, unit_data),
                 ) for y in range(self.size_h)
             } for x in range(self.size_w)
         }
@@ -2023,11 +2030,24 @@ class AWMap:
         }
 
         # The rest of the AWS data is metadata
-        self.title, self.author, self.desc = self.meta_from_aws(self.raw_data[13 + (self.map_size * 4):])
+        metadata = self.raw_data[13 + (self.map_size * 4):]
+
+        # Pop the size of title, and use it to pop the title
+        t_size, metadata = bytespop(metadata, 4, "int")
+        self.title, metadata = bytespop(metadata, t_size, "utf8")
+
+        # Pop the size of the author, and use it to pop the author
+        a_size, metadata = bytespop(metadata, 4, "int")
+        self.author, metadata = bytespop(metadata, a_size, "utf8")
+
+        # Don't need to know the size of the description
+        # Cut off the 4 bytes in front and the rest will be the description
+        # No footer. EOF
+        self.desc = metadata[4:].decode("utf8")
 
         return self
 
-    def from_awbw(self, data: str = "", title: str = "", awbw_id: int = None):
+    def from_awbw(self, data: str = "", title: str = "", awbw_id: int = None) -> Union[AWMap, None]:
         """Loads a map from AWBW data
 
         Maps can be loaded two ways, either from raw CSV array with AWBW terrain
@@ -2103,38 +2123,44 @@ class AWMap:
             for x in range(self.size_w):
                 self.map[y][x] = AWTile(self, x, y, **self.terr_from_awbw(csvdata[y][x]))
 
-    def terr_from_aws(self, x: int, y: int, data) -> dict:
-        # Return 2 byte terrain value from binary data for coordinate (x, y)
+    def _terr_from_aws(self, x: int, y: int, data: List[int]) -> Dict[str, int]:
+        """Use (x, y) coordinate to the appropriate item from data based on map
+        height
+
+        :param x:       X coordinate of terrain tile
+        :param y:       Y coordinate of terrain tile
+        :param data:    flat list of terrain IDs for map
+        :return:        Dict with Terrain ID and Country ID
+        """
+
+        # TODO: Both of these need to be refactored straight to hell. Needs to be down in from_aws() before AWTiles
+
+        # Use (x, y) coordinates to find location of terrain int in flat list
         offset = y + (x * self.size_h)
-        terr, t_ctry = AWS_TERR.get(data[offset], (0, 0))
+
+        # Get corresponding Internal Terrain ID and return in dict to splat in AWTile __init__ params
+        terr, t_ctry = AWS_TERR.get(data[offset], (0, 0))  # Default: Plains
         return {"terr": terr, "t_ctry": t_ctry}
 
-    def unit_from_aws(self, x: int, y: int, data) -> Dict[str, int]:
+    def _unit_from_aws(self, x: int, y: int, data: List[int]) -> Dict[str, int]:
+        """Use (x, y) coordinate to the appropriate item from data based on map
+        height
+
+        :param x:       X coordinate of tile with unit
+        :param y:       Y coordinate of tile with unit
+        :param data:    flat list of unit IDs for map
+        :return:        Dict with Unit ID and Country ID
         """
 
-        :param x: X coordinate of terrain tile
-        :param y: Y coordinate of terrain tile
-        :param data: bytes sequence of terrain data from AWS
-        :return:
-        """
-        # Return 2 byte unit value from binary data for coordinate (x, y)
+        # Use (x, y) coordinates to find location of unit int in flat list
         offset = y + (x * self.size_h)
-        unit, u_ctry = AWS_UNIT.get(data[offset], (0, 0))
+
+        # Use (x, y) coordinates to find location of unit int in flat list
+        unit, u_ctry = AWS_UNIT.get(data[offset], (0, 0))  # Default: No Unit
         return {"unit": unit, "u_ctry": u_ctry}
 
     @staticmethod
-    def meta_from_aws(data):  # TODO: This needs refactoring. Can be optimized.
-        t_size = int.from_bytes(data[:4], 'little')
-        a_size = int.from_bytes(data[t_size + 4:t_size + 8], 'little')
-        d_size = int.from_bytes(data[t_size + a_size + 8:t_size + a_size + 12], 'little')
-
-        title = data[4:4 + t_size].decode('utf-8')
-        author = data[8 + t_size:8 + t_size + a_size].decode('utf-8')
-        desc = data[12 + t_size + a_size:12 + t_size + a_size + d_size].decode('utf-8')
-        return title, author, desc
-
-    @staticmethod
-    def terr_from_awbw(terr: int):
+    def terr_from_awbw(terr: int) -> Dict[str, int]:
         if terr == "":
             main_id, main_ctry = 999, 0
         else:
@@ -2158,7 +2184,7 @@ class AWMap:
                 "t_ctry": main_ctry,
             }
 
-    def tile(self, x: int, y: int):
+    def tile(self, x: int, y: int) -> AWTile:
         # Return tile object at coordinate (x, y)
         try:
             tile = self.map[y][x]
@@ -2176,35 +2202,77 @@ class AWMap:
             return AWTile(self, x, y, 999, 0)
 
     def mod_terr(self, x: int, y: int, terr: int, t_ctry: int) -> None:
+        """Changes terrain value of tile at (x, y) using Internal Terrain and Country IDs"""
         self.tile(x, y).mod_terr(terr, t_ctry)
 
+    def mod_unit(self, x: int, y: int, unit: int, u_ctry: int) -> None:
+        """Changes unit value of tile at (x, y) using Internal Unit and Country IDs"""
+        self.tile(x, y).mod_unit(unit, u_ctry)
+
     @property
-    def map_size(self):
+    def map_size(self) -> int:
+        """Number of tiles in map"""
         return self.size_h * self.size_w
 
     @property
-    def to_awbw(self):
-        return '\n'.join(
+    def to_awbw(self) -> str:
+        """CSV of AWBW Terrain IDs representing map returned as multiline string"""
+        csvdata = '\n'.join(
             [','.join(
-                [str(self.tile(x, y).awbw_id) for x in range(self.size_w)]
+                [
+                    str(self.tile(x, y).awbw_id)
+                    for x in range(self.size_w)
+                ]
             ) for y in range(self.size_h)]
         )
+        return csvdata
 
     @property
-    def to_aws(self):
+    def to_aws(self) -> bytearray:
+        """Reconstruct the bytes data of an AWS map file from the map attributes
+
+        The bytearray object returned can be written to a file with .AWS extension
+        """
+
+        # Start bytes with header for AWS map file
         ret = bytearray(b'AWSMap001') + b'\x00'
 
+        # If style is not set, default to AW2 Clear style
         style = self.style if self.style else 5
 
+        # Add map dimensions and metadata
         for b in [m.to_bytes(1, 'little') for m in [self.size_w, self.size_h, style]]:
             ret += b
-        for b in [terr.to_bytes(2, 'little') for terr in
-                  [self.tile(x, y).aws_terr_id for x in range(self.size_w) for y in range(self.size_h)]]:
-            ret += b
-        for b in [unit.to_bytes(2, 'little') for unit in
-                  [self.tile(x, y).aws_unit_id for x in range(self.size_w) for y in range(self.size_h)]]:
-            ret += b
 
+        # Reorganize the terrain data back into a flat list of columns ([x][y])
+        terr_data = [
+            terr.to_bytes(2, 'little')
+            for terr in [
+                self.tile(x, y).aws_terr_id
+                for x in range(self.size_w)
+                for y in range(self.size_h)
+            ]
+        ]
+
+        # Add the terrain data sequentially
+        for t in terr_data:
+            ret += t
+
+        # Reorganize the unit data back into a flat list of columns ([x][y])
+        unit_data = [
+            unit.to_bytes(2, 'little')
+            for unit in [
+                self.tile(x, y).aws_unit_id
+                for x in range(self.size_w)
+                for y in range(self.size_h)
+            ]
+        ]
+
+        # Add the unit data sequentially
+        for u in unit_data:
+            ret += u
+
+        # Add the map metadata at the end
         ret += len(self.title).to_bytes(4, 'little') + self.title.encode('utf-8')
         ret += len(self.author).to_bytes(4, 'little') + self.author.encode('utf-8')
         ret += len(self.desc).to_bytes(4, 'little') + self.desc.encode('utf-8')
@@ -2212,7 +2280,7 @@ class AWMap:
         return ret
 
     @property
-    def minimap(self):
+    def minimap(self) -> BytesIO:
         return AWMinimap(self).map
 
 
@@ -2238,12 +2306,12 @@ class AWTile:  # TODO: Account for multi-tile terrain objects e.g. death ray, vo
         self.awmap = awmap
         self.awareness_override = awareness_override
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"({self.x + 1}, {self.y + 1}): " \
                f"<{self.terr}:{MAIN_TERR.get(self.terr, 'Plain')}>" \
                f"<{self.unit}:{MAIN_UNIT.get(self.unit, 'Empty')}>"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.__repr__()
 
     def tile(self, x: int, y: int):
@@ -2251,7 +2319,7 @@ class AWTile:  # TODO: Account for multi-tile terrain objects e.g. death ray, vo
         return self.awmap.tile(x, y)
 
     @property
-    def terr_name(self):
+    def terr_name(self) -> str:
         return MAIN_TERR.get(self.terr, "InvalidTerrID")
 
     @property

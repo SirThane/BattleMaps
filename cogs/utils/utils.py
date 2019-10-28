@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from io import StringIO
 
 import redis
-from typing import Iterable
+from typing import Iterable, Tuple, Union
 
 
 class Paginator:
@@ -132,6 +132,28 @@ def flatten(items):
                 yield sub_x
         else:
             yield x
+
+
+def bytespop(
+        b: Union[bytes, bytearray],
+        q: int = 1,
+        decode: str = None,
+        endian: str = "little"
+) -> Tuple[Union[int, str, bytearray], bytearray]:
+
+    if isinstance(b, bytes):
+        b = bytearray(b)
+
+    ret = b[:q]
+
+    b = b[q:]
+
+    if decode == "utf8":
+        return ret.decode("utf8"), b
+    elif decode == "int":
+        return int.from_bytes(ret, endian), b
+    else:
+        return ret, b
 
 
 def bool_transform(arg):
