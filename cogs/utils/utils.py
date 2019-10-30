@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from io import StringIO
 
 import redis
-from typing import Iterable, Tuple, Union
+from typing import Any, Generator, Iterable, List, Tuple, Union
 
 
 class Paginator:
@@ -154,6 +154,16 @@ def bytespop(
         return int.from_bytes(ret, endian), b
     else:
         return ret, b
+
+
+def fold_list(l: Iterable, width: int) -> Generator[List[Any], None, None]:
+    l = list(l)
+    try:
+        assert len(l) % width == 0
+    except AssertionError:
+        raise ValueError(f"Width must be factor of list length ({len(l)}")
+    for i in range(0, len(l), width):
+        yield l[i:i + width]
 
 
 def bool_transform(arg):
