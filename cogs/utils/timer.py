@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 
+from datetime import timedelta
+
 from asyncio import sleep
+from discord import Embed, Colour
+from discord.ext.commands import command, Context
 from discord.ext.commands.cog import Cog
 
 from classes.bot import Bot
@@ -36,6 +40,15 @@ class Timer(Cog):
         """Listener will be called every second with the
         number of seconds passed since cog load"""
         pass
+
+    @command(name="uptime", enabled=True)
+    async def uptime(self, ctx: Context):
+        em = Embed(
+            title=f"⏲ {self.bot.APP_NAME} Uptime",
+            description=f"Shop's been open for:  `{str(timedelta(seconds=self.bot.secs))}`",
+            colour=Colour.red()
+        )
+        await ctx.send(embed=em)
 
 
 def setup(bot: Bot):
