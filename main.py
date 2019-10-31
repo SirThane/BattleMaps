@@ -15,6 +15,33 @@ from cogs.utils.utils import StrictRedis
 APP_NAME = "BattleMaps"  # BOT NAME HERE
 
 
+"""
+Minimum Redis Schema
+
+:namespace {APP_NAME}:config:
+    :HASH {APP_NAME}:config:instance
+        :key command_prefix:    str         # Prefix for commands
+        :key description:       str         # Description will be used for Help
+        :key dm_help:           bool        # If Help output will be forced to DMs
+    :HASH {APP_NAME}:config:run
+        :key bot:               bool        # If bot account
+        :key token              str         # Login token
+
+
+Redis Configuration JSON Schema
+
+:file ./redis.json
+{
+  "db": {
+    "host": "localhost",                    # Server address hosting Redis DB
+    "port": 6379,                           # Port for accessing Redis
+    "db": 0,                                # Redis DB number storing app configs
+    "decode_responses": true                # decode_responses must be bool true
+  }
+}
+"""
+
+
 try:
     with open("redis.json", "r+") as redis_conf:
         conf = load(redis_conf)["db"]
