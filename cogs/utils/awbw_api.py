@@ -1,6 +1,7 @@
 
 import requests
 
+# from aiohttp import ClientSession
 from datetime import datetime
 from typing import Any, Dict  # , List, Union
 
@@ -71,7 +72,7 @@ def get_map(maps_id: int = None) -> Dict[str, Any]:  # Union[str, int, List[List
     map_data["size_h"] = int(j_map["Size Y"])
     map_data["terr"] = [list(r) for r in zip(*j_map["Terrain Map"])]
 
-    map_data["unit"] = list()
+    units = list()
     for unit in j_map["Predeployed Units"]:
         unit_dict = {
             "id":   int(unit["Unit ID"]),
@@ -79,13 +80,15 @@ def get_map(maps_id: int = None) -> Dict[str, Any]:  # Union[str, int, List[List
             "y":    int(unit["Unit Y"]),
             "ctry": unit["Country Code"]
         }
-        map_data["unit"].append(unit_dict)
+        units.append(unit_dict)
+
+    map_data["unit"] = units
 
     return map_data
 
 
-def get_user(user_id: int = None) -> Dict[str, str]:
-    pass
+# def get_user(user_id: int = None) -> Dict[str, str]:
+#     pass
 
 
 """
