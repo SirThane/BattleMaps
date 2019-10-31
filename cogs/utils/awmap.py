@@ -1378,7 +1378,7 @@ AWS_TERR = {
 
 # Relate AWS Unit IDs (keys) to Internal Unit, Country ID pairs (values)
 AWS_UNIT = {
-    65535:  (0,  0),     # Empty
+    65535:  (0,  0),   # Empty
 
     500:    (1,  1),   # OSInfantry
     520:    (2,  1),   # OSMech
@@ -2207,7 +2207,7 @@ class AWMap:
 
     def mod_unit(self, x: int, y: int, unit: int, u_ctry: int) -> None:
         """Changes unit value of tile at (x, y) using Internal Unit and Country IDs"""
-        self.tile(x, y).mod_unit(unit, u_ctry)
+        self.tile(x, y).mod_terr(unit, u_ctry)
 
     @property
     def map_size(self) -> int:
@@ -2376,10 +2376,10 @@ class AWTile:  # TODO: Account for multi-tile terrain objects e.g. death ray, vo
             raise ValueError("Invalid Terrain Data")
         else:
             self.terr, self.t_ctry = terr, t_ctry
+            pass
 
     def mod_unit(self, unit: int, u_ctry: int) -> None:  # TODO: Refactor
-        if unit in MAIN_UNIT.keys() and\
-                u_ctry in MAIN_CTRY.keys():
+        if unit in MAIN_UNIT.keys() and u_ctry in MAIN_CTRY.keys():
             self.unit, self.u_ctry = unit, u_ctry
         else:
             raise ValueError("Invalid Unit Data")
