@@ -1,38 +1,32 @@
 """BattleMaps, a utility bot for working with Advance Wars
 maps on the AWBW Discord server"""
 
-import asyncio
 import json
 
-import discord
-from discord.ext import commands
+from asyncio import get_event_loop, sleep
+from discord import Activity, Message
+from discord.utils import get, oauth_url
 
 from classes.bot import Bot
-from cogs.utils import utils
+from cogs.utils.utils import StrictRedis
 
 
-LOOP = asyncio.get_event_loop()
+APP_NAME = "BattleMaps"  # BOT NAME HERE
 
-APP_NAME = 'BattleMaps'  # BOT NAME HERE
+
+LOOP = get_event_loop()
 
 try:
-    with open('redis.json', 'r+') as redis_conf:
+    with open("redis.json", "r+") as redis_conf:
         conf = json.load(redis_conf)["db"]
 except FileNotFoundError:
-    conf = None  # STHU, PyCharm
-    print('ERROR: redis.json not found in running directory')
-    exit()
+    raise FileNotFoundError("redis.json not found in running directory")
 
 
-db = utils.StrictRedis(**conf)
-config = f'{APP_NAME}:config'
-bot = Bot(
-    command_prefix=db.hget(f'{config}:prefix', 'default'),
-    **db.hgetall(f'{config}:instance')  # TODO: Refactor
-)
-bot.db = db
-bot.APP_NAME = APP_NAME
-db.scan_iter()
+db = StrictRedis(**conf)
+config = f"{APP_NAME}:config"
+
+bot = Bot(db=db, app_name=APP_NAME, **db.hgetall(f"{config}:instance"))
 
 
 @bot.listen()
@@ -42,7 +36,7 @@ async def timer_update(seconds):
 
 
 # TODO: Refactor into events cog or similar
-async def init_timed_events(client: commands.Bot):
+async def init_timed_events(client: Bot):
     """Create a listener task with a tick-rate of 1s"""
 
     await bot.wait_until_ready()  # Wait for the bot to launch first
@@ -54,66 +48,46 @@ async def init_timed_events(client: commands.Bot):
         await timer_update(secs)
         secs += 1
         client.secs = secs
-        await asyncio.sleep(1)
+        await sleep(1)
 
 
 @bot.event
 async def on_ready():
     bot.app_info = await bot.application_info()
 
-    bot.owner = discord.utils.get(
-        bot.get_all_members(),
-        id=bot.app_info.owner.id
-    )
+    bot.owner = get(bot.get_all_members(), id=bot.app_info.owner.id)
 
-    await bot.change_presence(activity=discord.Game(name="setting up shop."))
+    await bot.change_presence(activity=Activity(name="around while setting up shop.", type=0))
 
     bot.loop.create_task(init_timed_events(bot))
 
-    print(f'\n'
-          f'#-------------------------------#')
+    print(f"\n#-------------------------------#")
 
-    for cog in db.lrange(f'{config}:initial_cogs', 0, -1):
+    for cog in db.lrange(f"{config}:initial_cogs", 0, -1):
         try:
-            print(f'| Loading initial cog {cog}')
-            bot.load_extension(f'cogs.{cog}')
+            print(f"| Loading initial cog {cog}")
+            bot.load_extension(f"cogs.{cog}")
         except Exception as e:
-            print(
-                '| Failed to load extension {}\n|   {}: {}'.format(
-                    cog,
-                    type(e).__name__,
-                    e
-                )
-            )
+            print(f"| Failed to load extension {cog}\n|   {type(e).__name__}: {e}")
 
-    print(f'#-------------------------------#\n')
+    await bot.change_presence(activity=Activity(name=f"{bot.command_prefix}help for help", type=2))
 
-    await bot.change_presence(
-        activity=discord.Game(
-            name=f'{bot.command_prefix}help'
-        )
-    )
-
-    print(f'#-------------------------------#\n'
-          f'| Successfully logged in.\n'
-          f'#-------------------------------#\n'
-          f'| Username:  {bot.user.name}\n'
-          f'| User ID:   {bot.user.id}\n'
-          f'| Owner:     {bot.owner}\n'
-          f'| Guilds:    {len(bot.guilds)}\n'
-          f'| Users:     {len(list(bot.get_all_members()))}\n'
-          f'| OAuth URL: {discord.utils.oauth_url(bot.app_info.id)}\n'
-          f'# ------------------------------#')
+    print(f"#-------------------------------#\n"
+          f"| Successfully logged in.\n"
+          f"#-------------------------------#\n"
+          f"| Username:  {bot.user.name}\n"
+          f"| User ID:   {bot.user.id}\n"
+          f"| Owner:     {bot.owner}\n"
+          f"| Guilds:    {len(bot.guilds)}\n"
+          f"| Users:     {len(list(bot.get_all_members()))}\n"
+          f"| OAuth URL: {oauth_url(bot.app_info.id)}\n"
+          f"# ------------------------------#")
 
 
 @bot.event
-async def on_message(message):
+async def on_message(message: Message):
     await bot.process_commands(message)
 
 
 if __name__ == "__main__":
-    run = {
-        'token': db.hget(f'{config}:run', 'token'),
-        'bot': db.hget(f'{config}:run', 'bot')
-    }
-    bot.run(run['token'], bot=run['bot'])
+    bot.run(**db.hgetall(f"{config}:run"))
