@@ -9,11 +9,12 @@ from typing import Union
 from urllib.parse import quote
 
 from discord import Attachment, DMChannel, Embed, File, HTTPException, Member, Message
-from discord.ext.commands import Cog, command, group
+from discord.ext.commands import Cog, group
 from discord.ext.commands.context import Context
 
 from classes.bot import Bot
 from cogs.utils import checks
+from cogs.utils.utils import fold_list
 from cogs.utils.awmap import AWMap
 from cogs.utils.errors import *
 
@@ -135,6 +136,27 @@ class AdvanceWars(Cog):
         await self.em_load(ctx.channel, awmap)
         await self.timed_store(ctx.author, awmap)
 
+    @_map.group(name="draw", invoke_without_command=False, aliases=["mod"])
+    async def draw(self, ctx: Context):
+        pass
+
+    @draw.command(name="terr", aliases=["terrain"])
+    async def terr(self, ctx: Context, terr: Union[str, int], ctry: Union[str, int], *, coords):
+        """Modifies the terrain contents of a list of tiles
+
+        """
+        awmap = self.get_loaded_map(ctx.author)
+        if not awmap:
+            raise NoLoadedMapError
+        coords = list(fold_list(coords.split(" "), 2))
+        terr, ctry = int(terr), int(ctry)
+        for coord in coords:
+            x, y = coord
+            x, y = int(x), int(y)
+            awmap.mod_terr(x, y, terr, ctry)
+        await self.timed_store(ctx.author, awmap)
+        await self.em_load(ctx.channel, awmap)
+
     @_map.command(name="download", usage=" ")
     async def download(self, ctx: Context, *, _: str = ""):
         """Download your currently loaded map
@@ -166,7 +188,7 @@ class AdvanceWars(Cog):
 
     async def timed_store(self, user: Member, awmap: AWMap) -> None:
         """
-        Stores an AWMap by user ID with a expiry of 1 minute.
+        Stores an AWMap by user ID with a expiry of 5 minutes.
         Loading another map will reset the timer. Stored in
         `self.loaded_maps` dict with structure:
 
@@ -272,12 +294,6 @@ class AdvanceWars(Cog):
         else:
             title = "[Untitled]"
 
-        # # This is what was causing the issue with the funky gifs
-        # # Saving to BytesIO(), loading in Image.Image(), then resaving
-        # img = BytesIO()
-        # awmap.minimap.save(img, "GIF", save_all=True)
-        # img.seek(0)
-
         attachment = File(fp=awmap.minimap, filename=f"{title}.gif")
         url = await self.get_hosted_file(attachment)
 
@@ -332,7 +348,9 @@ class AdvanceWars(Cog):
         image_url = await self.get_minimap(awmap)
         em.set_image(url=image_url)
 
-        await channel.send(embed=em)
+        msg = await channel.send(embed=em)
+
+        return msg
 
     async def em_download(self, channel, awmap: AWMap):
         """Formats and sends an embed to `channel` containing
