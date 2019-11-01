@@ -1,34 +1,17 @@
+# -*- coding: utf-8 -*-
 
-from itertools import groupby
-import re
-import unicodedata
+from discord import Colour, DMChannel, Embed
+from discord.abc import Messageable
+from discord.ext.commands import Cog, Command, Context, Group
+from discord.ext.commands.help import HelpCommand as BaseHelpCommand
+# from discord.utils import maybe_coroutine
+from typing import Dict, List, Union
 
-from discord.ext.commands import Cog
-from discord.ext.commands.help import HelpCommand as DiscordHelpCommand
-from discord.ext.commands.help import Paginator
-
-from classes.bot import Bot
-
-
-_IS_ASCII = re.compile(r'^[\x00-\x7f]+$')
+from cogs.utils.classes import Bot
+from cogs.utils.utils import ZWSP
 
 
-# Copy def from discord.utils to satisfy PyCharm inspect warning for accessing protected attribute
-def _string_width(string, *, is_ascii=_IS_ASCII):
-    """Returns string's width."""
-    match = is_ascii.match(string)
-    if match:
-        return match.endpos
-
-    unicode_wide_char_type = 'WFA'
-    width = 0
-    func = unicodedata.east_asian_width
-    for char in string:
-        width += 2 if func(char) in unicode_wide_char_type else 1
-    return width
-
-
-class HelpCommand(DiscordHelpCommand):
+class HelpCommand(BaseHelpCommand):
     """The implementation of the default help command.
 
     This inherits from :class:`HelpCommand`.
@@ -49,188 +32,181 @@ class HelpCommand(DiscordHelpCommand):
         output is DM'd. If ``None``, then the bot will only DM when the help
         message becomes too long (dictated by more than :attr:`dm_help_threshold` characters).
         Defaults to ``False``.
-    dm_help_threshold: Optional[:class:`int`]
-        The number of characters the paginator must accumulate before getting DM'd to the
-        user if :attr:`dm_help` is set to ``None``. Defaults to 1000.
-    indent: :class:`int`
-        How much to intend the commands from a heading. Defaults to ``2``.
     commands_heading: :class:`str`
         The command list's heading string used when the help command is invoked with a category name.
         Useful for i18n. Defaults to ``"Commands:"``
     no_category: :class:`str`
         The string used when there is a command which does not belong to any category(cog).
         Useful for i18n. Defaults to ``"No Category"``
-    paginator: :class:`Paginator`
-        The paginator used to paginate the help command output.
     """
 
     def __init__(self, **options):
-        self.width = options.pop('width', 80)
-        self.indent = options.pop('indent', 2)
-        self.sort_commands = options.pop('sort_commands', True)
         self.dm_help = options.pop('dm_help', False)
-        self.dm_help_threshold = options.pop('dm_help_threshold', 1000)
-        self.commands_heading = options.pop('commands_heading', "Commands:")
-        self.no_category = options.pop('no_category', 'No Category')
-        self.paginator = options.pop('paginator', None)
-
-        if self.paginator is None:
-            self.paginator = Paginator()
 
         super().__init__(**options)
 
-    def shorten_text(self, text):
-        """Shortens text to fit into the :attr:`width`."""
-        if len(text) > self.width:
-            return text[:self.width - 3] + '...'
-        return text
+    @property
+    def is_dm(self) -> bool:
+        """Returns True if command or caller is from DMs"""
+        return isinstance(self.context.channel, DMChannel)
 
-    def get_ending_note(self):
-        """Returns help command's ending note. This is mainly useful to override for i18n purposes."""
-        command_name = self.invoked_with
-        return "Type {0}{1} command for more info on a command.\n" \
-               "You can also type {0}{1} category for more info on a category.".format(self.clean_prefix, command_name)
+    @property
+    def bot(self):
+        return self.context.bot
 
-    def add_indented_commands(self, commands, *, heading, max_size=None):
-        """Indents a list of commands after the specified heading.
+    @property
+    def prefix(self):
+        return self.bot.command_prefix
 
-        The formatting is added to the :attr:`paginator`.
+    @property
+    def author(self) -> Dict[str, str]:
+        """Returns an author dict for constructing Embed"""
+        # TODO: Before using display name, need to see how I'll expose send_help_for
+        name = self.bot.user.name
+        author = {
+            'name': f'{name} Help Manual',
+            'icon_url': self.avatar
+        }
+        return author
 
-        The default implementation is the command name indented by
-        :attr:`indent` spaces, padded to ``max_size`` followed by
-        the command's :attr:`Command.short_doc` and then shortened
-        to fit into the :attr:`width`.
+    @property
+    def avatar(self):
+        """Returns web URL for bot account's avatar"""
+        return self.bot.user.avatar_url_as(format='png')
 
-        Parameters
-        -----------
-        commands: Sequence[:class:`Command`]
-            A list of commands to indent for output.
-        heading: :class:`str`
-            The heading to add to the output. This is only added
-            if the list of commands is greater than 0.
-        max_size: Optional[:class:`int`]
-            The max size to use for the gap between indents.
-            If unspecified, calls :meth:`get_max_size` on the
-            commands parameter.
-        """
+    @property
+    def color(self) -> int:
+        """Returns current role color of bot if from Guild, or default Embed color if DM"""
+        if self.is_dm:
+            return Colour.default().value  # TODO: What is no color now? 0 is Black. discord.Colour.default()?
+        else:
+            return self.context.guild.me.color.value
 
-        if not commands:
-            return
+    @property
+    def ending_note(self):
+        """Returns help command's ending note"""
+        command_name = self.invoked_with if self.invoked_with else "help"
+        prefix = self.bot.command_prefix
+        return f"Type {prefix}{command_name} command for more info on a command.\n" \
+               f"You can also type {prefix}{command_name} category for more info on a category."
 
-        self.paginator.add_line(heading)
-        max_size = max_size or self.get_max_size(commands)
-
-        get_width = _string_width
-        for command in commands:
-            name = command.name
-            width = max_size - (get_width(name) - len(name))
-            entry = '{0}{1:<{width}} {2}'.format(self.indent * ' ', name, command.short_doc, width=width)
-            self.paginator.add_line(self.shorten_text(entry))
-
-    async def send_pages(self):
-        """A helper utility to send the page output from :attr:`paginator` to the destination."""
-        destination = self.get_destination()
-        for page in self.paginator.pages:
-            await destination.send(page)
-
-    def add_command_formatting(self, command):
-        """A utility function to format the non-indented block of commands and groups.
-
-        Parameters
-        ------------
-        command: :class:`Command`
-            The command to format.
-        """
-
-        if command.description:
-            self.paginator.add_line(command.description, empty=True)
-
-        signature = self.get_command_signature(command)
-        self.paginator.add_line(signature, empty=True)
-
-        if command.help:
-            try:
-                self.paginator.add_line(command.help, empty=True)
-            except RuntimeError:
-                for line in command.help.splitlines():
-                    self.paginator.add_line(line)
-                self.paginator.add_line()
-
-    def get_destination(self):
+    @property
+    def dest(self) -> Messageable:
+        """Returns the destination Help output will be sent to"""
         ctx = self.context
         if self.dm_help is True:
             return ctx.author
-        elif self.dm_help is None and len(self.paginator) > self.dm_help_threshold:
-            return ctx.author
         else:
-            return ctx.channel
+            return ctx
 
-    async def prepare_help_command(self, ctx, command=None):
-        self.paginator.clear()
+    def em_base(self) -> Embed:
+
+        em = Embed(description=ZWSP, color=self.color)
+        em.set_author(**self.author)
+        em.set_footer(text=self.ending_note)
+
+        return em
+
+    # def em_base(self) -> Dict[str, Union[str, int, List[Dict[str, str]], Dict[str, str]]]:
+    #     em = {
+    #         'description': ZWSP,
+    #         'color': self.color,
+    #         "author": {
+    #             "name": self.author,
+    #             "icon_url": self.avatar
+    #         },
+    #         'footer': {
+    #             'text': self.ending_note
+    #         },
+    #         'fields': []
+    #     }
+    #
+    #     return em
+
+    # TODO: self.ctx may not get set. Check this at test time.
+    async def prepare_help_command(self, ctx: Context, command=None):
+        self.context = ctx
         await super().prepare_help_command(ctx, command)
 
-    async def send_bot_help(self, mapping):
-        ctx = self.context
-        bot = ctx.bot
+    async def send_bot_help(self, mapping: Dict[Union[Cog, None], List[Command]]):
+        em = self.em_base()
+        no_category = f"{ZWSP}No Category:"
 
-        if bot.description:
-            # <description> portion
-            self.paginator.add_line(bot.description, empty=True)
+        if self.bot.description:
+            em.description = f"*{self.bot.description}*"
 
-        no_category = '\u200b{0.no_category}:'.format(self)
+        for cog, cmds in mapping.items():
+            for cmd in cmds:  # TODO: Refactor this into a method and use a self.show_hidden
+                if not await cmd.can_run(self.context) or cmd.hidden:
+                    cmds.remove(cmd)
+            if not cmds:
+                continue
+            field = {
+                "name": f"**__{cog.qualified_name if cog else '{}'.format(no_category)}__**",
+                "value": "\n".join([f"**{self.prefix}{cmd.name}:**   {cmd.short_doc}" for cmd in cmds]),
+                "inline": False
+            }
+            if not field["value"]:
+                field["value"] = ZWSP
+            em.add_field(**field)
 
-        def get_category(command, *, no_cat=no_category):
-            cog = command.cog
-            return cog.qualified_name + ':' if cog is not None else no_cat
+        await self.dest.send(embed=em)  # TODO: Refactor into self.send() for pagination
 
-        filtered = await self.filter_commands(bot.commands, sort=True, key=get_category)
-        max_size = self.get_max_size(filtered)
-        to_iterate = groupby(filtered, key=get_category)
+    async def send_command_help(self, command: Command):
+        em = self.em_base()
+        em.description = f"`Syntax: {self.get_command_signature(command)}`"
 
-        # Now we can add the commands to the page.
-        for category, commands in to_iterate:
-            commands = sorted(commands, key=lambda c: c.name) if self.sort_commands else list(commands)
-            self.add_indented_commands(commands, heading=category, max_size=max_size)
+        field = {
+            "name": f"__{command.short_doc}__",
+            "value": command.help[len(command.short_doc):].strip("\n"),
+            "inline": False
+        }
+        em.add_field(**field)
 
-        note = self.get_ending_note()
-        if note:
-            self.paginator.add_line()
-            self.paginator.add_line(note)
+        await self.dest.send(embed=em)
 
-        await self.send_pages()
+    async def send_group_help(self, group: Group):
+        em = self.em_base()
+        em.description = f"`Syntax: {self.get_command_signature(group)}`"
 
-    async def send_command_help(self, command):
-        self.add_command_formatting(command)
-        self.paginator.close_page()
-        await self.send_pages()
+        field = {
+            "name": f"__{group.short_doc}__",
+            "value": group.help[len(group.short_doc):].strip("\n"),
+            "inline": False
+        }
+        em.add_field(**field)
 
-    async def send_group_help(self, group):
-        self.add_command_formatting(group)
+        cmds = group.commands
+        for cmd in cmds:
+            if not await cmd.can_run(self.context) or cmd.hidden:
+                cmds.remove(cmd)
+        if cmds:
+            field = {
+                "name": "**__Subcommands:__**",
+                "value": "\n".join([f"**{cmd.name}:**   {cmd.short_doc}" for cmd in group.commands]),
+                "inline": False
+            }
+            em.add_field(**field)
 
-        filtered = await self.filter_commands(group.commands, sort=self.sort_commands)
-        self.add_indented_commands(filtered, heading=self.commands_heading)
+        await self.dest.send(embed=em)
 
-        if filtered:
-            note = self.get_ending_note()
-            if note:
-                self.paginator.add_line()
-                self.paginator.add_line(note)
+    async def send_cog_help(self, cog: Cog):
+        em = self.em_base()
+        em.description = cog.description
 
-        await self.send_pages()
+        cmds = cog.get_commands()
+        for cmd in cmds:
+            if not await cmd.can_run(self.context) or cmd.hidden:
+                cmds.remove(cmd)
+        if cmds:
+            field = {
+                "name": "**__Commands:__**",
+                "value": "\n".join([f"**{self.prefix}{cmd.name}**   {cmd.short_doc}" for cmd in cmds]),
+                "inline": False
+            }
+            em.add_field(**field)
 
-    async def send_cog_help(self, cog):
-        if cog.description:
-            self.paginator.add_line(cog.description, empty=True)
-
-        filtered = await self.filter_commands(cog.get_commands(), sort=self.sort_commands)
-        self.add_indented_commands(filtered, heading=self.commands_heading)
-
-        note = self.get_ending_note()
-        if note:
-            self.paginator.add_line()
-            self.paginator.add_line(note)
-
-        await self.send_pages()
+        await self.dest.send(embed=em)
 
 
 class Help(Cog):
@@ -241,12 +217,11 @@ class Help(Cog):
         self.config = f"{bot.APP_NAME}:help"
 
         self._original_help_command = bot.help_command
-        bot.help_command = HelpCommand()
+        bot.help_command = HelpCommand(dm_help=self.bot.dm_help)
         bot.help_command.cog = self
-        print("Loaded")
 
     def cog_unload(self):
-        print("Unloaded")
+        self.bot.help_command.cog = None
         self.bot.help_command = self._original_help_command
 
 

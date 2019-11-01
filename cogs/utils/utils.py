@@ -9,6 +9,9 @@ import redis
 from typing import Any, Generator, Iterable, List, Tuple, Union
 
 
+ZWSP = u'\u200b'
+
+
 class Paginator:
 
     def __init__(
