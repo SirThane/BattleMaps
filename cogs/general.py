@@ -3,7 +3,7 @@
 from discord import Colour, Embed, Member
 from discord.ext.commands import Cog, command, Context
 
-from classes.bot import Bot
+from cogs.utils.classes import Bot
 from cogs.utils import checks
 
 
@@ -64,9 +64,7 @@ class General(Cog):
                 },
                 {
                     'name': 'Account Created:',
-                    'value': member.created_at.strftime(
-                        "%b. %d, %Y\n%I:%M %p"
-                    ),
+                    'value': member.created_at.strftime("%b. %d, %Y\n%I:%M %p"),
                     'inline': True
                 },
                 {

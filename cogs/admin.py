@@ -17,7 +17,7 @@ from discord import Embed, Game
 from discord.ext.commands import Cog, command, Context
 from discord.utils import oauth_url
 
-from classes.bot import Bot
+from cogs.utils.classes import Bot
 from cogs.utils import checks
 
 
