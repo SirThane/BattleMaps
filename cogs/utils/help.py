@@ -4,7 +4,6 @@ from discord import Colour, DMChannel, Embed
 from discord.abc import Messageable
 from discord.ext.commands import Cog, Command, Context, Group
 from discord.ext.commands.help import HelpCommand as BaseHelpCommand
-# from discord.utils import maybe_coroutine
 from typing import Dict, List, Union
 
 from cogs.utils.classes import Bot
@@ -42,8 +41,13 @@ class HelpCommand(BaseHelpCommand):
 
     def __init__(self, **options):
         self.dm_help = options.pop('dm_help', False)
+        self.help = options.pop("help", "Shows Help Manual Documentation\n\n"
+                                        ""
+                                        "`[p]help` for all commands\n"
+                                        "`[p]help command` for a command's help page\n"
+                                        "`[p]help Category` for all commands in a Category")
 
-        super().__init__(**options)
+        super().__init__(command_attrs={"help": self.help}, **options)
 
     @property
     def is_dm(self) -> bool:
@@ -78,7 +82,7 @@ class HelpCommand(BaseHelpCommand):
     def color(self) -> int:
         """Returns current role color of bot if from Guild, or default Embed color if DM"""
         if self.is_dm:
-            return Colour.default().value  # TODO: What is no color now? 0 is Black. discord.Colour.default()?
+            return Colour.default().value
         else:
             return self.context.guild.me.color.value
 
@@ -100,33 +104,16 @@ class HelpCommand(BaseHelpCommand):
             return ctx
 
     def em_base(self) -> Embed:
-
+        """Prepare a basic embed that will be common to all outputs"""
         em = Embed(description=ZWSP, color=self.color)
         em.set_author(**self.author)
         em.set_footer(text=self.ending_note)
 
         return em
 
-    # def em_base(self) -> Dict[str, Union[str, int, List[Dict[str, str]], Dict[str, str]]]:
-    #     em = {
-    #         'description': ZWSP,
-    #         'color': self.color,
-    #         "author": {
-    #             "name": self.author,
-    #             "icon_url": self.avatar
-    #         },
-    #         'footer': {
-    #             'text': self.ending_note
-    #         },
-    #         'fields': []
-    #     }
-    #
-    #     return em
-
-    # TODO: self.ctx may not get set. Check this at test time.
     async def prepare_help_command(self, ctx: Context, command=None):
+        """Method called before command processing"""
         self.context = ctx
-        await super().prepare_help_command(ctx, command)
 
     async def send_bot_help(self, mapping: Dict[Union[Cog, None], List[Command]]):
         em = self.em_base()
@@ -134,11 +121,11 @@ class HelpCommand(BaseHelpCommand):
 
         if self.bot.description:
             em.description = f"*{self.bot.description}*"
+        else:
+            em.description = f" {ZWSP}"
 
         for cog, cmds in mapping.items():
-            for cmd in cmds:  # TODO: Refactor this into a method and use a self.show_hidden
-                if not await cmd.can_run(self.context) or cmd.hidden:
-                    cmds.remove(cmd)
+            cmds = await self.filter_commands(cmds, sort=True)
             if not cmds:
                 continue
             field = {
@@ -146,8 +133,6 @@ class HelpCommand(BaseHelpCommand):
                 "value": "\n".join([f"**{self.prefix}{cmd.name}:**   {cmd.short_doc}" for cmd in cmds]),
                 "inline": False
             }
-            if not field["value"]:
-                field["value"] = ZWSP
             em.add_field(**field)
 
         await self.dest.send(embed=em)  # TODO: Refactor into self.send() for pagination
@@ -156,9 +141,17 @@ class HelpCommand(BaseHelpCommand):
         em = self.em_base()
         em.description = f"`Syntax: {self.get_command_signature(command)}`"
 
+        if command.help:  # TODO: Hella need to refactor, but working for now.
+            if command.short_doc == command.help:
+                doc = command.short_doc if command.short_doc else command.name
+            else:
+                doc = command.help.replace(command.short_doc, "").strip("\n").replace("[p]", self.prefix)
+        else:
+            doc = command.short_doc if command.short_doc else command.name
+
         field = {
-            "name": f"__{command.short_doc}__",
-            "value": command.help[len(command.short_doc):].strip("\n"),
+            "name": f"__{command.short_doc}__" if command.short_doc else f"__{command.name}__",
+            "value": doc,
             "inline": False
         }
         em.add_field(**field)
@@ -167,19 +160,24 @@ class HelpCommand(BaseHelpCommand):
 
     async def send_group_help(self, group: Group):
         em = self.em_base()
-        em.description = f"`Syntax: {self.get_command_signature(group)}`"
+        em.description = f"`Syntax: {self.get_command_signature(group)}`".replace("[p]", self.prefix)
+
+        if group.help:
+            if group.short_doc == group.help:
+                doc = group.short_doc if group.short_doc else group.name
+            else:
+                doc = group.help.replace(group.short_doc, "").strip("\n").replace("[p]", self.prefix)
+        else:
+            doc = group.short_doc if group.short_doc else group.name
 
         field = {
-            "name": f"__{group.short_doc}__",
-            "value": group.help[len(group.short_doc):].strip("\n"),
+            "name": f"__{group.short_doc}__" if group.short_doc else f"__{group.name}__",
+            "value": doc,
             "inline": False
         }
         em.add_field(**field)
 
-        cmds = group.commands
-        for cmd in cmds:
-            if not await cmd.can_run(self.context) or cmd.hidden:
-                cmds.remove(cmd)
+        cmds = await self.filter_commands(group.commands, sort=True)
         if cmds:
             field = {
                 "name": "**__Subcommands:__**",
@@ -192,12 +190,13 @@ class HelpCommand(BaseHelpCommand):
 
     async def send_cog_help(self, cog: Cog):
         em = self.em_base()
-        em.description = cog.description
 
-        cmds = cog.get_commands()
-        for cmd in cmds:
-            if not await cmd.can_run(self.context) or cmd.hidden:
-                cmds.remove(cmd)
+        if cog.description:
+            em.description = cog.description.replace("[p]", self.prefix)
+        else:
+            em.description = cog.qualified_name
+
+        cmds = await self.filter_commands(cog.get_commands(), sort=True)
         if cmds:
             field = {
                 "name": "**__Commands:__**",
@@ -213,8 +212,6 @@ class Help(Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.db = bot.db
-        self.config = f"{bot.APP_NAME}:help"
 
         self._original_help_command = bot.help_command
         bot.help_command = HelpCommand(dm_help=self.bot.dm_help)
