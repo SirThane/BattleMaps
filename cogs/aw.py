@@ -1,10 +1,10 @@
 """Commands for Advance Wars Maps"""
 
-import os
-import re
 from asyncio import sleep
 from datetime import datetime
 from io import BytesIO
+from os.path import splitext
+from re import compile
 from typing import Union
 from urllib.parse import quote
 
@@ -12,15 +12,15 @@ from discord import Attachment, DMChannel, Embed, File, HTTPException, Member, M
 from discord.ext.commands import Cog, group
 from discord.ext.commands.context import Context
 
-from classes.bot import Bot
-from cogs.utils import checks
+from cogs.utils.checks import sudo
+from cogs.utils.classes import Bot
 from cogs.utils.utils import fold_list
 from cogs.utils.awmap import AWMap
 from cogs.utils.errors import *
 
 
-RE_AWL = re.compile(r"(http[s]?://)?awbw.amarriner.com/(glenstorm/)?prevmaps.php\?maps_id=([0-9]+)(?i)")
-RE_CSV = re.compile(r"(([0-9])+(,[0-9]*)*(\n[0-9]+(,[0-9]*)*)*)")  # {1}")
+RE_AWL = compile(r"(http[s]?://)?awbw.amarriner.com/(glenstorm/)?prevmaps.php\?maps_id=([0-9]+)(?i)")
+RE_CSV = compile(r"(([0-9])+(,[0-9]*)*(\n[0-9]+(,[0-9]*)*)*)")  # {1}")
 
 
 class AdvanceWars(Cog):
@@ -313,7 +313,7 @@ class AdvanceWars(Cog):
             return channel.guild.me.color.value
 
     @staticmethod
-    def _inv(ctx: Context):
+    def _inv(ctx: Context) -> str:
         return f"{ctx.prefix}{ctx.invoked_with}"
 
     """
@@ -348,9 +348,7 @@ class AdvanceWars(Cog):
         image_url = await self.get_minimap(awmap)
         em.set_image(url=image_url)
 
-        msg = await channel.send(embed=em)
-
-        return msg
+        return await channel.send(embed=em)
 
     async def em_download(self, channel, awmap: AWMap):
         """Formats and sends an embed to `channel` containing
@@ -365,7 +363,7 @@ class AdvanceWars(Cog):
         em.add_field(name="Downloads", value=f"[AWS]({aws})\n[AWBW CSV]({csv})")
         em.set_thumbnail(url=thumb)
 
-        await channel.send(embed=em)
+        return await channel.send(embed=em)
 
     """
         ###############################################
@@ -373,7 +371,7 @@ class AdvanceWars(Cog):
         ###############################################
     """
 
-    @checks.sudo()
+    @sudo()
     @_map.command(name="listen", hidden=True, usage="[on / off]")
     async def listen(self, ctx: Context, *, arg: str = ""):
         """Toggle active listening for maps
@@ -395,7 +393,7 @@ class AdvanceWars(Cog):
                    description=f"Active Listen For Maps: `{self.listen_for_maps}`")
         await ctx.send(embed=em)
 
-    @checks.sudo()
+    @sudo()
     @_map.command(name="viewallmaps", hidden=True, aliases=["vam"])
     async def viewallmaps(self, ctx: Context):
         """View all currently loaded maps.
@@ -477,7 +475,7 @@ class CheckMap:
 
         if msg.attachments:
             attachment = msg.attachments[0]
-            filename, ext = os.path.splitext(attachment.filename)
+            filename, ext = splitext(attachment.filename)
 
             if "aws" not in skips and ext == ".aws":
                 return await CheckMap.from_aws(attachment)
