@@ -8,7 +8,7 @@ from json import load
 from discord import Activity, Message
 from discord.utils import get, oauth_url
 
-from classes.bot import Bot
+from cogs.utils.classes import Bot
 from cogs.utils.utils import StrictRedis
 
 
