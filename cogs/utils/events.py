@@ -1,6 +1,6 @@
 """Cog containing all global bot events"""
 
-from traceback import print_tb
+from traceback import extract_tb
 
 from datetime import datetime
 from discord import Colour, Embed, Member, Message
@@ -9,9 +9,9 @@ from discord.ext.commands import CheckFailure, Cog, CommandInvokeError, CommandN
     MissingRequiredArgument, NoPrivateMessage
 from pytz import timezone
 
-from classes.bot import Bot
+from cogs.utils.classes import Bot
 from cogs.utils.errors import *
-from cogs.utils.utils import stderrio
+from cogs.utils.utils import ZWSP
 
 
 WELCOME = "Welcome to AWBW Discord Server {}! Present yourself and have fun!"
@@ -42,20 +42,28 @@ class Events(Cog):
         if ctx:
             prefix = await self.bot.get_prefix(ctx.message)
             title = f"In {prefix}{ctx.command.qualified_name}"
-            description = f"{error.original.__class__.__name__}: {error.original}"
+            description = f"**{error.original.__class__.__name__}**: {error.original}"
         else:
-            title = f"{type(error).__name__}"
-            description = str(error)
+            title = None
+            description = f"**{type(error).__name__}**: {str(error)}"
 
-        with stderrio() as s:
-            print_tb(error.__traceback__)
-            traceback_str = str(s.getvalue())
+        stack = extract_tb(error.original.__traceback__)
+        tb_fields = [
+            {
+                "name": f"{ZWSP}\n__{fn}__",
+                "value": f"Line `{ln}` of `{func}`:\n```py\n{txt}\n```",
+                "inline": False
+            } for fn, ln, func, txt in stack
+        ]
 
         em = Embed(
             color=Colour.red(),
             title=title,
-            description=f"{description}```\n{traceback_str}\n```"
+            description=f"{description}"
         )
+
+        for field in tb_fields:
+            em.add_field(**field)
 
         await self.errorlog.send(embed=em)
 
@@ -112,10 +120,9 @@ class Events(Cog):
                 color=ctx.guild.me.color,
                 title="⚠  Woah there, buddy!",
                 description="Get your hands off that! \n"
-                            "What'd'ya say you take a look and try it again.\n"
-                            "\n```\nThe map you uploaded contained\n"
-                            "rows with a differing amounts of\n"
-                            "columns. Check your map and try again.\n```"
+                            "That there's for shop staff only.\n"
+                            "\n```\nYou do not have the appropriate access"
+                            "for that command.```"
             )
             await ctx.send(embed=em)
 
@@ -167,14 +174,10 @@ class Events(Cog):
             )
             await ctx.send(embed=em)
 
-        elif isinstance(error, CommandInvokeError):  # TODO: Make this send to a debug channel instead
-            # print('In {0.command.qualified_name}:'.format(ctx), file=stderr)
-            # print('{0.__class__.__name__}: {0}'.format(error.original), file=stderr)
-            # print_tb(error.__traceback__, file=stderr)
+        elif isinstance(error, CommandInvokeError):
             await self.error_to_log(error, ctx=ctx)
 
         else:
-            # print_tb(error.__traceback__, file=stderr)
             await self.error_to_log(error)
 
     @Cog.listener("on_message")
