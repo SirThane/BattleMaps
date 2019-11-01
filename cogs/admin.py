@@ -8,7 +8,6 @@ Copyright (c) 2015 Rapptz
 
 import os
 import sys
-import traceback
 from asyncio import sleep
 from contextlib import contextmanager
 from io import StringIO
@@ -19,6 +18,7 @@ from discord.utils import oauth_url
 
 from cogs.utils.classes import Bot
 from cogs.utils import checks
+from cogs.utils.utils import em_tb
 
 
 @contextmanager
@@ -39,20 +39,40 @@ class Admin(Cog):
         self.db = bot.db
         self.config = f"{bot.APP_NAME}:admin"
 
+        self.errorlog = bot.get_channel(637150067525943296)
+
     @checks.sudo()
     @command(name="load")
     async def load(self, ctx: Context, *, cog: str, verbose: bool = False):
         """load a module"""
+
         cog = f"cogs.{cog}"
+        msg = None
+
         try:
             self.bot.load_extension(cog)
         except Exception as e:
-            if not verbose:
-                await ctx.send(content='{}: {}'.format(type(e).__name__, e))
-            else:
-                await ctx.send(content=traceback.print_tb(e.__traceback__))
+            msg = await ctx.send(
+                embed=Embed(
+                    title="Administration: Load Cog Failed",
+                    description=f"{type(e).__name__}: {e}",
+                    color=0xFF0000
+                )
+            )
+            em = await em_tb(e, ctx)
+            await self.errorlog.send(embed=em)
+            await sleep(5)
         else:
-            await ctx.send(content="Module loaded successfully.")
+            msg = await ctx.send(
+                embed=Embed(
+                    title="Administration: Load Cog",
+                    description=f"Module `{cog}` loaded successfully",
+                    color=0x00FF00
+                )
+            )
+            await sleep(5)
+        finally:
+            await msg.delete()
 
     @checks.sudo()
     @command(name="unload")
@@ -72,10 +92,13 @@ class Admin(Cog):
                     color=0xFF0000
                 )
             )
+            em = await em_tb(e, ctx)
+            await self.errorlog.send(embed=em)
+            await sleep(5)
         else:
             msg = await ctx.send(
                 embed=Embed(
-                    title="Administration",
+                    title="Administration: Unload Cog",
                     description=f"Module `{cog}` unloaded successfully",
                     color=0x00FF00
                 )

@@ -4,8 +4,11 @@
 import sys
 from contextlib import contextmanager
 from io import StringIO
+from traceback import extract_tb
 
 import redis
+from discord import Colour, Embed
+from discord.ext.commands import Context
 from typing import Any, Generator, Iterable, List, Tuple, Union
 
 
@@ -96,6 +99,36 @@ class Paginator:
             ret.append(page)
         self._pages = ret
         return self.pages
+
+
+async def em_tb(error, ctx: Context = None):
+    if ctx:
+        prefix = await ctx.bot.get_prefix(ctx.message)
+        title = f"In {prefix}{ctx.command.qualified_name}"
+        description = f"**{error.__class__.__name__}**: {error}"
+    else:
+        title = None
+        description = f"**{type(error).__name__}**: {str(error)}"
+
+    stack = extract_tb(error.__traceback__)
+    tb_fields = [
+        {
+            "name": f"{ZWSP}\n__{fn}__",
+            "value": f"Line `{ln}` of `{func}`:\n```py\n{txt}\n```",
+            "inline": False
+        } for fn, ln, func, txt in stack
+    ]
+
+    em = Embed(
+        color=Colour.red(),
+        title=title,
+        description=f"{description}"
+    )
+
+    for field in tb_fields:
+        em.add_field(**field)
+
+    return em
 
 
 @contextmanager

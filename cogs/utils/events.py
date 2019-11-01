@@ -1,9 +1,8 @@
 """Cog containing all global bot events"""
 
-from traceback import extract_tb
 
 from datetime import datetime
-from discord import Colour, Embed, Member, Message
+from discord import Embed, Member, Message
 from discord.utils import get
 from discord.ext.commands import CheckFailure, Cog, CommandInvokeError, CommandNotFound, Context, DisabledCommand,\
     MissingRequiredArgument, NoPrivateMessage
@@ -11,7 +10,7 @@ from pytz import timezone
 
 from cogs.utils.classes import Bot
 from cogs.utils.errors import *
-from cogs.utils.utils import ZWSP
+from cogs.utils.utils import em_tb
 
 
 WELCOME = "Welcome to AWBW Discord Server {}! Present yourself and have fun!"
@@ -37,35 +36,6 @@ class Events(Cog):
 
         if self.awbw:
             self.sad_andy = get(self.awbw.emojis, id=325608374526017536)  # :sad_andy: emoji
-
-    async def error_to_log(self, error, ctx: Context = None):
-        if ctx:
-            prefix = await self.bot.get_prefix(ctx.message)
-            title = f"In {prefix}{ctx.command.qualified_name}"
-            description = f"**{error.original.__class__.__name__}**: {error.original}"
-        else:
-            title = None
-            description = f"**{type(error).__name__}**: {str(error)}"
-
-        stack = extract_tb(error.original.__traceback__)
-        tb_fields = [
-            {
-                "name": f"{ZWSP}\n__{fn}__",
-                "value": f"Line `{ln}` of `{func}`:\n```py\n{txt}\n```",
-                "inline": False
-            } for fn, ln, func, txt in stack
-        ]
-
-        em = Embed(
-            color=Colour.red(),
-            title=title,
-            description=f"{description}"
-        )
-
-        for field in tb_fields:
-            em.add_field(**field)
-
-        await self.errorlog.send(embed=em)
 
     @Cog.listener(name="on_member_join")
     async def on_member_join(self, member: Member):
@@ -175,14 +145,16 @@ class Events(Cog):
             await ctx.send(embed=em)
 
         elif isinstance(error, CommandInvokeError):
-            await self.error_to_log(error, ctx=ctx)
+            em = await em_tb(error.original, ctx=ctx)
+            await self.errorlog.send(embed=em)
 
         else:
-            await self.error_to_log(error)
+            em = await em_tb(error.original)
+            await self.errorlog.send(embed=em)
 
     @Cog.listener("on_message")
     async def _on_message(self, msg: Message):
-        if str(msg.guild.me.id) in msg.content:
+        if str(self.bot.user.id) in msg.content:
             ts = tz.localize(datetime.now()).strftime("%b. %d, %Y %I:%M %p")
             author = msg.author
             display_name = f' ({author.display_name})' if author.display_name != author.name else ''
