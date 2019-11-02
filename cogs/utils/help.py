@@ -30,7 +30,8 @@ Everything else credit to SirThane#1780
 """
 
 
-from discord import Colour, DMChannel, Embed, Member, Reaction, User
+from asyncio import sleep
+from discord import Colour, DMChannel, Embed, Member, Message, Reaction, User
 from discord.abc import Messageable
 from discord.ext.commands import Cog, Command, Context, Group
 from discord.ext.commands.help import HelpCommand as BaseHelpCommand
@@ -77,7 +78,10 @@ class HelpCommand(BaseHelpCommand):
         self._title = None
 
         # Number of fields before a help command's output gets paginated
-        self._field_limit = options.pop("field_limit", 7)
+        self.field_limit = options.pop("field_limit", 6)
+
+        # Seconds to wait before help manual times out
+        self.time_limit = options.pop("time_limit", 120)
 
         # Command.short_doc splits Command.help, not raw docstr from inspect, so this sets help_command.short_doc too
         self.help = options.pop("help", "Shows Help Manual Documentation\n\n"
@@ -184,10 +188,101 @@ class HelpCommand(BaseHelpCommand):
          Pagination
         ############ """
 
-    async def send(self, em: Embed, fields: List[Dict[str, Union[str, bool]]]):
-        for field in fields:
-            em.add_field(**field)
-        await self.dest.send(embed=em)
+    async def send(self, em: Embed, fields: List[Dict[str, Union[str, bool]]]) -> Message:
+        if len(fields) <= self.field_limit:
+            for field in fields:
+                em.add_field(**field)
+            msg = await self.dest.send(embed=em)
+
+            self.cog.active_help[msg.id] = {
+                "author": self.ctx.author,
+                "msg": msg,
+                "current": 0,
+                "last": 0,
+                "pages": [em]
+            }
+
+        else:
+            ems = list()
+
+            for groups in [list(fields[i:self.field_limit + i]) for i in range(0, len(fields), self.field_limit)]:
+                page = em.copy()
+                for field in groups:
+                    page.add_field(**field)
+                ems.append(page)
+
+            msg = await self.dest.send(embed=ems[0])
+
+            self.cog.active_help[msg.id] = {
+                "author": self.ctx.author,
+                "msg": msg,
+                "current": 0,
+                "last": len(ems) - 1,
+                "pages": ems
+            }
+
+            for react in ["⏮", "◀", "▶", "⏭", "❌"]:
+                await sleep(0.1)
+                await msg.add_reaction(react)
+
+        await self.set_timeout(msg)
+
+        return msg
+
+    async def set_timeout(self, msg: Message) -> None:
+        await sleep(self.time_limit)
+        if self.cog.active_help.pop(msg.id):
+            await msg.delete()
+
+    @staticmethod
+    def paginate_field(
+            name: str,
+            value: str,
+            wrap: str = "{}{}",
+            cont: str = " (Cont.)"
+    ) -> List[Dict[str, Union[str, bool]]]:
+        """Takes parameters for an Embed field and returns a
+        list of field dicts with values under 1024 characters
+
+        :param name:
+            :class:`str` that will be used as field header
+        :param value:
+            :class:`str` that will be paginated for field values
+        :param wrap:
+            :class:`str` that will be formatted for field headers
+            Must be a string that will accept .format() with two
+            parameters. ``name`` will be inserted first, then ``cont``
+        :param cont:
+            :class:`str` that will extend header
+
+        e.g. name="Test", wrap="__{}{}__", cont=" (Continued)"
+             Header 1: "__Test__"
+             Header 2: "__Test (Continued)__"
+        """
+
+        fields = list()
+
+        # Account for large cogs and split them into separate fields
+        field = {"name": wrap.format(name, ""), "value": "", "inline": False}
+
+        values = value.split("\n")
+
+        for value in values:
+
+            # Embed field value maximum length, less 1 for line return
+            if len(value) + len(field["value"]) < 1023:
+                field["value"] += f"\n{value}"
+            else:
+
+                # Add field to fields list and start a new one
+                fields.append(field)
+                field = {"name": f"**__{name}{cont}:__**", "value": value, "inline": False}
+
+        else:
+            # Add the field if one field or add the last field if multiple
+            fields.append(field)
+
+        return fields
 
     """ ################
          Error handling
@@ -205,7 +300,12 @@ class HelpCommand(BaseHelpCommand):
         """Method called before command processing"""
         self.ctx = ctx
 
-    async def send_help_for(self, ctx: Context, cmd: Union[Cog, Command, Group] = None, msg: Optional[str] = None):
+    async def send_help_for(
+            self,
+            ctx: Context,
+            cmd: Union[Cog, Command, Group] = None,
+            msg: Optional[str] = None
+    ) -> Message:
         """Can be accessed as a method of bot.help_command to send help pages
         from outside of [p]help. Useful in on_command_error event. Be careful
         as this method is not the builtin default help_command and will be
@@ -217,11 +317,13 @@ class HelpCommand(BaseHelpCommand):
         # command kwarg is string
         # Good thing Cog, Command, and Group all have .qualified_name
         # If no cmd, Bot help page will be sent
-        await self.command_callback(ctx, command=cmd.qualified_name if cmd else None)
+        msg = await self.command_callback(ctx, command=cmd.qualified_name if cmd else None)
 
         # Remove title, so it doesn't carry over
         # Would move ot prepare_help_command, but it is called in command_callback
         self.title = None
+
+        return msg
 
     def format_doc(self, item: Union[Bot, Cog, Command, Group]) -> Tuple[str, str]:
         if isinstance(item, Bot):
@@ -279,69 +381,11 @@ class HelpCommand(BaseHelpCommand):
 
         return "\n".join(lines)
 
-    @staticmethod
-    def paginate_field(
-            name: str,
-            value: str,
-            wrap: str = "{}{}",
-            cont: str = " (Cont.)"
-    ) -> List[Dict[str, Union[str, bool]]]:
-        """Takes parameters for an Embed field and returns a
-        list of field dicts with values under 1024 characters
-
-        :param name:
-            :class:`str` that will be used as field header
-        :param value:
-            :class:`str` that will be paginated for field values
-        :param wrap:
-            :class:`str` that will be formatted for field headers
-            Must be a string that will accept .format() with two
-            parameters. ``name`` will be inserted first, then ``cont``
-        :param cont:
-            :class:`str` that will extend header
-
-        e.g. name="Test", wrap="__{}{}__", cont=" (Continued)"
-             Header 1: "__Test__"
-             Header 2: "__Test (Continued)__"
-        """
-
-        fields = list()
-
-        # Account for large cogs and split them into separate fields
-        field = {
-            "name": wrap.format(name, ""),
-            "value": "",
-            "inline": False
-        }
-
-        values = value.split("\n")
-
-        for value in values:
-
-            # Embed field value maximum length, less 1 for line return
-            if len(value) + len(field["value"]) < 1023:
-                field["value"] += f"\n{value}"
-            else:
-
-                # Add field to fields list and start a new one
-                fields.append(field)
-                field = {
-                    "name": f"**__{name}{cont}:__**",
-                    "value": value,
-                    "inline": False
-                }
-
-        else:
-            # Add the field if one field or add the last field if multiple
-            fields.append(field)
-
-        return fields
-
     """ #####################################################################################
          Callbacks for help command for arguments Bot [no argument], Cog, Command, and Group
         ##################################################################################### """
 
-    async def send_bot_help(self, mapping: Dict[Union[Cog, None], List[Command]], msg: str = None):
+    async def send_bot_help(self, mapping: Dict[Union[Cog, None], List[Command]], msg: str = None) -> Message:
         """Prepares help for help command with no argument"""
 
         em = self.em_base()
@@ -365,9 +409,9 @@ class HelpCommand(BaseHelpCommand):
             # Add fields for commands list
             fields.extend(self.paginate_field(category, self.format_cmds_list(cmds), "**__{}{}__**"))
 
-        await self.send(em, fields)
+        return await self.send(em, fields)
 
-    async def send_cog_help(self, cog: Cog):
+    async def send_cog_help(self, cog: Cog) -> Message:
         """Prepares help when argument is a Cog"""
 
         em = self.em_base()
@@ -384,9 +428,9 @@ class HelpCommand(BaseHelpCommand):
         if cmds:
             fields.extend(self.paginate_field("Commands", self.format_cmds_list(cmds), "**__{}{}__**"))
 
-        await self.send(em, fields)
+        return await self.send(em, fields)
 
-    async def send_command_help(self, cmd: Command):
+    async def send_command_help(self, cmd: Command) -> Message:
         """Prepares help when argument is a Command"""
 
         em = self.em_base()
@@ -404,9 +448,9 @@ class HelpCommand(BaseHelpCommand):
         # Add fields for command help manual
         fields.extend(self.paginate_field(*self.format_doc(cmd), "__{}{}__"))
 
-        await self.send(em, fields)
+        return await self.send(em, fields)
 
-    async def send_group_help(self, group: Group):
+    async def send_group_help(self, group: Group) -> Message:
         """Prepares help when argument is a command Group"""
 
         em = self.em_base()
@@ -428,7 +472,7 @@ class HelpCommand(BaseHelpCommand):
         if cmds:
             fields.extend(self.paginate_field("Subcommands", self.format_cmds_list(cmds), "**__{}{}__**"))
 
-        await self.send(em, fields)
+        return await self.send(em, fields)
 
 
 class Help(Cog):
@@ -445,11 +489,14 @@ class Help(Cog):
         self._original_help_command = bot.help_command
 
         # Replace currently loaded help_command with ours and set this cog as cog so it's not uncategorized
-        bot.help_command = HelpCommand(dm_help=self.bot.dm_help)
+        bot.help_command = HelpCommand(dm_help=self.bot.dm_help, field_limit=6, time_limit=120)
         bot.help_command.cog = self
 
         # Make send_help_for available as a coroutine method of Bot
         bot.send_help_for = bot.help_command.send_help_for
+
+        # Dict to store active paginated help outputs
+        self.active_help = dict()
 
     def cog_unload(self):
 
@@ -460,8 +507,61 @@ class Help(Cog):
         self.bot.help_command = self._original_help_command
 
     @Cog.listener("on_reaction_add")
-    async def _on_reaction_add(self, react: Reaction, user: Union[Member, User]):
-        pass
+    async def on_reaction_add(self, react: Reaction, user: Union[Member, User]):
+        if react.message.id not in self.active_help.keys():
+            return
+
+        if user.id == self.bot.user.id:
+            return
+
+        msg: Message = react.message
+        await sleep(0.2)
+
+        if react.emoji not in ["⏮", "◀", "▶", "⏭", "❌"]:
+            await react.remove(user)
+            return
+
+        if user.id != self.active_help[msg.id]["author"].id:
+            await react.remove(user)
+            return
+
+        active_help = self.active_help[msg.id]
+
+        if react.emoji == "⏮":
+            await react.remove(user)
+            self.active_help[msg.id]["current"] = 0
+            await msg.edit(embed=active_help["pages"][0])
+            return
+
+        if react.emoji == "◀":
+            await react.remove(user)
+            if active_help["current"] == 0:
+                return
+            current = active_help["current"] - 1
+            self.active_help[msg.id]["current"] = current
+            await msg.edit(embed=active_help["pages"][current])
+            return
+
+        if react.emoji == "▶":
+            await react.remove(user)
+            if active_help["current"] > active_help["last"]:
+                return
+            current = active_help["current"] + 1
+            self.active_help[msg.id]["current"] = current
+            await msg.edit(embed=active_help["pages"][current])
+            return
+
+        if react.emoji == "⏭":
+            await react.remove(user)
+            last = self.active_help[msg.id]["last"]
+            self.active_help[msg.id]["current"] = last
+            await msg.edit(embed=active_help["pages"][last])
+            return
+
+        if react.emoji == "❌":
+            await msg.delete()
+            self.active_help.pop(msg.id)
+            return
 
 
 def setup(bot: Bot):
