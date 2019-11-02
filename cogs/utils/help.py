@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
-"""A reconstruction of my help.py built for the new
-discord.py's help.py instead of v1.0.0a's formatter.py
+"""
+A reconstruction of my help.py built for the new
+discord.py's help.py instead of v1.0.0a-'s formatter.py
 
 All help messages will be embed and pretty.
 
@@ -25,14 +26,15 @@ e.g. send_help_for(ctx, ctx.command, "Missing required arguments")
 discord.py v1.2.4
 
 Copyrights to logic of discord help.py belong to Rapptz (Danny)
-Everything else credit to SirThane#1780"""
+Everything else credit to SirThane#1780
+"""
 
 
-from discord import Colour, DMChannel, Embed
+from discord import Colour, DMChannel, Embed, Member, Reaction, User
 from discord.abc import Messageable
 from discord.ext.commands import Cog, Command, Context, Group
 from discord.ext.commands.help import HelpCommand as BaseHelpCommand
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 try:
     # My subclassing of Bot
@@ -74,6 +76,9 @@ class HelpCommand(BaseHelpCommand):
         # Stored as class attribute instead of passing as parameter so we don't need to override command_callback
         self._title = None
 
+        # Number of fields before a help command's output gets paginated
+        self._field_limit = options.pop("field_limit", 7)
+
         # Command.short_doc splits Command.help, not raw docstr from inspect, so this sets help_command.short_doc too
         self.help = options.pop("help", "Shows Help Manual Documentation\n\n"
                                         ""
@@ -83,9 +88,9 @@ class HelpCommand(BaseHelpCommand):
 
         super().__init__(command_attrs={"help": self.help}, **options)
 
-    """ ##################################################
-        # Special attributes for command/bot information #
-        ################################################## """
+    """ ################################################
+         Special attributes for command/bot information
+        ################################################ """
 
     @property
     def bot(self) -> Bot:
@@ -109,9 +114,9 @@ class HelpCommand(BaseHelpCommand):
         """Returns True if command or caller is from DMs"""
         return isinstance(self.ctx.channel, DMChannel)
 
-    """ ##############################################
-        # Attributes for constructing the base embed #
-        ############################################## """
+    """ ############################################
+         Attributes for constructing the base embed
+        ############################################ """
 
     def em_base(self) -> Embed:
         """Prepare a basic embed that will be common to all outputs"""
@@ -175,13 +180,30 @@ class HelpCommand(BaseHelpCommand):
         else:
             return self.ctx
 
-    """ ##################
-        # Error handling #
-        ################## """
+    """ ############
+         Pagination
+        ############ """
+
+    async def send(self, em: Embed, fields: List[Dict[str, Union[str, bool]]]):
+        for field in fields:
+            em.add_field(**field)
+        await self.dest.send(embed=em)
+
+    """ ################
+         Error handling
+        ################ """
 
     async def send_error_message(self, error: str):
         """Called in help callback, so we need to override it to use new Embeds"""
         await self.send_help_for(self.ctx, self.ctx.command, error)
+
+    """ ########################
+         Formatting and sending
+        ######################## """
+
+    async def prepare_help_command(self, ctx: Context, cmd: Optional[str] = None):
+        """Method called before command processing"""
+        self.ctx = ctx
 
     async def send_help_for(self, ctx: Context, cmd: Union[Cog, Command, Group] = None, msg: Optional[str] = None):
         """Can be accessed as a method of bot.help_command to send help pages
@@ -201,111 +223,212 @@ class HelpCommand(BaseHelpCommand):
         # Would move ot prepare_help_command, but it is called in command_callback
         self.title = None
 
-    async def prepare_help_command(self, ctx: Context, cmd: Optional[str] = None):
-        """Method called before command processing"""
-        self.ctx = ctx
+    def format_doc(self, item: Union[Bot, Cog, Command, Group]) -> Tuple[str, str]:
+        if isinstance(item, Bot):
+            if item.description:
+                desc = item.description.replace("[p]", self.prefix)
 
-    """ ###########################################
-        # Callbacks for formatting Embeds to send #
-        ########################################### """
+                # Maximum embed body description length
+                if len(desc) > 2043:
+                    desc = f"{desc[:2043]}..."
+
+                return f"*{desc}*", ""
+            else:
+                return f"*{item.user.name}*", ""
+
+        elif isinstance(item, Cog):
+            if item.description:
+                # "CogName", "*Description: $command for use*"
+                return item.qualified_name, f"*{item.description.replace('[p]', self.prefix)}*"
+            else:
+                # "CogName", "*CogName*"
+                return item.qualified_name, f"*{item.qualified_name}*"
+
+        elif isinstance(item, Command) or isinstance(item, Group):
+            brief = item.brief if item.brief else item.short_doc
+            desc = item.help
+
+            # .help will be None if no docstr
+            if desc:
+                desc = desc.replace(brief, "").strip("\n").replace("[p]", self.prefix)
+
+            # If no .help or if .help same as .short_doc
+            if not desc:
+                desc = "No help manual page exists for this command."
+
+            # If no .brief or no .short_doc, change to .name after checking .help in case name is mentioned in .help
+            if not brief:
+                brief = item.name
+
+            return brief, desc
+
+        else:
+            raise TypeError(f"{str(item)}: {item.__class__.__name__} not a subclass of Bot, Cog, Command, or Group.")
+
+    def format_cmds_list(self, cmds: List[Union[Command, Group]]) -> str:
+        """Formats and paginates the list of a cog's commands
+        Maximum Embed field value is 1024"""
+
+        lines = list()
+
+        for cmd in cmds:
+
+            # Get and format the one line entry for cmd
+            brief, _ = self.format_doc(cmd)
+            lines.append(f"**{self.prefix}{cmd.qualified_name}{ZWSP}**   {brief}")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def paginate_field(
+            name: str,
+            value: str,
+            wrap: str = "{}{}",
+            cont: str = " (Cont.)"
+    ) -> List[Dict[str, Union[str, bool]]]:
+        """Takes parameters for an Embed field and returns a
+        list of field dicts with values under 1024 characters
+
+        :param name:
+            :class:`str` that will be used as field header
+        :param value:
+            :class:`str` that will be paginated for field values
+        :param wrap:
+            :class:`str` that will be formatted for field headers
+            Must be a string that will accept .format() with two
+            parameters. ``name`` will be inserted first, then ``cont``
+        :param cont:
+            :class:`str` that will extend header
+
+        e.g. name="Test", wrap="__{}{}__", cont=" (Continued)"
+             Header 1: "__Test__"
+             Header 2: "__Test (Continued)__"
+        """
+
+        fields = list()
+
+        # Account for large cogs and split them into separate fields
+        field = {
+            "name": wrap.format(name, ""),
+            "value": "",
+            "inline": False
+        }
+
+        values = value.split("\n")
+
+        for value in values:
+
+            # Embed field value maximum length, less 1 for line return
+            if len(value) + len(field["value"]) < 1023:
+                field["value"] += f"\n{value}"
+            else:
+
+                # Add field to fields list and start a new one
+                fields.append(field)
+                field = {
+                    "name": f"**__{name}{cont}:__**",
+                    "value": value,
+                    "inline": False
+                }
+
+        else:
+            # Add the field if one field or add the last field if multiple
+            fields.append(field)
+
+        return fields
+
+    """ #####################################################################################
+         Callbacks for help command for arguments Bot [no argument], Cog, Command, and Group
+        ##################################################################################### """
 
     async def send_bot_help(self, mapping: Dict[Union[Cog, None], List[Command]], msg: str = None):
         """Prepares help for help command with no argument"""
-        em = self.em_base()
-        no_category = f"{ZWSP}No Category:"
 
-        if self.bot.description:
-            em.description = f"*{self.bot.description}*"
-        else:
-            em.description = f" {ZWSP}"
+        em = self.em_base()
+        fields = list()
+
+        # Set Embed body description as cog's docstr
+        em.description, _ = self.format_doc(self.bot)
 
         for cog, cmds in mapping.items():
+
+            # Get list of unhidden, commands in cog that user passes checks for
             cmds = await self.filter_commands(cmds, sort=True)
+
+            # If cog doesn't have any commands user can run, skip it
             if not cmds:
                 continue
-            field = {
-                "name": f"**__{cog.qualified_name if cog else '{}'.format(no_category)}__**",
-                "value": "\n".join([f"**{self.prefix}{cmd.name}:**   {cmd.short_doc}" for cmd in cmds]),
-                "inline": False
-            }
-            em.add_field(**field)
 
-        await self.dest.send(embed=em)  # TODO: Refactor into self.send() for pagination
+            # Get header (Category name) for Embed field
+            category = cog.qualified_name if cog else "No Category"
 
-    async def send_command_help(self, cmd: Command):
-        """Prepares help when argument is a Command"""
-        em = self.em_base()
-        em.description = f"`Syntax: {self.get_command_signature(cmd)}`"
+            # Add fields for commands list
+            fields.extend(self.paginate_field(category, self.format_cmds_list(cmds), "**__{}{}__**"))
 
-        if cmd.help:  # TODO: Hella need to refactor, but working for now.
-            if cmd.short_doc == cmd.help:
-                doc = cmd.short_doc if cmd.short_doc else cmd.name
-            else:
-                doc = cmd.help.replace(cmd.short_doc, "").strip("\n").replace("[p]", self.prefix)
-        else:
-            doc = cmd.short_doc if cmd.short_doc else cmd.name
-
-        field = {
-            "name": f"__{cmd.short_doc}__" if cmd.short_doc else f"__{cmd.name}__",
-            "value": doc,
-            "inline": False
-        }
-        em.add_field(**field)
-
-        await self.dest.send(embed=em)
-
-    async def send_group_help(self, group: Group):
-        """Prepares help when argument is a command Group"""
-        em = self.em_base()
-        em.description = f"`Syntax: {self.get_command_signature(group)}`".replace("[p]", self.prefix)
-
-        if group.help:
-            if group.short_doc == group.help:
-                doc = group.short_doc if group.short_doc else group.name
-            else:
-                doc = group.help.replace(group.short_doc, "").strip("\n").replace("[p]", self.prefix)
-        else:
-            doc = group.short_doc if group.short_doc else group.name
-
-        field = {
-            "name": f"__{group.short_doc}__" if group.short_doc else f"__{group.name}__",
-            "value": doc,
-            "inline": False
-        }
-        em.add_field(**field)
-
-        cmds = await self.filter_commands(group.commands, sort=True)
-        if cmds:
-            field = {
-                "name": "**__Subcommands:__**",
-                "value": "\n".join([f"**{cmd.name}:**   {cmd.short_doc}" for cmd in group.commands]),
-                "inline": False
-            }
-            em.add_field(**field)
-
-        await self.dest.send(embed=em)
+        await self.send(em, fields)
 
     async def send_cog_help(self, cog: Cog):
         """Prepares help when argument is a Cog"""
 
         em = self.em_base()
+        fields = list()
 
         # If cog class has a docstring, it's set as description
-        # Set as Embed description
         # If no description, set Cog name
-        em.description = cog.description.replace("[p]", self.prefix) if cog.description else cog.qualified_name
+        em.description = "**__{}__**\n{}".format(*self.format_doc(cog))
 
         # Get list of un-hidden, enabled commands that the invoker passes the checks to run
         cmds = await self.filter_commands(cog.get_commands(), sort=True)
-        if cmds:
-            field = {
-                "name": "**__Commands:__**",
-                "value": "\n".join([f"**{self.prefix}{cmd.name}**   {cmd.short_doc}" for cmd in cmds]),
-                "inline": False
-            }
-            em.add_field(**field)
 
-        await self.dest.send(embed=em)
+        # Add fields for commands list
+        if cmds:
+            fields.extend(self.paginate_field("Commands", self.format_cmds_list(cmds), "**__{}{}__**"))
+
+        await self.send(em, fields)
+
+    async def send_command_help(self, cmd: Command):
+        """Prepares help when argument is a Command"""
+
+        em = self.em_base()
+        fields = list()
+
+        # Get command usage
+        if cmd.usage:
+            usage = f"`Syntax: {self.prefix}{cmd.qualified_name} {cmd.usage}`"
+        else:
+            usage = f"`Syntax: {self.get_command_signature(cmd)}`"
+
+        # Add command name and usage to Embed body description
+        em.description = f"**__{cmd.qualified_name}__**\n{usage}"
+
+        # Add fields for command help manual
+        fields.extend(self.paginate_field(*self.format_doc(cmd), "__{}{}__"))
+
+        await self.send(em, fields)
+
+    async def send_group_help(self, group: Group):
+        """Prepares help when argument is a command Group"""
+
+        em = self.em_base()
+        fields = list()
+
+        # Get command usage
+        if group.usage:
+            usage = f"`Syntax: {self.prefix}{group.qualified_name} {group.usage}`"
+        else:
+            usage = f"`Syntax: {self.get_command_signature(group)}`"
+
+        # Add command name and usage to Embed body description
+        em.description = f"**__{group.qualified_name}__**\n{usage}"
+
+        # Add fields for command help manual
+        fields.extend(self.paginate_field(*self.format_doc(group), "__{}{}__"))
+
+        cmds = await self.filter_commands(group.commands, sort=True)
+        if cmds:
+            fields.extend(self.paginate_field("Subcommands", self.format_cmds_list(cmds), "**__{}{}__**"))
+
+        await self.send(em, fields)
 
 
 class Help(Cog):
@@ -335,6 +458,10 @@ class Help(Cog):
 
         # Restore the help_command that was loaded before cog load
         self.bot.help_command = self._original_help_command
+
+    @Cog.listener("on_reaction_add")
+    async def _on_reaction_add(self, react: Reaction, user: Union[Member, User]):
+        pass
 
 
 def setup(bot: Bot):
