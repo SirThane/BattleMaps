@@ -59,23 +59,27 @@ class HelpCommand(BaseHelpCommand):
 
     Attributes
     ------------
-    dm_help: Optional[:class:`bool`]
-        A tribool that indicates if the help command should DM the user instead of
+    dm_help: :class:`bool`
+        A bool that indicates if the help command should DM the user instead of
         sending it to the channel it received it from. If the boolean is set to
-        ``True``, then all help output is DM'd. If ``False``, none of the help
-        output is DM'd. If ``None``, then the bot will only DM when the help
-        message becomes too long (dictated by more than :attr:`dm_help_threshold` characters).
+        ``True``, then all help output is DM'd. If ``False``, the help output
+        is sent to context
         Defaults to ``False``.
+    field_limit: :class:`int`
+        The number of fields that will be added to a help page before it is
+        automatically paginated
+        Defaults to ``6``.
+    time_limit: :class:`int`
+        Expiry time limit on help command output in seconds. Will automatically
+        delete message and remove from active help sessions dict when time limit
+        is reached
+        Defaults to ``120``
     help: :class:`str`
-        The string that will be set as the help command's help manual entry page
+        A string that will be set as the help command's help manual entry page
     """
 
     def __init__(self, **options):
         self.dm_help = options.pop('dm_help', False)
-
-        # Used for send_help_for
-        # Stored as class attribute instead of passing as parameter so we don't need to override command_callback
-        self._title = None
 
         # Number of fields before a help command's output gets paginated
         self.field_limit = options.pop("field_limit", 6)
@@ -89,6 +93,10 @@ class HelpCommand(BaseHelpCommand):
                                         "`[p]help` for all commands\n"
                                         "`[p]help command` for a command's help page\n"
                                         "`[p]help Category` for all commands in a Category")
+
+        # Used for send_help_for
+        # Stored as class attribute instead of passing as parameter so we don't need to override command_callback
+        self._title = None
 
         super().__init__(command_attrs={"help": self.help}, **options)
 
@@ -124,7 +132,7 @@ class HelpCommand(BaseHelpCommand):
 
     def em_base(self) -> Embed:
         """Prepare a basic embed that will be common to all outputs"""
-        em = Embed(title=self.title, description=ZWSP, color=self.color)
+        em = Embed(title=self.title, description="", color=self.color)
         em.set_author(**self.author)
         em.set_footer(text=self.footer)
 
@@ -144,7 +152,7 @@ class HelpCommand(BaseHelpCommand):
         """Returns an author dict for constructing Embed"""
 
         # No display names in DMs
-        if self.dm_help:
+        if isinstance(self.dest, DMChannel):
             name = self.bot.user.name
         else:
             name = self.ctx.guild.me.display_name
@@ -189,11 +197,20 @@ class HelpCommand(BaseHelpCommand):
         ############ """
 
     async def send(self, em: Embed, fields: List[Dict[str, Union[str, bool]]]) -> Message:
+        """The callback that the message and sets the help
+        command session for a user
+
+        This is the bit that actually puts the message in
+        the channel"""
+
+        # Send help as is if fields are within self.field_limit
         if len(fields) <= self.field_limit:
             for field in fields:
                 em.add_field(**field)
             msg = await self.dest.send(embed=em)
 
+            # Dummy information for active session
+            # Only used to identify and delete non-paged help output
             self.cog.active_help[msg.id] = {
                 "author": self.ctx.author,
                 "msg": msg,
@@ -205,14 +222,19 @@ class HelpCommand(BaseHelpCommand):
         else:
             ems = list()
 
+            # Split list of fields into a list of smaller lists with __len__ of self.field_limit
             for groups in [list(fields[i:self.field_limit + i]) for i in range(0, len(fields), self.field_limit)]:
+
+                # Make a copy of the base Embed for each group of fields
                 page = em.copy()
                 for field in groups:
                     page.add_field(**field)
                 ems.append(page)
 
+            # Send the first page..
             msg = await self.dest.send(embed=ems[0])
 
+            # .. then add the rest to a session dict that'll be used in the cog to page through with reactions
             self.cog.active_help[msg.id] = {
                 "author": self.ctx.author,
                 "msg": msg,
@@ -221,39 +243,37 @@ class HelpCommand(BaseHelpCommand):
                 "pages": ems
             }
 
+            # Have the bot add the reactions that will be used so users won't have to manually
             for react in ["⏮", "◀", "▶", "⏭", "❌"]:
+
+                # Good boys sleep. Bad boys talk to the rate limit police
                 await sleep(0.1)
                 await msg.add_reaction(react)
 
+        # Set help session to expire in self.time_limit seconds
         await self.set_timeout(msg)
 
         return msg
 
     async def set_timeout(self, msg: Message) -> None:
+        """Help output will automatically time out after a hard time limit"""
         await sleep(self.time_limit)
-        if self.cog.active_help.pop(msg.id):
+
+        # Try to remove session and delete message if session was still active
+        if self.cog.active_help.pop(msg.id, None):
             await msg.delete()
 
     @staticmethod
-    def paginate_field(
-            name: str,
-            value: str,
-            wrap: str = "{}{}",
-            cont: str = " (Cont.)"
-    ) -> List[Dict[str, Union[str, bool]]]:
+    def paginate_field(name: str, value: str, extend: str) -> List[Dict[str, Union[str, bool]]]:
         """Takes parameters for an Embed field and returns a
         list of field dicts with values under 1024 characters
 
         :param name:
-            :class:`str` that will be used as field header
+            :class:`str` field header
         :param value:
-            :class:`str` that will be paginated for field values
-        :param wrap:
-            :class:`str` that will be formatted for field headers
-            Must be a string that will accept .format() with two
-            parameters. ``name`` will be inserted first, then ``cont``
-        :param cont:
-            :class:`str` that will extend header
+            :class:`str` field value
+        :param extend:
+            :class:`str` header for additional fields
 
         e.g. name="Test", wrap="__{}{}__", cont=" (Continued)"
              Header 1: "__Test__"
@@ -263,8 +283,14 @@ class HelpCommand(BaseHelpCommand):
         fields = list()
 
         # Account for large cogs and split them into separate fields
-        field = {"name": wrap.format(name, ""), "value": "", "inline": False}
+        field = {
+            "name": name,
+            "value": "",
+            "inline": False
+        }
 
+        # Don't want to slice mid line, so split on new lines
+        # Knock on wood, no lines over 1024 TODO
         values = value.split("\n")
 
         for value in values:
@@ -276,7 +302,11 @@ class HelpCommand(BaseHelpCommand):
 
                 # Add field to fields list and start a new one
                 fields.append(field)
-                field = {"name": f"**__{name}{cont}:__**", "value": value, "inline": False}
+                field = {
+                    "name": extend,
+                    "value": value,
+                    "inline": False
+                }
 
         else:
             # Add the field if one field or add the last field if multiple
@@ -314,7 +344,6 @@ class HelpCommand(BaseHelpCommand):
         # Set the title of the embed so custom messages can be added in
         self.title = msg
 
-        # command kwarg is string
         # Good thing Cog, Command, and Group all have .qualified_name
         # If no cmd, Bot help page will be sent
         msg = await self.command_callback(ctx, command=cmd.qualified_name if cmd else None)
@@ -326,6 +355,12 @@ class HelpCommand(BaseHelpCommand):
         return msg
 
     def format_doc(self, item: Union[Bot, Cog, Command, Group]) -> Tuple[str, str]:
+        """Get and format the help information to be added to embeds
+
+        Change this method to changed markdown and formatting"""
+
+        # Only added to Embed body, so description is fine
+        # Fields will be headed by Cogs and filled by Commands
         if isinstance(item, Bot):
             if item.description:
                 desc = item.description.replace("[p]", self.prefix)
@@ -334,20 +369,31 @@ class HelpCommand(BaseHelpCommand):
                 if len(desc) > 2043:
                     desc = f"{desc[:2043]}..."
 
+                # Don't need bot name since it's in the Embed Author
                 return f"*{desc}*", ""
             else:
+
+                # Need to have something in the body and v1.2.4 doesn't respect ZWSPs anymore, so repeat bot name
                 return f"*{item.user.name}*", ""
 
+        # Get Cog name and description if it has one
+        # Both are added to the body
         elif isinstance(item, Cog):
             if item.description:
                 # "CogName", "*Description: $command for use*"
                 return item.qualified_name, f"*{item.description.replace('[p]', self.prefix)}*"
             else:
-                # "CogName", "*CogName*"
-                return item.qualified_name, f"*{item.qualified_name}*"
+                # "CogName", ""
+                return item.qualified_name, ""
 
+        # Groups and Commands are treated the same
         elif isinstance(item, Command) or isinstance(item, Group):
+
+            # Command.brief can optionally be set at definition
+            # Use it if it's available, otherwise, use the automatic short_doc using first line from docstr
             brief = item.brief if item.brief else item.short_doc
+
+            # Command.help is automatically set from full docstr on definition
             desc = item.help
 
             # .help will be None if no docstr
@@ -369,7 +415,10 @@ class HelpCommand(BaseHelpCommand):
 
     def format_cmds_list(self, cmds: List[Union[Command, Group]]) -> str:
         """Formats and paginates the list of a cog's commands
-        Maximum Embed field value is 1024"""
+
+        Change this method to change markdown and how commands
+        listed for Bot, Cog, and Group. Will be paginated later
+        in """
 
         lines = list()
 
@@ -377,7 +426,7 @@ class HelpCommand(BaseHelpCommand):
 
             # Get and format the one line entry for cmd
             brief, _ = self.format_doc(cmd)
-            lines.append(f"**{self.prefix}{cmd.qualified_name}{ZWSP}**   {brief}")
+            lines.append(f"**{self.prefix}{cmd.qualified_name}**   {brief}")
 
         return "\n".join(lines)
 
@@ -407,7 +456,9 @@ class HelpCommand(BaseHelpCommand):
             category = cog.qualified_name if cog else "No Category"
 
             # Add fields for commands list
-            fields.extend(self.paginate_field(category, self.format_cmds_list(cmds), "**__{}{}__**"))
+            formatted_cmds = self.format_cmds_list(cmds)
+            paginated_fields = self.paginate_field(f"**__{category}__**", formatted_cmds, f"**__{category} (Cont.)__**")
+            fields.extend(paginated_fields)
 
         return await self.send(em, fields)
 
@@ -417,8 +468,7 @@ class HelpCommand(BaseHelpCommand):
         em = self.em_base()
         fields = list()
 
-        # If cog class has a docstring, it's set as description
-        # If no description, set Cog name
+        # Add Cog name and description if it has one
         em.description = "**__{}__**\n{}".format(*self.format_doc(cog))
 
         # Get list of un-hidden, enabled commands that the invoker passes the checks to run
@@ -426,27 +476,9 @@ class HelpCommand(BaseHelpCommand):
 
         # Add fields for commands list
         if cmds:
-            fields.extend(self.paginate_field("Commands", self.format_cmds_list(cmds), "**__{}{}__**"))
-
-        return await self.send(em, fields)
-
-    async def send_command_help(self, cmd: Command) -> Message:
-        """Prepares help when argument is a Command"""
-
-        em = self.em_base()
-        fields = list()
-
-        # Get command usage
-        if cmd.usage:
-            usage = f"`Syntax: {self.prefix}{cmd.qualified_name} {cmd.usage}`"
-        else:
-            usage = f"`Syntax: {self.get_command_signature(cmd)}`"
-
-        # Add command name and usage to Embed body description
-        em.description = f"**__{cmd.qualified_name}__**\n{usage}"
-
-        # Add fields for command help manual
-        fields.extend(self.paginate_field(*self.format_doc(cmd), "__{}{}__"))
+            str_cmds = self.format_cmds_list(cmds)
+            paginated_fields = self.paginate_field(f"**__Commands__**", str_cmds, f"**__Commands (Cont.)__**")
+            fields.extend(paginated_fields)
 
         return await self.send(em, fields)
 
@@ -466,11 +498,38 @@ class HelpCommand(BaseHelpCommand):
         em.description = f"**__{group.qualified_name}__**\n{usage}"
 
         # Add fields for command help manual
-        fields.extend(self.paginate_field(*self.format_doc(group), "__{}{}__"))
+        brief, doc = self.format_doc(group)
+        paginated_fields = self.paginate_field(f"__{brief}__", doc, f"(Cont.)")
+        fields.extend(paginated_fields)
 
+        # Get subcommands if any and add them
         cmds = await self.filter_commands(group.commands, sort=True)
         if cmds:
-            fields.extend(self.paginate_field("Subcommands", self.format_cmds_list(cmds), "**__{}{}__**"))
+            str_cmds = self.format_cmds_list(cmds)
+            paginated_fields = self.paginate_field(f"**__Subcommands__**", str_cmds, f"**__Subcommands (Cont.)__**")
+            fields.extend(paginated_fields)
+
+        return await self.send(em, fields)
+
+    async def send_command_help(self, cmd: Command) -> Message:
+        """Prepares help when argument is a Command"""
+
+        em = self.em_base()
+        fields = list()
+
+        # Get command usage
+        if cmd.usage:
+            usage = f"`Syntax: {self.prefix}{cmd.qualified_name} {cmd.usage}`"
+        else:
+            usage = f"`Syntax: {self.get_command_signature(cmd)}`"
+
+        # Add command name and usage to Embed body description
+        em.description = f"**__{cmd.qualified_name}__**\n{usage}"
+
+        # Add fields for command help manual
+        brief, doc = self.format_doc(cmd)
+        paginated_fields = self.paginate_field(f"__{brief}__", doc, f"(Cont.)")
+        fields.extend(paginated_fields)
 
         return await self.send(em, fields)
 
@@ -489,16 +548,19 @@ class Help(Cog):
         self._original_help_command = bot.help_command
 
         # Replace currently loaded help_command with ours and set this cog as cog so it's not uncategorized
-        bot.help_command = HelpCommand(dm_help=self.bot.dm_help, field_limit=6, time_limit=120)
+        bot.help_command = HelpCommand(dm_help=self.bot.dm_help, field_limit=5, time_limit=120)
         bot.help_command.cog = self
 
         # Make send_help_for available as a coroutine method of Bot
         bot.send_help_for = bot.help_command.send_help_for
 
-        # Dict to store active paginated help outputs
+        # Dict to store active help sessions with paginated output
         self.active_help = dict()
 
     def cog_unload(self):
+        """House-cleaning when cog is unloaded
+
+        Restore state of help_command to before cog was loaded"""
 
         # Use :param cog property setter to remove Cog from help_command
         self.bot.help_command.cog = None
@@ -506,61 +568,118 @@ class Help(Cog):
         # Restore the help_command that was loaded before cog load
         self.bot.help_command = self._original_help_command
 
+        async def send_help_for(ctx: Context, cmd: Union[Cog, Command, Group] = None, msg: str = None) -> None:
+            """Dummy placeholder to alert and prevent accidental usage after removal"""
+            raise AttributeError(f"Coroutine `Bot.send_help_for` is not available after Help cog is unloaded.\n"
+                                 f"Params: ctx: {ctx}\n"
+                                 f"        cmd: {cmd}\n"
+                                 f"        msg: {msg}")
+
+        # Replace send_help_for with a dummy coro that raises AttributeError if
+        # it is attempted to be used after cog is unloaded
+        self.bot.send_help_for = send_help_for
+        self.bot.help_command.send_help_for = send_help_for
+
     @Cog.listener("on_reaction_add")
     async def on_reaction_add(self, react: Reaction, user: Union[Member, User]):
-        if react.message.id not in self.active_help.keys():
-            return
+        """Called when a user adds a reaction to a message
 
+        We'll use this to make the help command interactive.
+        Reactions to change the page if it's long enough to be
+        paginated."""
+
+        # Ignore bot's own reactions
         if user.id == self.bot.user.id:
             return
 
-        msg: Message = react.message
-        await sleep(0.2)
+        # Ignore if the message is not watched (not an active help manual message)
+        if react.message.id not in self.active_help.keys():
+            return
 
+        # Shorter code and helped with type hinting
+        msg: Message = react.message
+
+        # Add a little delay so we don't run into cache issues
+        await sleep(0.1)
+
+        # Since it's not the bot and is a watched message, remove reactions we don't care about
         if react.emoji not in ["⏮", "◀", "▶", "⏭", "❌"]:
             await react.remove(user)
             return
 
+        # We don't care about reactions that aren't from the user who used [p]help
         if user.id != self.active_help[msg.id]["author"].id:
             await react.remove(user)
             return
 
+        # Shorter code
         active_help = self.active_help[msg.id]
 
+        # Remove the reaction so key can be pressed again without user removing it first
+        await react.remove(user)
+
+        # Another small delay to avoid cache issues when editing/deleting message after deleting emoji
+        await sleep(0.1)
+
+        # Scrub back to first page and set as current index
         if react.emoji == "⏮":
-            await react.remove(user)
+
+            # Ignore if already on first page
+            if active_help["current"] == 0:
+                return
+
+            # Set index to first and edit message to first page
             self.active_help[msg.id]["current"] = 0
             await msg.edit(embed=active_help["pages"][0])
             return
 
+        # Move back one page
         if react.emoji == "◀":
-            await react.remove(user)
+
+            # Ignore if already on first page
             if active_help["current"] == 0:
                 return
+
+            # Set index to previous and edit message to previous page
             current = active_help["current"] - 1
             self.active_help[msg.id]["current"] = current
             await msg.edit(embed=active_help["pages"][current])
             return
 
+        # Move forward one page
         if react.emoji == "▶":
-            await react.remove(user)
+
+            # Ignore if already on last page
             if active_help["current"] > active_help["last"]:
                 return
+
+            # Set index to next and edit message with next page
             current = active_help["current"] + 1
             self.active_help[msg.id]["current"] = current
             await msg.edit(embed=active_help["pages"][current])
             return
 
+        # Move to last page
         if react.emoji == "⏭":
-            await react.remove(user)
+
+            # Ignore if already on last page
+            if active_help["last"] == active_help["last"]:
+                return
+
+            # Set index to last and edit message with last page
             last = self.active_help[msg.id]["last"]
             self.active_help[msg.id]["current"] = last
             await msg.edit(embed=active_help["pages"][last])
             return
 
+        # End help session
         if react.emoji == "❌":
+
+            # For cleanliness and no spamming, remove help message
             await msg.delete()
-            self.active_help.pop(msg.id)
+
+            # Remove help from active sessions
+            self.active_help.pop(msg.id, None)
             return
 
 
