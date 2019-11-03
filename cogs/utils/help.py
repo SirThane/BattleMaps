@@ -187,7 +187,7 @@ class HelpCommand(BaseHelpCommand):
     @property
     def dest(self) -> Messageable:
         """Returns the destination Help output will be sent to"""
-        if self.dm_help is True:
+        if self.dm_help or self.is_dm:
             return self.ctx.author
         else:
             return self.ctx
