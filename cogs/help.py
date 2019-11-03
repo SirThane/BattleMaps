@@ -39,7 +39,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 try:
     # My subclassing of Bot
-    from cogs.utils.classes import Bot
+    from utils.classes import Bot
 except ImportError:
     # So I can provide this cog to others
     from discord.ext.commands import Bot

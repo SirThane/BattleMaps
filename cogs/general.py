@@ -3,8 +3,8 @@
 from discord import Colour, Embed, Member
 from discord.ext.commands import Cog, command, Context
 
-from cogs.utils.classes import Bot
-from cogs.utils import checks
+from utils.classes import Bot
+from utils import checks
 
 
 class General(Cog):

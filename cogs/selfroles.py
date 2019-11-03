@@ -5,8 +5,8 @@ from discord import Embed
 from discord.ext.commands import Cog, command, Context, group, RoleConverter
 from discord.ext.commands.errors import BadArgument
 
-from cogs.utils.classes import Bot
-from cogs.utils import checks
+from utils.classes import Bot
+from utils import checks
 
 
 class SelfRoles(Cog):

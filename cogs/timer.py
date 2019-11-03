@@ -7,7 +7,7 @@ from discord import Embed, Colour
 from discord.ext.commands import command, Context
 from discord.ext.commands.cog import Cog
 
-from cogs.utils.classes import Bot
+from utils.classes import Bot
 
 
 class Timer(Cog):

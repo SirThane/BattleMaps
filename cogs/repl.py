@@ -5,9 +5,9 @@ import inspect
 from discord import Colour, Embed
 from discord.ext.commands import Cog, command, Context, group
 
-from cogs.utils.classes import Bot
-from cogs.utils import checks, utils
-from cogs.utils.utils import stdoutio
+from utils.classes import Bot
+from utils import utils, checks
+from utils.utils import stdoutio
 
 
 MD = "```py\n{0}\n```"

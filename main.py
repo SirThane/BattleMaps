@@ -8,8 +8,8 @@ from json import load
 from discord import Activity, Message
 from discord.utils import get, oauth_url
 
-from cogs.utils.classes import Bot
-from cogs.utils.utils import StrictRedis
+from utils.classes import Bot
+from utils.utils import StrictRedis
 
 
 APP_NAME = "BattleMaps"  # BOT NAME HERE

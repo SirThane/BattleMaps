@@ -1,3 +1,4 @@
+
 from discord.ext import commands
 import discord
 from main import db, APP_NAME
@@ -114,38 +115,6 @@ def awbw_staff_role(ctx):
             return role in [r.id for r in ctx.author.roles]
     else:
         return False
-
-
-# @supercede(sudoer)
-# def adminrole(ctx):  # TODO: WIP
-#     role = db.hget(f'{config}:adminrole', f'{ctx.guild.id}')
-#     if role:
-#         return has_role(ctx, lambda r: r.id == int(role))
-#     else:
-#         return False
-#
-#
-# @supercede(sudoer)
-# def modrole(ctx):  # TODO: WIP
-#     role = db.hget(f'{config}:modrole', f'{ctx.guild.id}')
-#     if role:
-#         return has_role(ctx, lambda r: r.id == int(role))
-#     else:
-#         return False
-
-
-# ### Luc's Predicates ###
-#
-# def r_pokemon_check(guild):
-#     return guild.id == 111504456838819840
-#
-#
-# def r_md_check(guild):
-#     return guild.id == 117485575237402630
-#
-#
-# def mod_server_check(guild):
-#     return guild.id == 146626123990564864
 
 
 """

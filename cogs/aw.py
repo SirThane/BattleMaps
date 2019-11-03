@@ -12,11 +12,11 @@ from discord import Attachment, DMChannel, Embed, File, HTTPException, Member, M
 from discord.ext.commands import Cog, group
 from discord.ext.commands.context import Context
 
-from cogs.utils.checks import sudo
-from cogs.utils.classes import Bot
-from cogs.utils.utils import fold_list
-from cogs.utils.awmap import AWMap
-from cogs.utils.errors import *
+from utils.checks import sudo
+from utils.classes import Bot
+from utils.utils import fold_list
+from utils.awmap import AWMap
+from utils.errors import *
 
 
 RE_AWL = compile(r"(http[s]?://)?awbw.amarriner.com/(glenstorm/)?prevmaps.php\?maps_id=([0-9]+)(?i)")
@@ -148,7 +148,7 @@ class AdvanceWars(Cog):
         awmap = self.get_loaded_map(ctx.author)
         if not awmap:
             raise NoLoadedMapError
-        coords = list(fold_list(coords.split(" "), 2))
+        coords = [list(coords.split(" ")[i:2 + i]) for i in range(0, len(coords.split(" ")), 2)]
         terr, ctry = int(terr), int(ctry)
         for coord in coords:
             x, y = coord

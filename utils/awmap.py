@@ -10,8 +10,8 @@ from math import cos, sin, pi, trunc
 from PIL import Image, ImageDraw
 from typing import Dict, Generator, List, Tuple, Union
 
-from cogs.utils import awbw_api
-from cogs.utils.utils import bytespop
+from utils import awbw_api
+from utils.utils import bytespop
 
 
 def layer(bitmask: Union[str, int]) -> List[Tuple[int, int]]:

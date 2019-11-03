@@ -16,9 +16,9 @@ from discord import Embed, Game
 from discord.ext.commands import Cog, command, Context
 from discord.utils import oauth_url
 
-from cogs.utils.classes import Bot
-from cogs.utils import checks
-from cogs.utils.utils import em_tb
+from utils.classes import Bot
+from utils import checks
+from utils.utils import em_tb
 
 
 @contextmanager

@@ -4,13 +4,22 @@
 from datetime import datetime
 from discord import Embed, Member, Message
 from discord.utils import get
-from discord.ext.commands import CheckFailure, Cog, CommandInvokeError, CommandNotFound, Context, DisabledCommand,\
-    MissingRequiredArgument, NoPrivateMessage
+from discord.ext.commands import (
+    CheckFailure,
+    Cog,
+    CommandInvokeError,
+    CommandNotFound,
+    Context,
+    DisabledCommand,
+    MissingRequiredArgument,
+    NoPrivateMessage
+)
 from pytz import timezone
+from typing import Union
 
-from cogs.utils.classes import Bot
-from cogs.utils.errors import *
-from cogs.utils.utils import em_tb
+from utils.classes import Bot
+from utils.errors import *
+from utils.utils import em_tb
 
 
 WELCOME = "Welcome to AWBW Discord Server {}! Present yourself and have fun!"
@@ -62,7 +71,7 @@ class Events(Cog):
     #         await message.add_reaction(self.sad_andy)
 
     @Cog.listener(name="on_command_error")
-    async def on_command_error(self, ctx: Context, error):
+    async def on_command_error(self, ctx: Context, error: Union[Exception, CommandError]):
         if isinstance(error, NoPrivateMessage):
             await ctx.send(
                 content='This command cannot be used in private messages.'
@@ -144,7 +153,7 @@ class Events(Cog):
             await self.errorlog.send(embed=em)
 
         else:
-            em = await em_tb(error.original)
+            em = await em_tb(error)
             await self.errorlog.send(embed=em)
 
     @Cog.listener("on_message")
