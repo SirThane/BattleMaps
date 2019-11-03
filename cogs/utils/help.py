@@ -270,10 +270,6 @@ class HelpCommand(BaseHelpCommand):
             :class:`str` field value
         :param extend:
             :class:`str` header for additional fields
-
-        e.g. name="Test", wrap="__{}{}__", cont=" (Continued)"
-             Header 1: "__Test__"
-             Header 2: "__Test (Continued)__"
         """
 
         fields = list()
