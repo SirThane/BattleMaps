@@ -109,10 +109,6 @@ class HelpCommand(BaseHelpCommand):
         return self.ctx.bot
 
     @property
-    def prefix(self) -> str:
-        return self.bot.command_prefix
-
-    @property
     def ctx(self) -> Context:
         """Short name for context I use more commonly in signatures"""
         return self.context
@@ -152,7 +148,7 @@ class HelpCommand(BaseHelpCommand):
         """Returns an author dict for constructing Embed"""
 
         # No display names in DMs
-        if isinstance(self.dest, DMChannel):
+        if self.is_dm:
             name = self.bot.user.name
         else:
             name = self.ctx.guild.me.display_name
@@ -190,7 +186,7 @@ class HelpCommand(BaseHelpCommand):
         if self.dm_help or self.is_dm:
             return self.ctx.author
         else:
-            return self.ctx
+            return self.ctx.channel
 
     """ ############
          Pagination
@@ -363,7 +359,7 @@ class HelpCommand(BaseHelpCommand):
         # Fields will be headed by Cogs and filled by Commands
         if isinstance(item, Bot):
             if item.description:
-                desc = item.description.replace("[p]", self.prefix)
+                desc = item.description.replace("[p]", self.clean_prefix)
 
                 # Maximum embed body description length
                 if len(desc) > 2043:
@@ -381,7 +377,7 @@ class HelpCommand(BaseHelpCommand):
         elif isinstance(item, Cog):
             if item.description:
                 # "CogName", "*Description: $command for use*"
-                return item.qualified_name, f"*{item.description.replace('[p]', self.prefix)}*"
+                return item.qualified_name, f"*{item.description.replace('[p]', self.clean_prefix)}*"
             else:
                 # "CogName", ""
                 return item.qualified_name, ""
@@ -398,7 +394,7 @@ class HelpCommand(BaseHelpCommand):
 
             # .help will be None if no docstr
             if desc:
-                desc = desc.replace(brief, "").strip("\n").replace("[p]", self.prefix)
+                desc = desc.replace(brief, "").strip("\n").replace("[p]", self.clean_prefix)
 
             # If no .help or if .help same as .short_doc
             if not desc:
@@ -426,7 +422,7 @@ class HelpCommand(BaseHelpCommand):
 
             # Get and format the one line entry for cmd
             brief, _ = self.format_doc(cmd)
-            lines.append(f"**{self.prefix}{cmd.qualified_name}**   {brief}")
+            lines.append(f"**{self.clean_prefix}{cmd.qualified_name}**   {brief}")
 
         return "\n".join(lines)
 
@@ -490,7 +486,7 @@ class HelpCommand(BaseHelpCommand):
 
         # Get command usage
         if group.usage:
-            usage = f"`Syntax: {self.prefix}{group.qualified_name} {group.usage}`"
+            usage = f"`Syntax: {self.clean_prefix}{group.qualified_name} {group.usage}`"
         else:
             usage = f"`Syntax: {self.get_command_signature(group)}`"
 
@@ -519,7 +515,7 @@ class HelpCommand(BaseHelpCommand):
 
         # Get command usage
         if cmd.usage:
-            usage = f"`Syntax: {self.prefix}{cmd.qualified_name} {cmd.usage}`"
+            usage = f"`Syntax: {self.clean_prefix}{cmd.qualified_name} {cmd.usage}`"
         else:
             usage = f"`Syntax: {self.get_command_signature(cmd)}`"
 
