@@ -1,17 +1,17 @@
 
-import requests
-
 # from aiohttp import ClientSession  # TODO
 from datetime import datetime
+from requests import get
 from typing import Any, Dict  # , List, Union
 
 
 MAPS_API = "https://awbw.amarriner.com/matsuzen/api/map/map_info.php"
+UNSECURED_MAPS_API = "http://awbw.amarriner.com/matsuzen/api/map/map_info.php"
 GAMES_API = "TBD"
 USER_API = "TBD"
 
 
-def get_map(maps_id: int = None) -> Dict[str, Any]:  # Union[str, int, List[List[int]], List[Dict[str, Any]]] ]:
+def get_map(maps_id: int = None, verify: bool = True) -> Dict[str, Any]:
     """Requests map info from AWBW Maps API
 
     Map data returned in following format:
@@ -51,7 +51,10 @@ def get_map(maps_id: int = None) -> Dict[str, Any]:  # Union[str, int, List[List
 
     payload = {"maps_id": maps_id}
 
-    r_map = requests.get(MAPS_API, params=payload)
+    if verify:
+        r_map = get(MAPS_API, params=payload)
+    else:
+        r_map = get(UNSECURED_MAPS_API, params=payload, verify=False)
 
     if r_map.status_code != 200:
         raise ConnectionError(f"Unable to establish connection to AWBW. Error: {r_map.status_code}")

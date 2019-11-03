@@ -2047,7 +2047,13 @@ class AWMap:
 
         return self
 
-    def from_awbw(self, data: str = "", title: str = "", awbw_id: int = None) -> Union[AWMap, None]:
+    def from_awbw(
+            self,
+            data: str = "",
+            title: str = "",
+            awbw_id: int = None,
+            verify: bool = True
+    ) -> Union[AWMap, None]:
         """Loads a map from AWBW data
 
         Maps can be loaded two ways, either from raw CSV array with AWBW terrain
@@ -2059,13 +2065,14 @@ class AWMap:
 
                         If from AWBW site
         :param awbw_id: MAPS_ID of map on AWBW
+        :param verify: `bool` Use SSL to request maps
 
         :return: AWMap instance for generated map or None
         """
         if awbw_id:
 
             # Use AWBW Maps API to get map info JSON
-            awbw_map = awbw_api.get_map(maps_id=awbw_id)
+            awbw_map = awbw_api.get_map(maps_id=awbw_id, verify=verify)
 
             # Create the AWMap terrain map from the JSON terrain data
             self._parse_awbw_csv(csvdata=awbw_map["terr"])

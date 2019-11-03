@@ -459,13 +459,19 @@ class AdvanceWars(Cog):
 class CheckMap:
 
     @staticmethod
-    async def check(msg: Message, title: str = "[Untitled]", skips: list = None) -> Union[AWMap, None]:
+    async def check(
+            msg: Message,
+            title: str = "[Untitled]",
+            skips: list = None,
+            verify: bool = False
+    ) -> Union[AWMap, None]:
         """Takes a discord.Message object and checks
         for valid maps that can be loaded.
 
         :param msg: `discord.Message` to check for maps
         :param title: Optional title for text maps
         :param skips: Optional list of checks to exclude
+        :param verify: `bool` Use SSL to request AWBW map
 
         :return: `AWMap` instance of valid map is found
         :return: `None` if no valid map is found"""
@@ -505,7 +511,7 @@ class CheckMap:
                 )
 
             if "id" not in skips:
-                return CheckMap.from_id(s_csv.group(0))
+                return CheckMap.from_id(s_csv.group(0), verify)
 
         return
 
@@ -560,11 +566,12 @@ class CheckMap:
             return awmap
 
     @staticmethod
-    def from_id(awbw_id: str) -> Union[AWMap, None]:
+    def from_id(awbw_id: str, verify: bool = True) -> Union[AWMap, None]:
         """Use `AWMap`'s `from_awbw` method to collect
         a map from AWBW using it's map ID
 
         :param awbw_id: ID of map on AWBW
+        :param verify: `bool` Use SSL to request map from AWBW
 
         :raises InvalidMapError: if a Map with ID `awbw_id`
         is not found
@@ -572,7 +579,7 @@ class CheckMap:
         :return: `AWMap` instance with collected map data"""
         try:
             int(awbw_id)
-            awmap = AWMap().from_awbw(awbw_id=int(awbw_id))
+            awmap = AWMap().from_awbw(awbw_id=int(awbw_id), verify=verify)
         except Exception:
             raise InvalidMapError
         else:
