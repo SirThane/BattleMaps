@@ -18,7 +18,7 @@ Use [p] in command docstr for bot prefix.
 
 See [p]help here for example.
 
-await bot.formatter.send_help_for(ctx, command, [msg]) to
+await bot.help_command.send_help_for(ctx, command, [msg]) to
 send help page for command. Optionally pass a string as
 third arg to add a more descriptive message to help page.
 e.g. send_help_for(ctx, ctx.command, "Missing required arguments")
@@ -584,7 +584,7 @@ class Help(Cog):
         self._original_help_command = bot.help_command
 
         # Replace currently loaded help_command with ours and set this cog as cog so it's not uncategorized
-        bot.help_command = HelpCommand(dm_help=self.bot.dm_help, field_limit=5, time_limit=120)
+        bot.help_command = HelpCommand(dm_help=self.bot.dm_help, field_limit=3, time_limit=120)
         bot.help_command.cog = self
 
         # Make send_help_for available as a coroutine method of Bot
@@ -699,7 +699,7 @@ class Help(Cog):
         if react.emoji == "⏭":
 
             # Ignore if already on last page
-            if active_help["last"] == active_help["last"]:
+            if active_help["current"] == active_help["last"]:
                 return
 
             # Set index to last and edit message with last page
