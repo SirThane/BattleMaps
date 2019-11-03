@@ -192,12 +192,56 @@ class HelpCommand(BaseHelpCommand):
          Pagination
         ############ """
 
-    async def send(self, em: Embed, fields: List[Dict[str, Union[str, bool]]]) -> Message:
+    async def send(self, em: Embed, fields: List[Dict[str, Union[str, bool]]]) -> Union[Message, List[Message]]:
         """The callback that the message and sets the help
         command session for a user
 
         This is the bit that actually puts the message in
         the channel"""
+
+        if self.dm_help or self.is_dm:
+
+            pages = list()
+            page = em.copy()
+
+            # Split list of fields into lists of fields at maximum field quantity
+            groups = [list(fields[i:25 + i]) for i in range(0, len(fields), 25)]
+
+            for group in groups:
+
+                # Remove footer from all pages
+                page.set_footer(text="")
+
+                # Add maximum number of fields to page
+                for field in group:
+                    page.add_field(**field)
+                pages.append(page)
+
+                # If there's more than one group of fields, start a new page, but without name and description
+                if len(groups) > 1:
+                    page = self.em_base()
+
+                    # Remove author segment from subsequent pages
+                    page.set_author(name="", icon_url="")
+
+            # Add footer to last page
+            else:
+                pages[-1].set_footer(text=self.footer)
+
+            msgs = list()
+
+            # Send all pages
+            for page in pages:
+                msg = await self.dest.send(embed=page)
+                msgs.append(msg)
+
+                # Small delay to avoid rate limiting
+                await sleep(0.1)
+
+            # Return a list of the messages sent
+            # Won't set timeout because they can be long
+            # Won't add to active help sessions because bot can't use reaction paging in DMs
+            return msgs
 
         # Send help as is if fields are within self.field_limit
         if len(fields) <= self.field_limit:
@@ -219,11 +263,11 @@ class HelpCommand(BaseHelpCommand):
             ems = list()
 
             # Split list of fields into a list of smaller lists with __len__ of self.field_limit
-            for groups in [list(fields[i:self.field_limit + i]) for i in range(0, len(fields), self.field_limit)]:
+            for group in [list(fields[i:self.field_limit + i]) for i in range(0, len(fields), self.field_limit)]:
 
                 # Make a copy of the base Embed for each group of fields
                 page = em.copy()
-                for field in groups:
+                for field in group:
                     page.add_field(**field)
                 ems.append(page)
 
@@ -270,10 +314,6 @@ class HelpCommand(BaseHelpCommand):
             :class:`str` field value
         :param extend:
             :class:`str` header for additional fields
-
-        e.g. name="Test", wrap="__{}{}__", cont=" (Continued)"
-             Header 1: "__Test__"
-             Header 2: "__Test (Continued)__"
         """
 
         fields = list()
