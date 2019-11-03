@@ -110,7 +110,7 @@ class HelpCommand(BaseHelpCommand):
 
     @property
     def prefix(self) -> str:
-        return self.bot.command_prefix
+        return self.clean_prefix
 
     @property
     def ctx(self) -> Context:
@@ -190,7 +190,7 @@ class HelpCommand(BaseHelpCommand):
         if self.dm_help is True:
             return self.ctx.author
         else:
-            return self.ctx
+            return self.ctx.channel
 
     """ ############
          Pagination
@@ -602,24 +602,27 @@ class Help(Cog):
         # Add a little delay so we don't run into cache issues
         await sleep(0.1)
 
-        # Since it's not the bot and is a watched message, remove reactions we don't care about
-        if react.emoji not in ["⏮", "◀", "▶", "⏭", "❌"]:
-            await react.remove(user)
-            return
+        # We cant remove reactions in Direct Messages
+        if not isinstance(msg.channel, DMChannel):
 
-        # We don't care about reactions that aren't from the user who used [p]help
-        if user.id != self.active_help[msg.id]["author"].id:
+            # Since it's not the bot and is a watched message, remove reactions we don't care about
+            if react.emoji not in ["⏮", "◀", "▶", "⏭", "❌"]:
+                await react.remove(user)
+                return
+
+            # We don't care about reactions that aren't from the user who used [p]help
+            if user.id != self.active_help[msg.id]["author"].id:
+                await react.remove(user)
+                return
+
+            # Remove the reaction so key can be pressed again without user removing it first
             await react.remove(user)
-            return
+
+            # Another small delay to avoid cache issues when editing/deleting message after deleting emoji
+            await sleep(0.1)
 
         # Shorter code
         active_help = self.active_help[msg.id]
-
-        # Remove the reaction so key can be pressed again without user removing it first
-        await react.remove(user)
-
-        # Another small delay to avoid cache issues when editing/deleting message after deleting emoji
-        await sleep(0.1)
 
         # Scrub back to first page and set as current index
         if react.emoji == "⏮":
