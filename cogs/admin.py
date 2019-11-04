@@ -454,7 +454,7 @@ class Admin(Cog):
         await ctx.send(embed=em)
 
     @sudo()
-    @group(name='status', invoke_without_command=False)
+    @group(name='status', invoke_without_command=True)
     async def status(self, ctx: Context, *, game: str = None):
         """Changes status to 'Playing <game>'.
         Command without argument will remove status.
@@ -485,24 +485,38 @@ class Admin(Cog):
         """Updates bot repo from master"""
 
         em = Embed(
-            title="Git Pull",
+            title="Administration: Git Pull",
             description=self.gitpull(),
             color=0x00FF00
         )
         await ctx.send(embed=em)
 
     @sudo()
-    @command(name='restart', aliases=["kill", "f"])
-    async def _restart(self, ctx: Context, *, arg: str = None):
-        """Restarts the bot
+    @group(name='restart', aliases=["kill", "f"], invoke_without_command=True)
+    async def _restart(self, ctx: Context):
+        """Restarts the bot"""
 
-        `[p]restart pull` will update the repo before restarting"""
+        em = Embed(
+            title="Administration: Restart",
+            description=f"{ctx.author.mention} initiated bot restart.",
+            color=0x00FF00
+        )
 
-        if arg and arg.lower() == "pull":
-            resp = self.gitpull()
-        else:
-            resp = ""
-        await ctx.send(content=f"{resp}\nRestarting by command. . .")
+        await ctx.send(embed=em)
+        await self.bot.logout()
+
+    @sudo()
+    @_restart.command(name="pull")
+    async def restart_pull(self, ctx: Context):
+        """Updates repo from origin master and restarts"""
+
+        em = Embed(
+            title="Administration: Git Pull and Restart",
+            description=f"{ctx.author.mention} initiated bot code update and restart.\n{self.gitpull()}",
+            color=0x00FF00
+        )
+
+        await ctx.send(embed=em)
         await self.bot.logout()
 
 
