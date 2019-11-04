@@ -4,12 +4,17 @@
 import sys
 from contextlib import contextmanager
 from io import StringIO
+from re import match
 from traceback import extract_tb
 
-import redis
-from discord import Colour, DiscordException, Embed
-from discord.ext.commands import Context
-from typing import Any, Generator, Iterable, List, Tuple, Union
+import discord
+from redis import StrictRedis as DefaultStrictRedis
+from discord import Colour, DiscordException, Embed, TextChannel
+from discord.ext.commands import BadArgument, Context, IDConverter
+from discord.utils import get, find
+from typing import Iterable, Tuple, Union
+
+from utils.classes import Bot
 
 
 ZWSP = u'\u200b'
@@ -101,6 +106,55 @@ class Paginator:
         return self.pages
 
 
+def _get_from_guilds(bot: Bot, getter, argument):
+    """Copied from discort.ext.commands.converter to prevent
+    access to protected attributes inspection error"""
+    result = None
+    for guild in bot.guilds:
+        result = getattr(guild, getter)(argument)
+        if result:
+            return result
+    return result
+
+
+class GlobalTextChannelConverter(IDConverter):
+    """Converts to a :class:`~discord.TextChannel`.
+
+    Copy of discord.ext.commands.converters.TextChannelConverter,
+    Modified to always search global cache.
+
+    The lookup strategy is as follows (in order):
+
+    1. Lookup by ID.
+    2. Lookup by mention.
+    3. Lookup by name
+    """
+    async def convert(self, ctx: Context, argument: str) -> TextChannel:
+        bot = ctx.bot
+
+        search = self._get_id_match(argument) or match(r'<#([0-9]+)>$', argument)
+
+        if match is None:
+            # not a mention
+            if ctx.guild:
+                result = get(ctx.guild.text_channels, name=argument)
+            else:
+                def check(c):
+                    return isinstance(c, TextChannel) and c.name == argument
+                result = find(check, bot.get_all_channels())
+        else:
+            channel_id = int(search.group(1))
+            if ctx.guild:
+                result = ctx.guild.get_channel(channel_id)
+            else:
+                result = _get_from_guilds(bot, 'get_channel', channel_id)
+
+        if not isinstance(result, discord.TextChannel):
+            raise BadArgument('Channel "{}" not found.'.format(argument))
+
+        return result
+
+
 async def em_tb(error: Union[Exception, DiscordException], ctx: Context = None) -> Embed:
     if ctx:
         prefix = await ctx.bot.get_prefix(ctx.message)
@@ -182,16 +236,6 @@ def bytespop(
         return ret, b
 
 
-def fold_list(l: Iterable, width: int) -> Generator[List[Any], None, None]:
-    l = list(l)
-    try:
-        assert len(l) % width == 0
-    except AssertionError:
-        raise ValueError(f"Width must be factor of list length ({len(l)}")
-    for i in range(0, len(l), width):
-        yield l[i:i + width]
-
-
 def bool_transform(arg):
     if isinstance(arg, str):
         return bool_str(arg)
@@ -205,7 +249,7 @@ def bool_transform(arg):
         return arg
 
 
-class StrictRedis(redis.StrictRedis):
+class StrictRedis(DefaultStrictRedis):
     """Turns 'True' and 'False' values returns
     in redis to bool values"""
     def __init__(self, *args, **kwargs):

@@ -24,14 +24,13 @@ from discord.ext.commands import (
     ExtensionNotFound,
     ExtensionNotLoaded,
     group,
-    NoEntryPointError,
-    TextChannelConverter
+    NoEntryPointError
 )
 from discord.utils import oauth_url
 
 from utils.checks import sudo
 from utils.classes import Bot
-from utils.utils import em_tb, StrictRedis
+from utils.utils import em_tb, StrictRedis, GlobalTextChannelConverter
 
 
 class Admin(Cog):
@@ -415,11 +414,11 @@ class Admin(Cog):
 
         if dest:
             try:
-                self.say_dest: TextChannel = await TextChannelConverter().convert(ctx, dest)
+                self.say_dest: TextChannel = await GlobalTextChannelConverter().convert(ctx, dest)
             except BadArgument as error:
                 em = Embed(
-                    title="Invalid Channel",
-                    description=f"**__{error.__name__}__**: {str(error)}",
+                    title="Invalid Channel Identifier",
+                    description=f"**__{type(error).__name__}__**: {str(error)}",
                     color=0xFF0000
                 )
                 await ctx.send(embed=em)
