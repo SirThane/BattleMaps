@@ -584,7 +584,7 @@ class Help(Cog):
         self._original_help_command = bot.help_command
 
         # Replace currently loaded help_command with ours and set this cog as cog so it's not uncategorized
-        bot.help_command = HelpCommand(dm_help=self.bot.dm_help, field_limit=3, time_limit=120)
+        bot.help_command = HelpCommand(dm_help=self.bot.dm_help, field_limit=6, time_limit=120)
         bot.help_command.cog = self
 
         # Make send_help_for available as a coroutine method of Bot
