@@ -147,7 +147,7 @@ class REPL(Cog):
 
         embed = Embed().from_dict(emb)
 
-        await ctx.message.delete()
+        # await ctx.message.delete()
         await ctx.channel.send(embed=embed)
 
     @checks.sudo()
