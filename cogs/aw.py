@@ -14,7 +14,6 @@ from discord.ext.commands.context import Context
 
 from utils.checks import sudo
 from utils.classes import Bot
-from utils.utils import fold_list
 from utils.awmap import AWMap
 from utils.errors import *
 
