@@ -12,7 +12,7 @@ from importlib import import_module
 from os import popen
 
 from asyncio import sleep
-from discord import Embed, Game, TextChannel
+from discord import Activity, ActivityType, Embed, TextChannel
 from discord.abc import Messageable
 from discord.ext.commands import (
     BadArgument,
@@ -52,8 +52,21 @@ class Admin(Cog):
     @sudo()
     @group(name="module", aliases=["cog", "mod"], invoke_without_command=True)
     async def module(self, ctx: Context):
-        """Base command for managing bot modules"""
-        pass
+        """Base command for managing bot modules
+
+        Use without subcommand to list currently loaded modules"""
+
+        modules = {module.__module__: cog for cog, module in self.bot.cogs.items()}
+        space = len(max(modules.keys(), key=len))
+
+        fmt = "\n".join([f"{module}{' ' * (space - len(module))} : {cog}" for module, cog in modules.items()])
+
+        em = Embed(
+            title="Administration: Currently Loaded Modules",
+            description=f"```py\n{fmt}\n```",
+            color=0x00FF00
+        )
+        await ctx.send(embed=em)
 
     @sudo()
     @module.command(name="load", usage="(module name)")
@@ -200,7 +213,7 @@ class Admin(Cog):
 
         except ExtensionNotLoaded as error:
             em = Embed(
-                title="Administration: Unload Cog Failed",
+                title="Administration: Reload Module Failed",
                 description=f"**__ExtensionNotLoaded__**\n"
                             f"Module {module} is not loaded",
                 color=0xFF0000
@@ -220,7 +233,7 @@ class Admin(Cog):
 
         except NoEntryPointError as error:
             em = Embed(
-                title="Administration: Load Cog Failed",
+                title="Administration: Reload Module Failed",
                 description=f"**__NoEntryPointError__**\n"
                             f"Module `{module}` does not define a `setup` function",
                 color=0xFF0000
@@ -230,7 +243,7 @@ class Admin(Cog):
 
         except ExtensionFailed as error:
             em = Embed(
-                title="Administration: Load Cog Failed",
+                title="Administration: Reload Module Failed",
                 description=f"**__ExtensionFailed__**\n"
                             f"An execution error occurred during module `{module}`'s setup function",
                 color=0xFF0000
@@ -240,7 +253,7 @@ class Admin(Cog):
 
         except Exception as error:
             em = Embed(
-                title="Administration: Load Cog Failed",
+                title="Administration: Reload Module Failed",
                 description=f"**__{type(error).__name__}__**\n"
                             f"{error}",
                 color=0xFF0000
@@ -250,8 +263,8 @@ class Admin(Cog):
 
         else:
             em = Embed(
-                title="Administration: Load Cog",
-                description=f"Module `{module}` loaded successfully",
+                title="Administration: Reload Module",
+                description=f"Module `{module}` reloaded successfully",
                 color=0x00FF00
             )
             msg = await ctx.send(embed=em)
@@ -299,7 +312,7 @@ class Admin(Cog):
             em = Embed(
                 title="Administration: Initial Module Add Failed",
                 description=f"**__ExtensionAlreadyLoaded__**\n"
-                            f"Module `{module}` is already loaded",
+                            f"Module `{module}` is already initial module",
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
@@ -336,7 +349,7 @@ class Admin(Cog):
 
         except Exception as error:
             em = Embed(
-                title="Administration: Unload Module Failed",
+                title="Administration: Initial Module Add Failed",
                 description=f"**__{type(error).__name__}__**"
                             f"{error}",
                 color=0xFF0000
@@ -453,20 +466,90 @@ class Admin(Cog):
         )
         await ctx.send(embed=em)
 
+    """ ###############################################
+         Change Custom Status Message and Online State
+        ############################################### """
+
     @sudo()
     @group(name='status', invoke_without_command=True)
-    async def status(self, ctx: Context, *, game: str = None):
-        """Changes status to 'Playing <game>'.
-        Command without argument will remove status.
+    async def status(self, ctx: Context):
+        """Changes the status and state"""
+        pass
 
-        `[p]game <string>`"""
-        if game:
-            await self.bot.change_presence(activity=Game(name=game))
-        else:
-            await self.bot.change_presence(activity=Game(name=game))
-        await ctx.message.edit('Presence updated.')
-        await sleep(5)
-        await ctx.message.delete
+    @sudo()
+    @status.command(name="remove", aliases=["rem", "del", "delete", "stop"])
+    async def remove(self, ctx: Context):
+        """Removes status message"""
+        activity = Activity(name=None)
+        await self.bot.change_presence(activity=activity)
+
+        em = Embed(
+            title="Administration: Status Message Removed",
+            color=0x00FF00
+        )
+        await ctx.send(embed=em)
+
+    @sudo()
+    @status.command(name="playing", aliases=["game"])
+    async def playing(self, ctx: Context, *, status: str):
+        """Changes status to `Playing (status)`
+
+        Will also change status header to `Playing A Game`"""
+        activity = Activity(name=status, type=ActivityType.playing)
+        await self.bot.change_presence(activity=activity)
+
+        em = Embed(
+            title="Administration: Status Message Set",
+            description=f"**Playing A Game\n**"
+                        f"Playing {status}",
+            color=0x00FF00
+        )
+        await ctx.send(embed=em)
+
+    @sudo()
+    @status.command(name="streaming")
+    async def streaming(self, ctx: Context, *, status: str):
+        """Changes status to `Playing (status)`
+
+        Will also change status header to `Live on Twitch`"""
+        activity = Activity(name=status, type=ActivityType.streaming)
+        await self.bot.change_presence(activity=activity)
+
+        em = Embed(
+            title="Administration: Status Message Set",
+            description=f"**Live On Twitch\n**"
+                        f"Playing {status}",
+            color=0x00FF00
+        )
+        await ctx.send(embed=em)
+
+    @sudo()
+    @status.command(name="listening")
+    async def listening(self, ctx: Context, *, status: str):
+        """Changes status to `Listening to (status)`"""
+        activity = Activity(name=status, type=ActivityType.listening)
+        await self.bot.change_presence(activity=activity)
+
+        em = Embed(
+            title="Administration: Status Message Set",
+            description=f"Listening to {status}",
+            color=0x00FF00
+        )
+        await ctx.send(embed=em)
+
+    @sudo()
+    @status.command(name="watching")
+    async def watching(self, ctx: Context, *, status: str):
+        """Changes status to `Watching (status)`"""
+        activity = Activity(name=status, type=ActivityType.watching)
+        await self.bot.change_presence(activity=activity)
+
+        em = Embed(
+            title="Administration: Status Message Set",
+            description=f"Watching {status}",
+            color=0x00FF00
+        )
+        await ctx.send(embed=em)
 
     """ #########################
          Updating and Restarting
