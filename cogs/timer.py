@@ -17,6 +17,8 @@ class Timer(Cog):
         self.db = bot.db
         self.config = f"{bot.APP_NAME}:timer"
 
+        self.errorlog = bot.errorlog
+
         bot.loop.create_task(self._init_timed_events(bot))
 
     async def _init_timed_events(self, client: Bot):

@@ -8,7 +8,7 @@ from json import load
 from discord import Activity, Message
 from discord.utils import get, oauth_url
 
-from utils.classes import Bot
+from utils.classes import Bot, ErrorLog
 from utils.utils import StrictRedis
 
 
@@ -23,6 +23,7 @@ Minimum Redis Schema
         :key command_prefix:    str         # Prefix for commands
         :key description:       str         # Description will be used for Help
         :key dm_help:           bool        # If Help output will be forced to DMs
+        :key errorlog:          int         # Channel ID for errorlog channel
     :HASH {APP_NAME}:config:run
         :key bot:               bool        # If bot account
         :key token              str         # Login token
@@ -66,6 +67,10 @@ async def on_ready():
     # Bot account metadata such as bot user ID and owner identity
     bot.app_info = await bot.application_info()
     bot.owner = get(bot.get_all_members(), id=bot.app_info.owner.id)
+
+    # Add the ErrorLog object if the channel is specified
+    if bot.errorlog_channel:
+        bot.errorlog = ErrorLog(bot, bot.errorlog_channel)
 
     print(f"\n#-------------------------------#")
 

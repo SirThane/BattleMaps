@@ -36,6 +36,8 @@ class SelfRoles(Cog):
         self.db = bot.db
         self.config = f"{bot.APP_NAME}:selfroles"
 
+        self.errorlog = bot.errorlog
+
         self._selfroles = {g.id: [] for g in bot.guilds}
 
         for key in self.db.scan_iter(match=f"{self.config}:*"):

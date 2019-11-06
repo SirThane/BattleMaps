@@ -3,18 +3,17 @@
 
 import sys
 from contextlib import contextmanager
-from io import StringIO
+from io import StringIO, BytesIO
 from re import match
-from traceback import extract_tb
+from time import localtime, strftime
 
+from aiohttp import ClientSession
 import discord
 from redis import StrictRedis as DefaultStrictRedis
-from discord import Colour, DiscordException, Embed, TextChannel
+from discord import TextChannel
 from discord.ext.commands import BadArgument, Context, IDConverter
 from discord.utils import get, find
 from typing import Iterable, Tuple, Union
-
-from utils.classes import Bot
 
 
 ZWSP = u'\u200b'
@@ -106,7 +105,7 @@ class Paginator:
         return self.pages
 
 
-def _get_from_guilds(bot: Bot, getter, argument):
+def _get_from_guilds(bot, getter, argument):
     """Copied from discort.ext.commands.converter to prevent
     access to protected attributes inspection error"""
     result = None
@@ -155,34 +154,32 @@ class GlobalTextChannelConverter(IDConverter):
         return result
 
 
-async def em_tb(error: Union[Exception, DiscordException], ctx: Context = None) -> Embed:
-    if ctx:
-        prefix = await ctx.bot.get_prefix(ctx.message)
-        title = f"In {prefix}{ctx.command.qualified_name}"
-        description = f"**{error.__class__.__name__}**: {error}"
+async def download_image(url: str, file_path: Union[bytes, str, BytesIO]) -> None:
+    is_bytes = False
+    if isinstance(file_path, str):
+        fd = open(file_path, "wb")
     else:
-        title = None
-        description = f"**{type(error).__name__}**: {str(error)}"
+        is_bytes = True
+        fd = file_path
 
-    stack = extract_tb(error.__traceback__)
-    tb_fields = [
-        {
-            "name": f"{ZWSP}\n__{fn}__",
-            "value": f"Line `{ln}` of `{func}`:\n```py\n{txt}\n```",
-            "inline": False
-        } for fn, ln, func, txt in stack
-    ]
+    try:
+        async with ClientSession() as session:
+            async with session.get(url) as resp:
+                while True:
+                    chunk = await resp.content.read(10)
+                    if not chunk:
+                        break
+                    fd.write(chunk)
 
-    em = Embed(
-        color=Colour.red(),
-        title=title,
-        description=f"{description}"
-    )
+        fd.seek(0)
 
-    for field in tb_fields:
-        em.add_field(**field)
+    finally:
+        if not is_bytes:
+            fd.close()
 
-    return em
+
+def get_timestamp() -> str:
+    return strftime("%a %b %d, %Y at %H:%M %Z", localtime())
 
 
 @contextmanager
