@@ -9,6 +9,26 @@ from utils.classes import Bot
 from utils import checks
 
 
+ROLE_SHORTNAME = {
+    'os': 424524133670453250,
+    'bm': 424524139999789058,
+    'ge': 424524144353476629,
+    'yc': 424524148958560266,
+    'bh': 424524153387876353,
+    'rf': 424541540740890624,
+    'gs': 424541543810990089,
+    'bd': 424541547757961216,
+    'ab': 424541550853488640,
+    'js': 424541553898291200,
+    'ci': 424541559766122518,
+    'pc': 424541563520024576,
+    'tg': 424541566934319104,
+    'pl': 424541571300589587,
+    'ar': 455439202692366367,
+    'wn': 455439210883842048
+}
+
+
 class SelfRoles(Cog):
 
     def __init__(self, bot: Bot):
@@ -39,6 +59,9 @@ class SelfRoles(Cog):
         `[p]iam role`
         `[p]iam @role`
         `[p]iam role id`"""
+
+        if role.lower() in ROLE_SHORTNAME.keys():
+            role = ROLE_SHORTNAME[role.lower()]
 
         try:
             role = await RoleConverter().convert(ctx, role)
