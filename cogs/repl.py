@@ -6,8 +6,8 @@ from discord import Colour, Embed
 from discord.ext.commands import Cog, command, Context, group
 
 from utils.classes import Bot
-from utils import utils, checks
-from utils.utils import stdoutio
+from utils.checks import sudo
+from utils.utils import stdoutio, Paginator
 
 
 MD = "```py\n{0}\n```"
@@ -21,9 +21,11 @@ class REPL(Cog):
         self.db = bot.db
         self.config = f"{bot.APP_NAME}:REPL"
 
+        self.errorlog = bot.errorlog
+
         self.ret = None
         self._env_store = {}
-        self.emb_pag = utils.Paginator(
+        self.emb_pag = Paginator(
             page_limit=1014,
             trunc_limit=1850,
             header_extender='Cont.'
@@ -56,13 +58,13 @@ class REPL(Cog):
         env.update(self._env_store)
         return env
 
-    @checks.sudo()
-    @group(hidden=True, name='env')
+    @sudo()
+    @group(name='env')
     async def env(self, ctx: Context):
         pass
 
-    @checks.sudo()
-    @env.command(hidden=True, name='update', aliases=['store', 'add', 'append'])
+    @sudo()
+    @env.command(name='update', aliases=['store', 'add', 'append'])
     async def _update(self, ctx: Context, name: str):
         if name:
             self._env_store[name] = self.ret
@@ -72,8 +74,8 @@ class REPL(Cog):
             emb = Embed(title='Environment Update', description='You must enter a name', color=Colour.red())
         await ctx.send(embed=emb)
 
-    @checks.sudo()
-    @env.command(hidden=True, name='remove', aliases=['rem', 'del', 'pop'])
+    @sudo()
+    @env.command(name='remove', aliases=['rem', 'del', 'pop'])
     async def _remove(self, ctx: Context, name: str):
         if name:
             v = self._env_store.pop(name, None)
@@ -87,8 +89,8 @@ class REPL(Cog):
             emb = Embed(title='Environment Item Not Found', description=name, color=Colour.red())
         await ctx.send(embed=emb)
 
-    @checks.sudo()
-    @env.command(hidden=True, name='list')
+    @sudo()
+    @env.command(name='list')
     async def _list(self, ctx: Context) -> None:
         if len(self._env_store.keys()):
             emb = Embed(title='Environment Store List', color=Colour.green())
@@ -99,7 +101,7 @@ class REPL(Cog):
                         color=Colour.green())
         await ctx.send(embed=emb)
 
-    @checks.sudo()
+    @sudo()
     @command(hidden=True, name='await')
     async def _await(self, ctx: Context, *, code: str) -> None:
         try:
@@ -113,7 +115,7 @@ class REPL(Cog):
         finally:
             await ctx.message.delete()
 
-    @checks.sudo()
+    @sudo()
     @command(hidden=True, name='eval')
     async def _eval(self, ctx: Context, *, code: str) -> None:
         """Run eval() on an input."""
@@ -150,7 +152,7 @@ class REPL(Cog):
         # await ctx.message.delete()
         await ctx.channel.send(embed=embed)
 
-    @checks.sudo()
+    @sudo()
     @command(hidden=True, name='exec')
     async def _exec(self, ctx: Context, *, code: str) -> None:
         """Run exec() on an input."""
@@ -182,7 +184,7 @@ class REPL(Cog):
 
         embed = Embed().from_dict(emb)
 
-        await ctx.message.delete()
+        # await ctx.message.delete()
         await ctx.send(embed=embed)
 
 
