@@ -4,12 +4,11 @@
 from datetime import datetime
 from discord import Embed, Member, Message
 from discord.utils import get
-from discord.ext.commands import (
+from discord.ext.commands import Cog, Context
+from discord.ext.commands.errors import (
     CheckFailure,
-    Cog,
     CommandInvokeError,
     CommandNotFound,
-    Context,
     DisabledCommand,
     MissingRequiredArgument,
     NoPrivateMessage
@@ -19,11 +18,10 @@ from typing import Union
 
 from utils.classes import Bot
 from utils.errors import *
-from utils.utils import em_tb
 
 
-WELCOME = "Welcome to AWBW Discord Server {}! Present yourself and have fun!"
-LEAVE = "{} has left our army... Be happy in peace."
+WELCOME = "**Welcome to AWBW Discord Server {}!**\nPresent yourself and have fun!"
+LEAVE = "**{} has left our army...**\nBe happy in peace."
 
 
 tz = timezone('America/Kentucky/Louisville')
@@ -36,11 +34,12 @@ class Events(Cog):
         self.db = bot.db
         self.config = f"{bot.APP_NAME}:events"
 
+        self.errorlog = bot.errorlog
+
         # self.awbw = bot.get_guild(184502171117551617)               # Not Skype
         self.awbw = bot.get_guild(313453805150928906)               # AWBW Guild
         # self.channel = bot.get_channel(315232431835709441)          # Circlejerk Py
         self.channel = bot.get_channel(313453805150928906)          # AWBW General
-        self.errorlog = bot.get_channel(637150067525943296)         # BattleMaps-ErrorLog
         self.notifchannel = bot.get_channel(637877898560143363)     # BattleMaps-Notifs
 
         if self.awbw:
@@ -50,13 +49,21 @@ class Events(Cog):
     async def on_member_join(self, member: Member):
         if member.guild.id != self.awbw.id:
             return
-        await self.channel.send(WELCOME.format(member.mention))
+        em = Embed(
+            description=WELCOME.format(member.mention),
+            color=member.guild.me.color
+        )
+        await self.channel.send(embed=em)
 
     @Cog.listener(name="on_member_remove")
     async def on_member_remove(self, member: Member):
         if member.guild.id != self.awbw.id:
             return
-        await self.channel.send(LEAVE.format(member.display_name))
+        em = Embed(
+            description=LEAVE.format(member.display_name),
+            color=member.guild.me.color
+        )
+        await self.channel.send(embed=em)
 
     @Cog.listener(name="on_member_ban")
     async def on_member_ban(self, member: Member):
@@ -149,12 +156,10 @@ class Events(Cog):
             await ctx.send(embed=em)
 
         elif isinstance(error, CommandInvokeError):
-            em = await em_tb(error.original, ctx=ctx)
-            await self.errorlog.send(embed=em)
+            await self.errorlog.send(error.original, ctx)
 
         else:
-            em = await em_tb(error)
-            await self.errorlog.send(embed=em)
+            await self.errorlog.send(error)
 
     @Cog.listener("on_message")
     async def _on_message(self, msg: Message):
