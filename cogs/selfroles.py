@@ -58,10 +58,13 @@ class SelfRoles(Cog):
 
         `[p]iam role`
         `[p]iam @role`
-        `[p]iam role id`"""
+        `[p]iam role id`
+
+        You can also use a country's short code.
+        e.g. `[p]iam os`"""
 
         if role.lower() in ROLE_SHORTNAME.keys():
-            role = ROLE_SHORTNAME[role.lower()]
+            role = str(ROLE_SHORTNAME[role.lower()])
 
         try:
             role = await RoleConverter().convert(ctx, role)
