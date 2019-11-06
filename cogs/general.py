@@ -15,6 +15,8 @@ class General(Cog):
         self.db = bot.db
         self.config = f"{bot.APP_NAME}:general"
 
+        self.errorlog = bot.errorlog
+
     @command(name='userinfo', no_private=True)
     async def userinfo(self, ctx: Context, member: Member = None):
         """Gets current server information for a given user
