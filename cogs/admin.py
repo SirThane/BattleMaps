@@ -12,25 +12,24 @@ from importlib import import_module
 from os import popen
 
 from asyncio import sleep
-from discord import Activity, ActivityType, Embed, TextChannel
 from discord.abc import Messageable
-from discord.ext.commands import (
+from discord.activity import Activity
+from discord.channel import TextChannel
+from discord.embeds import Embed
+from discord.enums import ActivityType, Status
+from discord.ext.commands import Cog, command, Context, group
+from discord.ext.commands.errors import (
     BadArgument,
-    Cog,
-    command,
-    Context,
     ExtensionAlreadyLoaded,
-    ExtensionFailed,
-    ExtensionNotFound,
+    ExtensionFailed, ExtensionNotFound,
     ExtensionNotLoaded,
-    group,
     NoEntryPointError
 )
 from discord.utils import oauth_url
 
 from utils.checks import sudo
 from utils.classes import Bot
-from utils.utils import em_tb, StrictRedis, GlobalTextChannelConverter
+from utils.utils import StrictRedis, GlobalTextChannelConverter
 
 
 class Admin(Cog):
@@ -43,7 +42,7 @@ class Admin(Cog):
         self.bot_config = f"{bot.APP_NAME}:config"
 
         self.say_dest = None
-        self.errorlog = bot.get_channel(637150067525943296)
+        self.errorlog = bot.errorlog
 
     """ ######################
          Managing Bot Modules
@@ -78,7 +77,7 @@ class Admin(Cog):
 
         module = f"cogs.{module}"
         msg = None
-        err_em = None
+        verbose_error = None
 
         try:
             self.bot.load_extension(module)
@@ -91,7 +90,7 @@ class Admin(Cog):
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
-            err_em = await em_tb(error.original, ctx)
+            verbose_error = error.original
 
         except ExtensionAlreadyLoaded as error:
             em = Embed(
@@ -101,7 +100,7 @@ class Admin(Cog):
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
-            err_em = await em_tb(error, ctx)
+            verbose_error = error
 
         except NoEntryPointError as error:
             em = Embed(
@@ -111,7 +110,7 @@ class Admin(Cog):
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
-            err_em = await em_tb(error, ctx)
+            verbose_error = error
 
         except ExtensionFailed as error:
             em = Embed(
@@ -121,7 +120,7 @@ class Admin(Cog):
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
-            err_em = await em_tb(error.original, ctx)
+            verbose_error = error
 
         except Exception as error:
             em = Embed(
@@ -131,7 +130,7 @@ class Admin(Cog):
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
-            err_em = await em_tb(error, ctx)
+            verbose_error = error
 
         else:
             em = Embed(
@@ -142,8 +141,8 @@ class Admin(Cog):
             msg = await ctx.send(embed=em)
 
         finally:
-            if verbose and err_em:
-                await self.errorlog.send(embed=err_em)
+            if verbose and verbose_error:
+                await self.errorlog.send(verbose_error, ctx)
             await sleep(5)
             await msg.delete()
 
@@ -157,7 +156,7 @@ class Admin(Cog):
 
         module = f"cogs.{module}"
         msg = None
-        err_em = None
+        verbose_error = None
 
         try:
             self.bot.unload_extension(module)
@@ -170,7 +169,7 @@ class Admin(Cog):
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
-            err_em = await em_tb(error, ctx)
+            verbose_error = error
 
         except Exception as error:
             em = Embed(
@@ -180,7 +179,7 @@ class Admin(Cog):
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
-            err_em = await em_tb(error, ctx)
+            verbose_error = error
 
         else:
             em = Embed(
@@ -191,8 +190,8 @@ class Admin(Cog):
             msg = await ctx.send(embed=em)
 
         finally:
-            if verbose and err_em:
-                await self.errorlog.send(embed=err_em)
+            if verbose and verbose_error:
+                await self.errorlog.send(verbose_error, ctx)
             await sleep(5)
             await msg.delete()
 
@@ -206,7 +205,7 @@ class Admin(Cog):
 
         module = f"cogs.{module}"
         msg = None
-        err_em = None
+        verbose_error = None
 
         try:
             self.bot.reload_extension(module)
@@ -219,7 +218,7 @@ class Admin(Cog):
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
-            err_em = await em_tb(error, ctx)
+            verbose_error = error
 
         except ExtensionNotFound as error:
             em = Embed(
@@ -229,7 +228,7 @@ class Admin(Cog):
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
-            err_em = await em_tb(error.original, ctx)
+            verbose_error = error.original
 
         except NoEntryPointError as error:
             em = Embed(
@@ -239,7 +238,7 @@ class Admin(Cog):
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
-            err_em = await em_tb(error, ctx)
+            verbose_error = error
 
         except ExtensionFailed as error:
             em = Embed(
@@ -249,7 +248,7 @@ class Admin(Cog):
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
-            err_em = await em_tb(error.original, ctx)
+            verbose_error = error.original
 
         except Exception as error:
             em = Embed(
@@ -259,7 +258,7 @@ class Admin(Cog):
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
-            err_em = await em_tb(error, ctx)
+            verbose_error = error
 
         else:
             em = Embed(
@@ -270,8 +269,8 @@ class Admin(Cog):
             msg = await ctx.send(embed=em)
 
         finally:
-            if verbose and err_em:
-                await self.errorlog.send(embed=err_em)
+            if verbose and verbose_error:
+                await self.errorlog.send(verbose_error, ctx)
             await sleep(5)
             await msg.delete()
 
@@ -303,7 +302,7 @@ class Admin(Cog):
         be sent to the errorlog channel"""
 
         msg = None
-        err_em = None
+        verbose_error = None
         lib = None
         module_setup = None
 
@@ -335,7 +334,7 @@ class Admin(Cog):
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
-            err_em = await em_tb(error, ctx)
+            verbose_error = error
 
         except AttributeError as error:
             em = Embed(
@@ -345,7 +344,7 @@ class Admin(Cog):
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
-            err_em = await em_tb(error, ctx)
+            verbose_error = error
 
         except Exception as error:
             em = Embed(
@@ -355,7 +354,7 @@ class Admin(Cog):
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
-            err_em = await em_tb(error, ctx)
+            verbose_error = error
 
         else:
             self.db.lpush(f"{self.bot_config}:initial_cogs", module)
@@ -367,8 +366,8 @@ class Admin(Cog):
             msg = await ctx.send(embed=em)
 
         finally:
-            if verbose and err_em:
-                await self.errorlog.send(embed=err_em)
+            if verbose and verbose_error:
+                await self.errorlog.send(verbose_error, ctx)
 
             # We don't actually need them, so remove
             del lib
@@ -475,6 +474,58 @@ class Admin(Cog):
     async def status(self, ctx: Context):
         """Changes the status and state"""
         pass
+
+    @sudo()
+    @status.command(name="online")
+    async def online(self, ctx: Context):
+        """Changes online status to Online"""
+        await self.bot.change_presence(status=Status.online)
+
+        em = Embed(
+            title="Administration: Change Online Status",
+            description="Status changed to `online`",
+            color=0x00FF00
+        )
+        await ctx.send(embed=em)
+
+    @sudo()
+    @status.command(name="dnd", aliases=["do_not_disturb"])
+    async def dnd(self, ctx: Context):
+        """Changes online status to Do Not Disturb"""
+        await self.bot.change_presence(status=Status.dnd)
+
+        em = Embed(
+            title="Administration: Change Online Status",
+            description="Status changed to `dnd`",
+            color=0x00FF00
+        )
+        await ctx.send(embed=em)
+
+    @sudo()
+    @status.command(name="idle")
+    async def idle(self, ctx: Context):
+        """Changes online status to Idle"""
+        await self.bot.change_presence(status=Status.idle)
+
+        em = Embed(
+            title="Administration: Change Online Status",
+            description="Status changed to `idle`",
+            color=0x00FF00
+        )
+        await ctx.send(embed=em)
+
+    @sudo()
+    @status.command(name="invisible", aliases=["offline"])
+    async def invisible(self, ctx: Context):
+        """Changes online status to Invisible"""
+        await self.bot.change_presence(status=Status.invisible)
+
+        em = Embed(
+            title="Administration: Change Online Status",
+            description="Status changed to `invisible`",
+            color=0x00FF00
+        )
+        await ctx.send(embed=em)
 
     @sudo()
     @status.command(name="remove", aliases=["rem", "del", "delete", "stop"])
