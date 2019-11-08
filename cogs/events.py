@@ -47,6 +47,8 @@ class Events(Cog):
 
     @Cog.listener(name="on_member_join")
     async def on_member_join(self, member: Member):
+        if not self.awbw:
+            return
         if member.guild.id != self.awbw.id:
             return
         em = Embed(
@@ -57,6 +59,8 @@ class Events(Cog):
 
     @Cog.listener(name="on_member_remove")
     async def on_member_remove(self, member: Member):
+        if not self.awbw:
+            return
         if member.guild.id != self.awbw.id:
             return
         em = Embed(
@@ -65,14 +69,7 @@ class Events(Cog):
         )
         await self.channel.send(embed=em)
 
-    @Cog.listener(name="on_member_ban")
-    async def on_member_ban(self, member: Member):
-        pass
-
-    @Cog.listener(name="on_member_unban")
-    async def on_member_unban(self, member: Member):
-        pass
-
+    # @Cog.listener(name="on_message")
     # async def on_message(self, message: discord.Message) -> None:
     #     if "airport" in message.content.lower():
     #         await message.add_reaction(self.sad_andy)
@@ -162,7 +159,7 @@ class Events(Cog):
             await self.errorlog.send(error)
 
     @Cog.listener("on_message")
-    async def _on_message(self, msg: Message):
+    async def on_message(self, msg: Message):
         if str(self.bot.user.id) in msg.content:
             ts = tz.localize(datetime.now()).strftime("%b. %d, %Y %I:%M %p")
             author = msg.author
