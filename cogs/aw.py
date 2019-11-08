@@ -16,6 +16,7 @@ from utils.checks import sudo
 from utils.classes import Bot
 from utils.awmap import AWMap
 from utils.errors import *
+from utils.utils import SubRedis
 
 
 RE_AWL = compile(r"(http[s]?://)?awbw.amarriner.com/(glenstorm/)?prevmaps.php\?maps_id=([0-9]+)(?i)")
@@ -36,10 +37,10 @@ class AdvanceWars(Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.db = bot.db
-        self.config = f"{bot.APP_NAME}:maps"
+        self.root_db = bot.db
+        self.config = SubRedis(bot.db, f"{bot.APP_NAME}:maps")
 
-        self.listen_for_maps = bool(self.db.get(f"{self.config}:listen_for_maps")) or False
+        self.listen_for_maps = bool(self.config.get("listen_for_maps")) or False
         self.buffer_channel = self.bot.get_channel(id=434551085185630218)
         self.loaded_maps = {}
 
@@ -381,11 +382,11 @@ class AdvanceWars(Cog):
         a `[p]map load` command."""
 
         if arg.strip(" ").lower() in "on yes true y t 1".split(" "):
-            self.db.set(f"{self.config}:listen_for_maps", "True")
+            self.config.set("listen_for_maps", "True")
             self.listen_for_maps = True
 
         elif arg.strip(" ").lower() in "off no false n f 0".split(" "):
-            self.db.set(f"{self.config}:listen_for_maps", "False")
+            self.config.set("listen_for_maps", "False")
             self.listen_for_maps = False
 
         em = Embed(color=self._color(ctx.channel), title="BattleMaps Config",
