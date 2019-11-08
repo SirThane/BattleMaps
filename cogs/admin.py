@@ -29,7 +29,7 @@ from discord.utils import oauth_url
 
 from utils.checks import sudo
 from utils.classes import Bot
-from utils.utils import StrictRedis, GlobalTextChannelConverter
+from utils.utils import SubRedis, GlobalTextChannelConverter
 
 
 class Admin(Cog):
@@ -37,9 +37,10 @@ class Admin(Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.db: StrictRedis = bot.db
-        self.config = f"{bot.APP_NAME}:admin"
-        self.bot_config = f"{bot.APP_NAME}:config"
+        self.root_db = bot.db
+
+        self.config = SubRedis(bot.db, f"{bot.APP_NAME}:admin")
+        self.config_bot = SubRedis(bot.db, f"{bot.APP_NAME}:config")
 
         self.say_dest = None
         self.errorlog = bot.errorlog
@@ -69,7 +70,7 @@ class Admin(Cog):
 
     @sudo()
     @module.command(name="load", usage="(module name)")
-    async def load(self, ctx: Context, *, module: str, verbose: bool = False):
+    async def load(self, ctx: Context, module: str, verbose: bool = False):
         """load a module
 
         If `verbose=True` is included at the end, error tracebacks will
@@ -113,14 +114,22 @@ class Admin(Cog):
             verbose_error = error
 
         except ExtensionFailed as error:
-            em = Embed(
-                title="Administration: Load Module Failed",
-                description=f"**__ExtensionFailed__**\n"
-                            f"An execution error occurred during module `{module}`'s setup function",
-                color=0xFF0000
-            )
+            if isinstance(error.original, TypeError):
+                em = Embed(
+                    title="Administration: Load Module Failed",
+                    description=f"**__ExtensionFailed__**\n"
+                                f"The cog loaded by `{module}` must be a subclass of discord.ext.commands.Cog",
+                    color=0xFF0000
+                )
+            else:
+                em = Embed(
+                    title="Administration: Load Module Failed",
+                    description=f"**__ExtensionFailed__**\n"
+                                f"An execution error occurred during module `{module}`'s setup function",
+                    color=0xFF0000
+                )
             msg = await ctx.send(embed=em)
-            verbose_error = error
+            verbose_error = error.original
 
         except Exception as error:
             em = Embed(
@@ -148,7 +157,7 @@ class Admin(Cog):
 
     @sudo()
     @module.command(name="unload", usage="(module name)")
-    async def unload(self, ctx: Context, *, module: str, verbose: bool = False):
+    async def unload(self, ctx: Context, module: str, verbose: bool = False):
         """Unload a module
 
         If `verbose=True` is included at the end, error tracebacks will
@@ -197,7 +206,7 @@ class Admin(Cog):
 
     @sudo()
     @module.command(name="reload", usage="(module name)")
-    async def reload(self, ctx: Context, *, module: str, verbose: bool = False):
+    async def reload(self, ctx: Context, module: str, verbose: bool = False):
         """Reload a module
 
         If `verbose=True` is included at the end, error tracebacks will
@@ -241,12 +250,20 @@ class Admin(Cog):
             verbose_error = error
 
         except ExtensionFailed as error:
-            em = Embed(
-                title="Administration: Reload Module Failed",
-                description=f"**__ExtensionFailed__**\n"
-                            f"An execution error occurred during module `{module}`'s setup function",
-                color=0xFF0000
-            )
+            if isinstance(error.original, TypeError):
+                em = Embed(
+                    title="Administration: Reload Module Failed",
+                    description=f"**__ExtensionFailed__**\n"
+                                f"The cog loaded by `{module}` must be a subclass of discord.ext.commands.Cog",
+                    color=0xFF0000
+                )
+            else:
+                em = Embed(
+                    title="Administration: Reload Module Failed",
+                    description=f"**__ExtensionFailed__**\n"
+                                f"An execution error occurred during module `{module}`'s setup function",
+                    color=0xFF0000
+                )
             msg = await ctx.send(embed=em)
             verbose_error = error.original
 
@@ -278,7 +295,7 @@ class Admin(Cog):
     @module.group(name="init", aliases=["initial"], invoke_without_command=True)
     async def init(self, ctx: Context):
         """Get list of modules currently set as initial cogs"""
-        init_modules = self.db.lrange(f"{self.bot_config}:initial_cogs", 0, -1)
+        init_modules = self.config_bot.lrange("initial_cogs", 0, -1)
         print(type(init_modules))
         str_init_modules = "\n".join(init_modules)
         em = Embed(
@@ -292,7 +309,7 @@ class Admin(Cog):
 
     @sudo()
     @init.command(name="add", usage="(module name)")
-    async def add(self, ctx: Context, *, module: str, verbose: bool = False):
+    async def add(self, ctx: Context, module: str, verbose: bool = False):
         """Sets a module to be loaded on startup
 
         Must be a valid cog with setup function
@@ -306,7 +323,7 @@ class Admin(Cog):
         lib = None
         module_setup = None
 
-        init_modules = self.db.lrange(f"{self.bot_config}:initial_cogs", 0, -1)
+        init_modules = self.config_bot.lrange("initial_cogs", 0, -1)
         if module in init_modules:
             em = Embed(
                 title="Administration: Initial Module Add Failed",
@@ -357,7 +374,7 @@ class Admin(Cog):
             verbose_error = error
 
         else:
-            self.db.lpush(f"{self.bot_config}:initial_cogs", module)
+            self.config_bot.lpush("initial_cogs", module)
             em = Embed(
                 title="Administration: Initial Module Add",
                 description=f"Module `{module}` added to initial modules",
@@ -378,14 +395,14 @@ class Admin(Cog):
 
     @sudo()
     @init.command(name="rem", aliases=["del", "delete", "remove"], usage="(module name)")
-    async def rem(self, ctx: Context, *, module: str):
+    async def rem(self, ctx: Context, module: str):
         """Removes a module from initial modules"""
 
         # Get current list of initial cogs
-        init_modules = self.db.lrange(f"{self.bot_config}:initial_cogs", 0, -1)
+        init_modules = self.config_bot.lrange("initial_cogs", 0, -1)
 
         if module in init_modules:
-            self.db.lrem(f"{self.bot_config}:initial_cogs", 0, module)
+            self.config_bot.lrem("initial_cogs", 0, module)
             em = Embed(
                 title="Administration: Initial Module Remove",
                 description=f"Module `{module}` added to initial modules",
