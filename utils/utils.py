@@ -8,13 +8,11 @@ from re import match
 from time import localtime, strftime
 
 from aiohttp import ClientSession
-import discord
 from redis import StrictRedis as DefaultStrictRedis
 from discord import TextChannel
 from discord.ext.commands import BadArgument, Context, IDConverter
 from discord.utils import get, find
-from typing import Iterable, Tuple, Union
-
+from typing import Any, Generator, Iterable, Tuple, Union, Set, List, Dict
 
 ZWSP = u'\u200b'
 
@@ -148,7 +146,7 @@ class GlobalTextChannelConverter(IDConverter):
             else:
                 result = _get_from_guilds(bot, 'get_channel', channel_id)
 
-        if not isinstance(result, discord.TextChannel):
+        if not isinstance(result, TextChannel):
             raise BadArgument('Channel "{}" not found.'.format(argument))
 
         return result
@@ -249,8 +247,6 @@ def bool_transform(arg):
 class StrictRedis(DefaultStrictRedis):
     """Turns 'True' and 'False' values returns
     in redis to bool values"""
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
     # Bool transforms will be performed on these redis commands
     command_list = ['HGET', 'HGETALL', 'GET', 'LRANGE']
@@ -262,3 +258,147 @@ class StrictRedis(DefaultStrictRedis):
             return bool_transform(ret)
         else:
             return ret
+
+
+class SubRedis:
+
+    def __init__(self, db: StrictRedis, basekey: str):
+        self.db = db
+        self.basekey = basekey
+
+    """ ###############
+         Managing Keys
+        ############### """
+
+    def exists(self, *names: str) -> int:
+        """Returns the number of ``names`` that exist"""
+        names = [f"{self.basekey}:{name}" for name in names]
+        return self.db.exists(*names)
+
+    def delete(self, *names: str) -> Any:
+        """Delete one or more keys specified by ``names``"""
+        names = [f"{self.basekey}:{name}" for name in names]
+        return self.db.delete(*names)
+
+    """ ###########
+         Iterators
+        ########### """
+
+    def scan_iter(self, pattern: str = None, count: int = None) -> Generator[str, str, None]:
+        """
+        Make an iterator using the SCAN command so that the client doesn't
+        need to remember the cursor position.
+
+        ``pattern`` allows for filtering the keys by pattern
+
+        ``count`` allows for hint the minimum number of returns
+        """
+        if not pattern == "*":
+            pattern = f":{pattern}"
+        for item in self.db.scan_iter(f"{self.basekey}{pattern}", count):
+            yield item.replace(f"{self.basekey}:", "")
+
+    """ ###############
+         Simple Values
+        ############### """
+
+    def set(self, name: str, value: str, ex: int = None, px: int = None, nx: bool = False, xx: bool = False) -> Any:
+        """
+        Set the value at key ``name`` to ``value``
+
+        ``ex`` sets an expire flag on key ``name`` for ``ex`` seconds.
+
+        ``px`` sets an expire flag on key ``name`` for ``px`` milliseconds.
+
+        ``nx`` if set to True, set the value at key ``name`` to ``value`` only
+            if it does not exist.
+
+        ``xx`` if set to True, set the value at key ``name`` to ``value`` only
+            if it already exists.
+        """
+        return self.db.set(f"{self.basekey}:{name}", value, ex, px, nx, xx)
+
+    def get(self, name: str) -> str:
+        """Return the value at key ``name``, or None if the key doesn't exist"""
+        return self.db.get(f"{self.basekey}:{name}")
+
+    """ ######
+         Sets
+        ###### """
+
+    def scard(self, name: str) -> int:
+        """Return the number of elements in set ``name``"""
+        return self.db.scard(f"{self.basekey}:{name}")
+
+    def sismember(self, name: str, value: str) -> bool:
+        """Return a boolean indicating if ``value`` is a member of set ``name``"""
+        return self.db.sismember(f"{self.basekey}:{name}", value)
+
+    def smembers(self, names: str) -> Set[str]:
+        """Return all members of the set ``name``"""
+        return self.db.smembers(f"{self.basekey}:{names}")
+
+    def sadd(self, name: str, *values: str) -> Any:
+        """Add ``value(s)`` to set ``name``"""
+        return self.db.sadd(f"{self.basekey}:{name}", *values)
+
+    def srem(self, name: str, *values: str) -> Any:
+        """Remove ``values`` from set ``name``"""
+        return self.db.srem(f"{self.basekey}:{name}", *values)
+
+    """ #######
+         Lists
+        ####### """
+
+    def lrange(self, name: str, start: int, end: int) -> List[str]:
+        """
+        Return a slice of the list ``name`` between
+        position ``start`` and ``end``
+
+        ``start`` and ``end`` can be negative numbers just like
+        Python slicing notation
+        """
+        return self.db.lrange(f"{self.basekey}:{name}", start, end)
+
+    def lpush(self, name: str, *values: str) -> Any:
+        """Push ``values`` onto the head of the list ``name``"""
+        return self.db.lpush(f"{self.basekey}:{name}", *values)
+
+    def lrem(self, name: str, count: int, value: str) -> Any:
+        """
+        Remove the first ``count`` occurrences of elements equal to ``value``
+        from the list stored at ``name``.
+
+        The count argument influences the operation in the following ways:
+            count > 0: Remove elements equal to value moving from head to tail.
+            count < 0: Remove elements equal to value moving from tail to head.
+            count = 0: Remove all elements equal to value.
+        """
+        return self.db.lrem(f"{self.basekey}:{name}", count, value)
+
+    """ #############################
+         Hashes (Dict-like Mappings)
+        ############################# """
+
+    def hget(self, name: str, key: str) -> str:
+        """Return the value of ``key`` within the hash ``name``"""
+        return self.db.hget(f"{self.basekey}:{name}", key)
+
+    def hkeys(self, name: str) -> List[str]:
+        """Return the list of keys within hash ``name``"""
+        return self.db.hkeys(f"{self.basekey}:{name}")
+
+    def hvals(self, name: str) -> List[str]:
+        """Return the list of values within hash ``name``"""
+        return self.db.hvals(f"{self.basekey}:{name}")
+
+    def hgetall(self, name: str) -> Dict[str, Any]:
+        """Return a Python dict of the hash's name/value pairs"""
+        return self.db.hgetall(f"{self.basekey}:{name}")
+
+    def hmset(self, name: str, mapping: dict) -> Any:
+        """
+        Set key to value within hash ``name`` for each corresponding
+        key and value from the ``mapping`` dict.
+        """
+        return self.db.hmset(f"{self.basekey}:{name}", mapping)
