@@ -28,7 +28,8 @@ class EventColors(Enum):
     edit = Colour.gold()
     name_change = Colour.purple()
     nickname_change = Colour.blurple()
-    roles_changed = Colour.orange()
+    role_added = Colour.dark_teal()
+    role_removed = Colour.orange()
     verified = Colour.light_grey()
 
 
@@ -602,37 +603,63 @@ class ModLogs(Cog):
             await self.log_event(em, before.guild, priority=EventPriority.update)
 
         if before.roles != after.roles:
-            removed, added = list(), list()
+            added, removed = None, None
 
             for role in before.roles:
                 if role not in after.roles:
-                    removed.append(f"{role.mention} ({role.name})")
+                    removed = f"{role.mention}\n({role.name})"
 
             for role in after.roles:
                 if role not in before.roles:
-                    added.append(f"{role.mention} ({role.name})")
+                    added = f"{role.mention}\n({role.name})"
 
-            em = self.em_base(
-                after,
-                f"Member {after.mention} ({after.name}) roles changed",
-                EventColors.roles_changed.value
+            found, errored, mod, _ = await self._get_last_audit_action(
+                after.guild,
+                AuditLogAction.member_role_update,
+                after
             )
-
-            if removed:
-
-                em.add_field(
-                    name="Role(s) Removed",
-                    value="\n".join(removed)
-                )
 
             if added:
 
-                em.add_field(
-                    name="Role(s) Added",
-                    value="\n".join(added)
+                em = self.em_base(
+                    after,
+                    f"Member {after.mention} ({after.name}) roles changed",
+                    EventColors.role_added.value
                 )
 
-            await self.log_event(em, before.guild, priority=EventPriority.update)
+                em.add_field(
+                    name="Role Added",
+                    value=added
+                )
+
+                if found:
+                    em.add_field(
+                        name="Mod Responsible",
+                        value=f"{mod.mention}\n({mod.name})"
+                    )
+
+                await self.log_event(em, before.guild, priority=EventPriority.update)
+
+            if removed:
+
+                em = self.em_base(
+                    after,
+                    f"Member {after.mention} ({after.name}) roles changed",
+                    EventColors.role_removed.value
+                )
+
+                em.add_field(
+                    name="Role Removed",
+                    value=removed
+                )
+
+                if found:
+                    em.add_field(
+                        name="Mod Responsible",
+                        value=f"{mod.mention}\n({mod.name})"
+                    )
+
+                await self.log_event(em, before.guild, priority=EventPriority.update)
 
         if before.nick != after.nick:
 
