@@ -119,8 +119,7 @@ class ModLogs(Cog):
             # Let's just build it up anyway
             return self.config.hgetall(f"guilds:{guild.id}")
 
-    @staticmethod
-    def em_base(user: Union[Member, User], log_title: str, color: int) -> Embed:
+    def em_base(self, user: Union[Member, User], log_title: str, color: int) -> Embed:
         """Do basic formatting on the embed"""
 
         em = Embed(
@@ -129,13 +128,19 @@ class ModLogs(Cog):
         )
 
         user_repr = f"{user.name}#{user.discriminator}   (ID: {user.id})"
-
         em.set_author(name=user_repr, icon_url=user.avatar_url)
 
-        date, time = timezone("UTC").localize(datetime.now()).strftime("%b. %d, %Y#%I:%M UTC").split("#")
-        em.set_footer(text=f"Event Timestamp: 📅 {date} || 🕒 {time}")
+        em.set_footer(text=self._get_timestamp())
 
         return em
+
+    @staticmethod
+    def _get_timestamp() -> str:
+        """Returns a formatted timestamp based on server region"""
+
+        dt = timezone("UTC").localize(datetime.utcnow()).strftime("%b. %d, %Y#%H:%M UTC")
+        date, time = dt.split("#")
+        return f"Event Timestamp: 📅 {date} || 🕒 {time}"
 
     async def log_event(self, embed: Embed, guild: Guild, priority: bool = False, **kwargs) -> None:
         """Have to use this backwards-ass method because it throws http exceptions."""
@@ -352,11 +357,9 @@ class ModLogs(Cog):
             EventColors.join.value
         )
 
-        date, time = timezone("UTC").localize(member.created_at).strftime("%b. %d, %Y#%I:%M UTC").split("#")
-
         em.add_field(
             name="Account Creation Timestamp",
-            value=f"📅 {date} || 🕒 {time}"
+            value=self._get_timestamp()
         )
 
         await self.log_event(em, member.guild, priority=EventPriority.join)
