@@ -10,6 +10,7 @@ from discord.enums import AuditLogAction, Enum
 from discord.errors import Forbidden, HTTPException
 from discord.ext.commands import Context, Cog, group
 from discord.file import File
+from discord.utils import escape_markdown
 from pytz import timezone
 from typing import List, Tuple, Union, Optional
 
@@ -25,6 +26,7 @@ class EventColors(Enum):
     join = Colour.dark_green()
     leave = Colour.blue()
     delete = Colour.magenta()
+    bulk_delete = Colour.dark_magenta()
     edit = Colour.gold()
     name_change = Colour.purple()
     nickname_change = Colour.blurple()
@@ -496,15 +498,29 @@ class ModLogs(Cog):
         if not self._is_tracked(msg.guild, EventPriority.delete):
             return
 
-        # if msg.author.id == self.bot.user.id:
-        #     return
+        modlog_channels = [int(channel_id) for channel_id in self.get_guild_config(msg.guild).values()]
 
-        reupload = None
-        member = msg.author
+        # If message deleted from modlog, record event with header only
+        if msg.channel.id in modlog_channels:
+
+            description = f"\n\n{msg.embeds[0].description}" if msg.embeds else ""
+            description = escape_markdown(description.replace("Modlog message deleted\n\n", ""))
+
+            em = self.em_base(
+                msg.author,
+                f"Modlog message deleted{description}",
+                EventColors.delete.value
+            )
+
+            return await self.log_event(em, msg.guild, EventPriority.delete)
+
+        # Otherwise, ignore bot's deleted embed-only (help pages, et.) messages
+        elif msg.author.id == self.bot.user.id and not msg.content:
+            return
 
         em = self.em_base(
-            member,
-            f"Message by {member.mention} ({member.name}) deleted",
+            msg.author,
+            f"Message by {msg.author.mention} ({msg.author.name}) deleted",
             EventColors.delete.value
         )
 
@@ -514,13 +530,13 @@ class ModLogs(Cog):
             chunks = [msg.content[i:i + 1024] for i in range(0, len(msg.content), 1024)]
             for i, chunk in enumerate(chunks):
                 em.add_field(
-                    name=f"Content [{i + 1}/{len(chunks)}]",
+                    name=f"🗑 Content [{i + 1}/{len(chunks)}]",
                     value=chunk
                 )
 
-        # Try to re-download attached images if possible.
-        # The proxy url doesn't 404 immediately unlike the regular URL, so it may be possible to download from it
-        # before it goes down as well.
+        # Try to re-download attached images if possible. The proxy url doesn't 404 immediately unlike the
+        # regular URL, so it may be possible to download from it before it goes down as well.
+        reupload = None
 
         if msg.attachments:
             temp_image = BytesIO()
@@ -543,9 +559,91 @@ class ModLogs(Cog):
 
         await self.log_event(em, msg.guild, priority=EventPriority.delete, file=reupload)
 
+    @Cog.listener(name="on_bulk_message_delete")
+    async def on_bulk_message_delete(self, msgs: List[Message]):
+        """Event called when messages are bulk deleted"""
+
+        # Bulk delete event triggered with no messages or messages not found in cache
+        if not msgs:
+            return
+
+        if not self._is_tracked(msgs[0].guild, EventPriority.delete):
+            return
+
+        modlog_channels = [int(channel_id) for channel_id in self.get_guild_config(msgs[0].guild).values()]
+
+        # # If messages deleted from modlog, record event with headers only
+        # if msgs[0].channel.id in modlog_channels:
+        #
+        #     description = f"\n\n{msg.embeds[0].description}" if msg.embeds else ""
+        #     description = escape_markdown(description.replace("Modlog message deleted\n\n", ""))
+        #
+        #     em = self.em_base(
+        #         msg.author,
+        #         f"Modlog messages deleted{description}",
+        #         EventColors.delete.value
+        #     )
+        #
+        #     return await self.log_event(em, msg.guild, EventPriority.delete)
+
+        em = self.em_base(
+            self.bot.user,
+            f"Messages bulk deleted",
+            EventColors.bulk_delete.value
+        )
+
+        em.description = f"{em.description}\n\nChannel: {msgs[0].channel.mention} ({msgs[0].channel.name})"
+
+        msgs_raw = list()
+
+        for msg in msgs:
+            msgs_raw.append(
+                f"**__{msg.author.name}#{msg.author.discriminator}__** ({msg.author.id})\n"
+                f"{escape_markdown(msg.content)}"
+            )
+
+        msg_stream = "\n".join(msgs_raw).split("\n")
+
+        field_values = list()
+        current = ""
+
+        for line in msg_stream:
+
+            if len(current) + len(line) < 1024:
+                current = f"{current}\n{line}"
+
+            else:
+                field_values.append(current)
+                current = line
+
+        else:
+            field_values.append(current)
+
+        total = len(field_values)
+        field_groups = [field_values[i:25 + i] for i in range(0, len(field_values), 25)]
+
+        for n, field_group in enumerate(field_groups):
+            page = em.copy()
+            if len(field_groups) > 1:
+                if n < 1:
+                    page.set_footer("")
+                else:
+                    page.title = ""
+                    page.description = ""
+                    page.set_author(name="", url="", icon_url="")
+
+            for i, msg_raw in enumerate(field_group):
+                page.add_field(
+                    name=f"🗑 Messages [{(n + 1) * (i + 1)}/{total}]",
+                    value=msg_raw
+                )
+
+            await self.log_event(page, msgs[0].guild, EventPriority.delete)
+
     @Cog.listener(name="on_message_edit")
     async def on_message_edit(self, before: Message, after: Message):
         """Event called when a message is edited"""
+
         if not self._is_tracked(before.guild, EventPriority.edit):
             return
 
@@ -567,20 +665,23 @@ class ModLogs(Cog):
             chunks = [before.content[i:i + 1024] for i in range(0, len(before.content), 1024)]
             for i, chunk in enumerate(chunks):
                 em.add_field(
-                    name=f"Before [{i + 1}/{len(chunks)}]",
-                    value=chunk
+                    name=f"🗑 Before [{i + 1}/{len(chunks)}]",
+                    value=chunk,
+                    inline=False
                 )
         else:
             em.add_field(
-                name="Before [0/0]",
-                value="Message had no content"
+                name="🗑 Before [0/0]",
+                value="Message had no content",
+                inline=False
             )
         if after.content:
             chunks = [after.content[i:i + 1024] for i in range(0, len(after.content), 1024)]
             for i, chunk in enumerate(chunks):
                 em.add_field(
-                    name=f"After [{i + 1}/{len(chunks)}]",
-                    value=chunk
+                    name=f"💬 After [{i + 1}/{len(chunks)}]",
+                    value=chunk,
+                    inline=False
                 )
 
         await self.log_event(em, before.guild, priority=EventPriority.edit)
