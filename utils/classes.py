@@ -3,16 +3,110 @@ from __future__ import annotations
 
 from traceback import extract_tb
 
+from asyncio import sleep
 from discord.channel import TextChannel
 from discord.colour import Colour
-from discord.embeds import Embed
+from discord.embeds import Embed as DiscordEmbed
 from discord.errors import DiscordException, LoginFailure
 from discord.ext.commands import Bot as DiscordBot
 from discord.ext.commands.context import Context
 from discord.message import Message
-from typing import Union
+from typing import List, Union
 
 from utils.utils import ZWSP
+
+
+class Embed(DiscordEmbed):
+
+    def copy(self):
+        """Returns a shallow copy of the embed.
+
+        Must copy the method from discord.Embed, or it would
+        return a copy of the super class."""
+        return Embed.from_dict(self.to_dict())
+
+    def strip_head(self):
+        self.title = ""
+        self.description = ""
+        self.set_author(name="", url="", icon_url="")
+        self.set_thumbnail(url="")
+
+    def strip_foot(self):
+        self.set_image(url="")
+        self.set_footer(text="", icon_url="")
+
+    def split(self) -> List[Embed]:
+        title = len(self.title) if self.title else 0
+        desc = len(self.description) if self.description else 0
+        author_name = len(self.author.name) if self.author.name else 0
+        author_url = len(self.author.url) if self.author.url else 0
+        author_icon_url = len(self.author.icon_url) if self.author.icon_url else 0
+        thumbnail = len(self.thumbnail.url) if self.thumbnail.url else 0
+
+        image = len(self.image.url) if self.image.url else 0
+        footer_text = len(self.footer.text) if self.footer.text else 0
+        footer_icon_url = len(self.footer.icon_url) if self.footer.icon_url else 0
+
+        field_lengths = [len(field.name) + len(field.value) for field in self.fields]
+
+        head = sum((title, desc, author_name, author_url, author_icon_url, thumbnail))
+        foot = sum((image, footer_text, footer_icon_url))
+
+        if head + foot + sum(field_lengths) < 6000:
+            return [self]
+
+        char_count = head
+
+        pages = list()
+        page = self.copy()
+
+        fields = [field.copy() for field in self.to_dict().get("fields", None)]
+
+        page.clear_fields()
+        page.strip_foot()
+
+        for i, field in enumerate(fields):
+
+            if char_count + field_lengths[i] < 6000:
+                page.add_field(
+                    name=field["name"],
+                    value=field["value"],
+                    inline=field["inline"]
+                )
+                char_count += field_lengths[i]
+
+            else:
+                pages.append(page)
+
+                page = self.copy()
+                page.strip_head()
+                page.clear_fields()
+                page.strip_foot()
+
+                page.add_field(
+                    name=field["name"],
+                    value=field["value"],
+                    inline=field["inline"]
+                )
+                char_count = field_lengths[i]
+
+        if char_count + foot < 6000:
+            page.set_footer(
+                text=self.footer.text,
+                icon_url=self.footer.icon_url
+            )
+            pages.append(page)
+
+        else:
+            pages.append(page)
+
+            page = self.copy()
+            page.strip_head()
+            page.clear_fields()
+
+            pages.append(page)
+
+        return pages
 
 
 class ErrorLog:
@@ -32,7 +126,10 @@ class ErrorLog:
         if not self.channel:
             raise AttributeError("ErrorLog channel not set")
         em = await self.em_tb(error, ctx)
-        return await self.channel.send(embed=em)
+        for i, page in enumerate(em.split()):
+            if i:
+                await sleep(0.1)
+            return await self.channel.send(embed=em)
 
     @staticmethod
     async def em_tb(error: Union[Exception, DiscordException], ctx: Context = None) -> Embed:
