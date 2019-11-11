@@ -4,7 +4,7 @@ from io import BytesIO
 
 from asyncio import sleep
 from datetime import datetime, timedelta
-from discord import Colour, Embed, Guild, Member, Message, User
+from discord import Colour, Guild, Member, Message, User
 from discord.channel import DMChannel
 from discord.enums import AuditLogAction, Enum
 from discord.errors import Forbidden, HTTPException
@@ -14,7 +14,7 @@ from discord.utils import escape_markdown
 from pytz import timezone
 from typing import List, Tuple, Union, Optional
 
-from utils.classes import Bot
+from utils.classes import Bot, Embed
 from utils.checks import sudo
 from utils.utils import download_image, SubRedis
 
@@ -140,7 +140,7 @@ class ModLogs(Cog):
 
         dt = timezone("UTC").localize(datetime.utcnow()).strftime("%b. %d, %Y#%H:%M UTC")
         date, time = dt.split("#")
-        return f"Event Timestamp: 📅 {date} || 🕒 {time}"
+        return f"Event Timestamp: 📅 {date}  🕒 {time}"
 
     async def log_event(self, embed: Embed, guild: Guild, priority: bool = False, **kwargs) -> None:
         """Have to use this backwards-ass method because it throws http exceptions."""
@@ -158,7 +158,10 @@ class ModLogs(Cog):
             return
 
         try:
-            await dest.send(embed=embed, **kwargs)
+            for i, page in enumerate(embed.split()):
+                if i:
+                    await sleep(0.1)
+                await dest.send(embed=page, **kwargs)
         except HTTPException as error:
             await self.errorlog.send(error)
 
@@ -443,57 +446,6 @@ class ModLogs(Cog):
 
         await self.log_event(em, member.guild, priority=leave_type)
 
-    # @Cog.listener(name="on_member_remove")
-    # async def on_member_remove(self, member: Member):
-    #     if not self._is_tracked(member.guild, EventPriority.leave):
-    #         return
-    #
-    #     # We need to check to see if it was a ban, which also triggers the member_remove handle
-    #     leave_type = EventPriority.leave
-    #
-    #     await sleep(1)
-    #
-    #     # Check to see if the leave was a kick or just a regular leave
-    #     try:
-    #         for log_entry in await member.guild.audit_logs(action=AuditLogAction.kick, limit=1).flatten():
-    #
-    #             # Let's stop at the first entry.
-    #             if log_entry.target.id == member.id:  # The leave was a kick
-    #                 leave_type = EventPriority.kick
-    #
-    #                 try:
-    #                     mod_responsible = getattr(log_entry, "user", "Unknown")
-    #                     reason = getattr(log_entry, "reason", "No reason provided.")
-    #
-    #                     em = Embed(
-    #                         title=f"User {member} was kicked.",
-    #                         color=EventColors.kick.value
-    #                     )
-    #                     em.add_field(name="Reason", value=reason)
-    #                     em.add_field(name="Kicked by", value=mod_responsible)
-    #                     break
-    #
-    #                 except AttributeError:
-    #                     pass
-    #
-    #         else:
-    #             em = Embed(
-    #                 title=f"User {member} left.",
-    #                 color=EventColors.leave.value
-    #             )
-    #
-    #     except Forbidden:
-    #         mod_log_channel_id = self.get_guild_config(member.guild)["default_modlog"]
-    #         modlog_chan = self.bot.get_channel(int(mod_log_channel_id))
-    #         await modlog_chan.send("I'm missing audit log permissions, so ban and kick tracking won't work.")
-    #         return
-    #
-    #     em = self.em_base(em, member)
-    #     roles = ", ".join((i.name for i in member.roles))
-    #     em.add_field(name="Roles", value=roles)
-    #
-    #     await self.log_event(em, member.guild, priority=leave_type)
-
     @Cog.listener(name="on_message_delete")
     async def on_message_delete(self, msg: Message):
         """Event called when a message is deleted"""
@@ -573,8 +525,8 @@ class ModLogs(Cog):
         if not self._is_tracked(msgs[0].guild, EventPriority.delete):
             return
 
-        modlog_channels = [int(channel_id) for channel_id in self.get_guild_config(msgs[0].guild).values()]
-
+        # modlog_channels = [int(channel_id) for channel_id in self.get_guild_config(msgs[0].guild).values()]
+        #
         # # If messages deleted from modlog, record event with headers only
         # if msgs[0].channel.id in modlog_channels:
         #
