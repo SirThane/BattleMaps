@@ -78,7 +78,7 @@ class Events(Cog):
     async def on_command_error(self, ctx: Context, error: Union[Exception, CommandError]):
         if isinstance(error, NoPrivateMessage):
             em = Embed(
-                color=ctx.guild.me.color,
+                color=Embed.Empty,
                 title="⚠  Woah there, buddy!",
                 description="I ain't even on the clock. \n"
                             "Check that out when I'm in the shop.\n"
