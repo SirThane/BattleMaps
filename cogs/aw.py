@@ -88,7 +88,7 @@ class AdvanceWars(Cog):
             await self.bot.invoke(ctx)
 
     @_map.command(name="load", usage="[title]")
-    async def _load(self, ctx: Context, title: str = None, *, _: str = ""):
+    async def _load(self, ctx: Context, title: str = None, verify: bool = True, *, _: str = ""):
         """Load a map to be worked with
 
         This command will load a map to be worked with.
@@ -128,7 +128,7 @@ class AdvanceWars(Cog):
         unloaded and must loaded again to continue
         working with them."""
 
-        awmap = await CheckMap.check(ctx.message, title)
+        awmap = await CheckMap.check(ctx.message, title, verify=verify)
 
         if not awmap:
             raise InvalidMapError
@@ -463,7 +463,7 @@ class CheckMap:
             msg: Message,
             title: str = "[Untitled]",
             skips: list = None,
-            verify: bool = False
+            verify: bool = True
     ) -> Union[AWMap, None]:
         """Takes a discord.Message object and checks
         for valid maps that can be loaded.

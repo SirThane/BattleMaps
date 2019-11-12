@@ -11,7 +11,7 @@ GAMES_API = "TBD"
 USER_API = "TBD"
 
 
-def get_map(maps_id: int = None, verify: bool = True) -> Dict[str, Any]:
+def get_map(maps_id: int = None, verify: bool = False) -> Dict[str, Any]:
     """Requests map info from AWBW Maps API
 
     Map data returned in following format:
