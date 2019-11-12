@@ -77,21 +77,38 @@ class Events(Cog):
     @Cog.listener(name="on_command_error")
     async def on_command_error(self, ctx: Context, error: Union[Exception, CommandError]):
         if isinstance(error, NoPrivateMessage):
-            await ctx.send(
-                content='This command cannot be used in private messages.'
+            em = Embed(
+                color=ctx.guild.me.color,
+                title="⚠  Woah there, buddy!",
+                description="I ain't even on the clock. \n"
+                            "Check that out when I'm in the shop.\n"
+                            "\n"
+                            "```\n"
+                            "This command cannot be used in private messages.\n"
+                            "```"
             )
+            await ctx.send(embed=em)
 
         elif isinstance(error, DisabledCommand):
-            await ctx.send(
-                content='This command is disabled and cannot be used.'
+            em = Embed(
+                color=ctx.guild.me.color,
+                title="⚠  Woah there, buddy!",
+                description="That there ain't for sale! \n"
+                            "Hell, pro'lly don't even work.\n"
+                            "Check out som'thin' else.\n"
+                            "\n"
+                            "```\n"
+                            "This command is disabled and cannot be used.\n"
+                            "```"
             )
+            await ctx.send(embed=em)
 
         elif isinstance(error, MissingRequiredArgument):
             await self.bot.help_command.send_help_for(ctx, ctx.command, "You are missing required arguments.")
 
         elif isinstance(error, CommandNotFound):
             cmd = ctx.command
-            await self.bot.help_command.send_help_for(ctx, self.bot.get_command("help"), f"Command {cmd} not found.")
+            await self.bot.help_command.send_help_for(ctx, self.bot.get_command("help"), f"Command `{cmd}` not found.")
 
         elif isinstance(error, CheckFailure):
             em = Embed(
@@ -99,8 +116,10 @@ class Events(Cog):
                 title="⚠  Woah there, buddy!",
                 description="Get your hands off that! \n"
                             "That there's for shop staff only.\n"
-                            "\n```\nYou do not have the appropriate access"
-                            "for that command.```"
+                            "\n"
+                            "```\n"
+                            "You do not have the appropriate access for that command.\n"
+                            "```"
             )
             await ctx.send(embed=em)
 
@@ -110,9 +129,12 @@ class Events(Cog):
                 title="⚠  Woah there, buddy!",
                 description="I can't take that map. The edges are all wrong.\n"
                             "What'd'ya say you take a look and try it again.\n"
-                            "\n```\nThe map you uploaded contained\n"
+                            "\n"
+                            "```\n"
+                            "The map you uploaded contained\n"
                             "rows with a differing amounts of\n"
-                            "columns. Check your map and try again.\n```"
+                            "columns. Check your map and try again.\n"
+                            "```"
             )
             await ctx.send(embed=em)
 
@@ -121,11 +143,14 @@ class Events(Cog):
                 color=ctx.guild.me.color,
                 title="⚠  Woah there, buddy!",
                 description="What are you trying to sell here? Is that even\n"
-                            "a map? It don't look like none I ever seen.\n\n"
-                            "```\nThe converter was unable to detect a valid\n"
+                            "a map? It don't look like none I ever seen.\n"
+                            "\n"
+                            "```\n"
+                            "The converter was unable to detect a valid\n"
                             "map in your message. Please check your\n"
                             "file and command parameters. If you have\n"
-                            "trouble, try in `$$help`\n```"
+                            "trouble, try in `$$help`\n"
+                            "```"
             )
             await ctx.send(embed=em)
 
@@ -135,10 +160,14 @@ class Events(Cog):
                 title="⚠  Woah there, buddy!",
                 description="You can try that that all you like, but you\n"
                             "ain't doin' nothin' without a map to do it on.\n"
-                            "\n```\nThis command requires you load a map first"
-                            ".\nMake sure you load a map with `$$map load`\n"
+                            "\n"
+                            "```\n"
+                            "This command requires you load a map first.\n"
+                            "Make sure you load a map with `$$map load`\n"
                             "first. If you are having trouble, try looking\n"
-                            "in `$$help`\n```")
+                            "in `$$help`\n"
+                            "```"
+            )
             await ctx.send(embed=em)
 
         elif isinstance(error, UnimplementedError):
@@ -147,8 +176,10 @@ class Events(Cog):
                 title="⚠  Woah there, buddy!",
                 description="I ain't got the stuff to do that quite yet.\n"
                             "Hold yer horses. I'll have it ready here soon.\n"
-                            "\n```\nThis feature has not yet been implemented."
-                            "\n```"
+                            "\n"
+                            "```\n"
+                            "This feature has not yet been implemented.\n"
+                            "```"
             )
             await ctx.send(embed=em)
 
