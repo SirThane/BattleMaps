@@ -2,7 +2,7 @@
 from asyncio import sleep
 
 from discord import Embed
-from discord.ext.commands import Cog, command, Context, group, RoleConverter
+from discord.ext.commands import Cog, command, Context, group, RoleConverter, guild_only
 from discord.ext.commands.errors import BadArgument
 
 from utils.classes import Bot
@@ -50,6 +50,7 @@ class SelfRoles(Cog):
                 if role.id in r_ids:
                     self._selfroles[guild.id].append(role.id)
 
+    @guild_only()
     @command(name="iam")
     async def iam(self, ctx: Context, *, role) -> None:
         """Add a self-assignable role
@@ -121,6 +122,7 @@ class SelfRoles(Cog):
                     )
                 )
 
+    @guild_only()
     @group(name="selfroles", aliases=["selfrole"], invoke_without_command=True)
     async def selfroles(self, ctx: Context):
         """View all selfroles"""
@@ -140,8 +142,10 @@ class SelfRoles(Cog):
                     color=ctx.guild.me.color,
                     title="Selfroles",
                     description=f"The following roles are self-assignable:\n"
-                                f"{roles}\n\nSee `help $$iam` for assigning "
-                                f"selfroles."
+                                f"{roles}"
+                                f"\n"
+                                f"\n"
+                                f"See `?help iam` for assigning selfroles."
                 )
             )
 
@@ -150,9 +154,8 @@ class SelfRoles(Cog):
                 embed=Embed(
                     color=ctx.guild.me.color,
                     title="Selfroles",
-                    description="There are currently no assignable selfroles."
-                                "\nStaff may configure selfroles with `$$"
-                                "selfrole add`."
+                    description="There are currently no assignable selfroles.\n"
+                                "Staff may configure selfroles with `?selfrole add`."
                 )
             )
 
@@ -179,8 +182,7 @@ class SelfRoles(Cog):
                     embed=Embed(
                         color=ctx.guild.me.color,
                         title="⚠ Selfroles Management",
-                        description=f"Role {role.mention} is already "
-                                    f"configured as a selfrole."
+                        description=f"Role {role.mention} is already configured as a selfrole."
                     )
                 )
             else:
@@ -190,8 +192,7 @@ class SelfRoles(Cog):
                     embed=Embed(
                         color=ctx.guild.me.color,
                         title="Selfroles Management",
-                        description=f"Role {role.mention} has been added to "
-                                    f"selfroles."
+                        description=f"Role {role.mention} has been added to selfroles."
                     )
                 )
 
@@ -222,8 +223,7 @@ class SelfRoles(Cog):
                     embed=Embed(
                         color=ctx.guild.me.color,
                         title="Selfroles Management",
-                        description=f"Role {role.mention} has been removed "
-                                    f"from selfroles."
+                        description=f"Role {role.mention} has been removed  from selfroles."
                     )
                 )
             else:
@@ -231,8 +231,7 @@ class SelfRoles(Cog):
                     embed=Embed(
                         color=ctx.guild.me.color,
                         title="⚠ Selfroles Management",
-                        description=f"Role {role.mention} is not configured as"
-                                    f" a selfrole."
+                        description=f"Role {role.mention} is not configured as a selfrole."
                     )
                 )
 
