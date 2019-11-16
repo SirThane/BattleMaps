@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from traceback import extract_tb
 
-from asyncio import sleep
+from asyncio import CancelledError, sleep
 from discord.channel import TextChannel
 from discord.colour import Colour
 from discord.embeds import Embed as DiscordEmbed
@@ -67,7 +67,7 @@ class Embed(DiscordEmbed):
 
         for i, field in enumerate(fields):
 
-            if char_count + field_lengths[i] < 6000:
+            if char_count + field_lengths[i] < 6000 and len(page.fields) <= 25:
                 page.add_field(
                     name=field["name"],
                     value=field["value"],
@@ -122,23 +122,23 @@ class ErrorLog:
         else:
             self.channel = None
 
-    async def send(self, error: Union[Exception, DiscordException], ctx: Context = None) -> Message:
+    async def send(self, error: Union[Exception, DiscordException], ctx: Context = None, event: str = None) -> Message:
         if not self.channel:
             raise AttributeError("ErrorLog channel not set")
-        em = await self.em_tb(error, ctx)
+        em = await self.em_tb(error, ctx, event)
         for i, page in enumerate(em.split()):
             if i:
                 await sleep(0.1)
             return await self.channel.send(embed=em)
 
     @staticmethod
-    async def em_tb(error: Union[Exception, DiscordException], ctx: Context = None) -> Embed:
+    async def em_tb(error: Union[Exception, DiscordException], ctx: Context = None, event: str = None) -> Embed:
         if ctx:
             prefix = await ctx.bot.get_prefix(ctx.message)
             title = f"In {prefix}{ctx.command.qualified_name}"
             description = f"**{error.__class__.__name__}**: {error}"
         else:
-            title = None
+            title = f"Exception ignored in event `{event}`" if event else None
             description = f"**{type(error).__name__}**: {str(error)}"
 
         stack = extract_tb(error.__traceback__)
@@ -195,3 +195,29 @@ class Bot(DiscordBot):
         if not token:
             raise LoginFailure("No or improper token passed")
         super().run(token, **kwargs)
+
+    async def _run_event(self, coro, event_name: str, *args, **kwargs):
+        # Override built-in event handler so we can capture errors raised
+        try:
+            await coro(*args, **kwargs)
+        except CancelledError:
+            pass
+        except Exception as error:
+            try:
+                await self.on_error(event_name, *args, error_captured=error, **kwargs)
+            except CancelledError:
+                pass
+
+    async def on_error(self, event_name, *args, **kwargs):
+        """Error handler for Exceptions raised in events"""
+
+        # Try to get Exception that was raised
+        error = kwargs.pop("error_captured")
+
+        # If the Exception raised is successfully captured, use ErrorLog
+        if error:
+            await self.errorlog.send(error, event=event_name)
+
+        # Otherwise, use default handler
+        else:
+            await super().on_error(event_method=event_name, *args, **kwargs)
