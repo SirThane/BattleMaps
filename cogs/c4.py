@@ -276,7 +276,7 @@ class ConnectFourSession:
                         return
 
         # If top-most slot is filled in all columns with no winner, Draw game
-        if all(map(lambda space: isinstance(space, Player), [space for space in self.board[6].values()])):
+        if all(map(lambda space: isinstance(space, Player), [column[6] for column in self.board.values()])):
             self.state = State.draw
             return
 
@@ -314,12 +314,10 @@ class ConnectFourSession:
     def forfeit(self):
         """Ends game by voluntary forfeit with player as loser"""
         self.state = State.forfeit
-        return self.current_player
 
     def expire(self):
         """Ends the game by timeout with current player as loser"""
         self.state = State.timeout
-        return self.current_player
 
 
 class ConnectFour(Cog):
@@ -386,14 +384,16 @@ class ConnectFour(Cog):
             return ctry, AWBW_EMOJIS[ctry]
 
     @staticmethod
-    async def send_message(channel: TextChannel, msg: str = "Error", level: int = MsgLevel.info) -> Message:
+    async def send_message(channel: TextChannel, msg: str = "Error", level: int = MsgLevel.info) -> None:
         """Formats a message as embed"""
 
         em = Embed(
             description=f"{MSG_ICON[level.value]}  {msg}",
             color=MSG_COLOR[level.value]
         )
-        return await channel.send(embed=em)
+        msg = await channel.send(embed=em)
+        await sleep(5)
+        await msg.delete()
 
     async def init_game_message(self, channel: TextChannel, session: ConnectFourSession, board: Embed) -> Message:
         """Sends game board to channel and sets message on session"""
@@ -431,7 +431,7 @@ class ConnectFour(Cog):
 
         elif session.state == State.active:
             em.description = f"Turn: {(session.turn + 2) // 2}\n" \
-                             f"{em.description}" \
+                             f"{em.description}\n" \
                              f"\n" \
                              f"{session.current_player.name}'s turn: {session.current_player.chip}"
             em.colour = session.colour
@@ -619,6 +619,7 @@ class ConnectFour(Cog):
         """Administrative kill command
 
         This will kill all running games in all channels"""
+
         ctx.message.content = f"{self.bot.command_prefix}kill True"
         await self.bot.process_commands(ctx.message)
 
@@ -628,53 +629,120 @@ class ConnectFour(Cog):
         await sleep(0.1)
 
         if not self.channel_check(reaction.message.channel):
+            # Channel is not watched for Connect Four
             return
 
         if user.id == self.bot.user.id:
+            # Ignore the bot's own reactions
             return
 
+        # It's a watched channel, so try to get an active session
         session = self.session(reaction.message.channel)
 
         if not session:
+            # No session in channel
             return
 
         if reaction.message.id != session.msg.id:
-            return
-
-        await reaction.remove(user)
-
-        if user.id != session.current_player.id:
+            # Message is not an active session
             return
 
         if reaction.emoji not in self._game_reactions:
+            # Not a valid game reaction
+            return
+
+        # It is a valid game reaction on an active session in a watched channel
+        # Remove reaction, then act based on reaction
+        await reaction.remove(user)
+
+        if user.id not in session.players:
+            # Not a player
+            return
+
+        if user.id != session.current_player.id:
+            # Not the player's turn
+            await self.send_message(
+                reaction.message.channel,
+                msg=f"{user.mention}: It is not your turn.",
+                level=MsgLevel.warning
+            )
             return
 
         if reaction.emoji == str(Emoji.one):
-            session.play(user, 1)
+            try:
+                session.play(user, 1)
+            except ValueError:
+                await self.send_message(
+                    reaction.message.channel,
+                    msg="That column is full. Select another.",
+                    level=MsgLevel.error
+                )
             return await self.send_board(reaction.message.channel)
 
         if reaction.emoji == str(Emoji.two):
-            session.play(user, 2)
+            try:
+                session.play(user, 2)
+            except ValueError:
+                await self.send_message(
+                    reaction.message.channel,
+                    msg="That column is full. Select another.",
+                    level=MsgLevel.error
+                )
             return await self.send_board(reaction.message.channel)
 
         if reaction.emoji == str(Emoji.three):
-            session.play(user, 3)
+            try:
+                session.play(user, 3)
+            except ValueError:
+                await self.send_message(
+                    reaction.message.channel,
+                    msg="That column is full. Select another.",
+                    level=MsgLevel.error
+                )
             return await self.send_board(reaction.message.channel)
 
         if reaction.emoji == str(Emoji.four):
-            session.play(user, 4)
+            try:
+                session.play(user, 4)
+            except ValueError:
+                await self.send_message(
+                    reaction.message.channel,
+                    msg="That column is full. Select another.",
+                    level=MsgLevel.error
+                )
             return await self.send_board(reaction.message.channel)
 
         if reaction.emoji == str(Emoji.five):
-            session.play(user, 5)
+            try:
+                session.play(user, 5)
+            except ValueError:
+                await self.send_message(
+                    reaction.message.channel,
+                    msg="That column is full. Select another.",
+                    level=MsgLevel.error
+                )
             return await self.send_board(reaction.message.channel)
 
         if reaction.emoji == str(Emoji.six):
-            session.play(user, 6)
+            try:
+                session.play(user, 6)
+            except ValueError:
+                await self.send_message(
+                    reaction.message.channel,
+                    msg="That column is full. Select another.",
+                    level=MsgLevel.error
+                )
             return await self.send_board(reaction.message.channel)
 
         if reaction.emoji == str(Emoji.seven):
-            session.play(user, 7)
+            try:
+                session.play(user, 7)
+            except ValueError:
+                await self.send_message(
+                    reaction.message.channel,
+                    msg="That column is full. Select another.",
+                    level=MsgLevel.error
+                )
             return await self.send_board(reaction.message.channel)
 
         if reaction.emoji == str(Emoji.x):
@@ -685,16 +753,23 @@ class ConnectFour(Cog):
     async def on_timer_update(self, sec: int):
         """Timer event that triggers every 1 second"""
 
+        # Only check statuses every `self.timeout_incr` seconds
         if sec % self.timeout_incr == 0:
 
+            # Get all sessions and start a list of ones that timed out
             sessions = self.sessions.values()
             to_expire = list()
 
+            # Increment the time on all
             for session in sessions:
                 session.timeout += self.timeout_incr
+
+                # Timeout reached
+                # Add to list of expired sessions
                 if session.timeout == self.timeout:
                     to_expire.append(session)
 
+            # Set game over condition on all expired sessions to timeout and send
             for session in to_expire:
                 session.expire()
                 await self.send_board(session.msg.channel)
