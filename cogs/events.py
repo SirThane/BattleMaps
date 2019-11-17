@@ -53,7 +53,7 @@ class Events(Cog):
             return
         em = Embed(
             description=WELCOME.format(member.mention),
-            color=member.guild.me.color
+            color=member.guild.me.colour
         )
         await self.channel.send(embed=em)
 
@@ -65,7 +65,7 @@ class Events(Cog):
             return
         em = Embed(
             description=LEAVE.format(member.display_name),
-            color=member.guild.me.color
+            color=member.guild.me.colour
         )
         await self.channel.send(embed=em)
 
@@ -91,7 +91,7 @@ class Events(Cog):
 
         elif isinstance(error, DisabledCommand):
             em = Embed(
-                color=ctx.guild.me.color,
+                color=ctx.guild.me.colour,
                 title="⚠  Woah there, buddy!",
                 description="That there ain't for sale! \n"
                             "Hell, pro'lly don't even work.\n"
@@ -112,7 +112,7 @@ class Events(Cog):
 
         elif isinstance(error, CheckFailure):
             em = Embed(
-                color=ctx.guild.me.color,
+                color=ctx.guild.me.colour,
                 title="⚠  Woah there, buddy!",
                 description="Get your hands off that! \n"
                             "That there's for shop staff only.\n"
@@ -125,7 +125,7 @@ class Events(Cog):
 
         elif isinstance(error, AWBWDimensionsError):
             em = Embed(
-                color=ctx.guild.me.color,
+                color=ctx.guild.me.colour,
                 title="⚠  Woah there, buddy!",
                 description="I can't take that map. The edges are all wrong.\n"
                             "What'd'ya say you take a look and try it again.\n"
@@ -140,7 +140,7 @@ class Events(Cog):
 
         elif isinstance(error, InvalidMapError):
             em = Embed(
-                color=ctx.guild.me.color,
+                color=ctx.guild.me.colour,
                 title="⚠  Woah there, buddy!",
                 description="What are you trying to sell here? Is that even\n"
                             "a map? It don't look like none I ever seen.\n"
@@ -156,7 +156,7 @@ class Events(Cog):
 
         elif isinstance(error, NoLoadedMapError):
             em = Embed(
-                color=ctx.guild.me.color,
+                color=ctx.guild.me.colour,
                 title="⚠  Woah there, buddy!",
                 description="You can try that that all you like, but you\n"
                             "ain't doin' nothin' without a map to do it on.\n"
@@ -172,7 +172,7 @@ class Events(Cog):
 
         elif isinstance(error, UnimplementedError):
             em = Embed(
-                color=ctx.guild.me.color,
+                color=ctx.guild.me.colour,
                 title="⚠  Woah there, buddy!",
                 description="I ain't got the stuff to do that quite yet.\n"
                             "Hold yer horses. I'll have it ready here soon.\n"
@@ -198,7 +198,7 @@ class Events(Cog):
             em = Embed(
                 title=f"{msg.guild}: #{msg.channel} at {ts}",
                 description=msg.content,
-                color=author.color
+                color=author.colour
             )
             em.set_author(
                 name=f"{author.name}#{author.discriminator}{display_name}",
