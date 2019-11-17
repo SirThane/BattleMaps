@@ -704,7 +704,8 @@ class ConnectFour(Cog):
 
             # And resending the board
             elif reaction.emoji == str(Emoji.refresh):
-                await self.init_game_message(reaction.message.channel, session, session.msg.embeds[0])
+                await session.msg.delete()
+                return await self.init_game_message(reaction.message.channel, session, session.msg.embeds[0])
 
             # Otherwise needs to be player's turn
             else:
@@ -716,7 +717,8 @@ class ConnectFour(Cog):
 
         # Resend the current game board
         if reaction.emoji == str(Emoji.refresh):
-            await self.init_game_message(reaction.message.channel, session, session.msg.embeds[0])
+            await session.msg.delete()
+            return await self.init_game_message(reaction.message.channel, session, session.msg.embeds[0])
 
         if reaction.emoji == str(Emoji.one):
             try:
