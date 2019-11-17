@@ -41,7 +41,7 @@ class General(Cog):
             'embed': {
                 'title': 'User Information For:',
                 'description': '{0.name}#{0.discriminator}'.format(member),
-                'color': getattr(Colour, member.default_avatar.name)()
+                'colour': getattr(Colour, member.default_avatar.name)()
             },
             'author': {
                 'name': '{0.name} || #{1.name}'.format(ctx.guild, ctx.channel),
