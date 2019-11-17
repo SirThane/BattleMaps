@@ -438,7 +438,7 @@ class Admin(Cog):
 
     @sudo()
     @say.command(name="in")
-    async def _in(self, ctx: Context, dest: str = None):
+    async def say_in(self, ctx: Context, dest: str = None):
         """Sets the destination for messages from `[p]say`"""
 
         if dest:
@@ -471,14 +471,14 @@ class Admin(Cog):
             await ctx.send(embed=em)
 
     @sudo()
-    @command(name='invite', enabled=False)
+    @command(name='invite')
     async def invite(self, ctx: Context):
         em = Embed(
             title=f'OAuth URL for {self.bot.user.name}',
             description=f'[Click Here]'
                         f'({oauth_url(self.bot.app_info.id)}) '
                         f'to invite {self.bot.user.name} to your guild.',
-            color=ctx.guild.me.color
+            color=ctx.guild.me.colour
         )
         await ctx.send(embed=em)
 
