@@ -438,7 +438,7 @@ class ConnectFour(Cog):
             em.description = f"Turn: {(session.turn + 2) // 2}\n" \
                              f"{em.description}\n" \
                              f"\n" \
-                             f"{session.current_player.name}'s turn: {session.current_player.chip}"
+                             f"{session.current_player.mention}'s turn: {session.current_player.chip}"
             em.colour = session.colour
 
         elif session.state == State.draw:
