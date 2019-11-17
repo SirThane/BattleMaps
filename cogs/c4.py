@@ -26,22 +26,23 @@ from utils.utils import SubRedis
 
 
 class Emoji(Enum):
-    white = b'\xE2\x9A\xAA'.decode("utf8")      # :white_circle:        ⚪
-    red = b'\xF0\x9F\x94\xB4'.decode("utf8")    # :red_circle:          🔴
-    blue = b'\xF0\x9F\x94\xB5'.decode("utf8")   # :large_blue_circle:   🔵
-    vs = b'\xF0\x9F\x86\x9A'.decode("utf8")     # :vs:                  🆚
-    tada = b'\xF0\x9F\x8E\x89'.decode("utf8")   # :tada:                🎉
-    one = b'\x31\xE2\x83\xA3'.decode("utf8")    # :one:                 1⃣
-    two = b'\x32\xE2\x83\xA3'.decode("utf8")    # :two:                 2⃣
-    three = b'\x33\xE2\x83\xA3'.decode("utf8")  # :three:               3⃣
-    four = b'\x34\xE2\x83\xA3'.decode("utf8")   # :four:                4⃣
-    five = b'\x35\xE2\x83\xA3'.decode("utf8")   # :five:                5⃣
-    six = b'\x36\xE2\x83\xA3'.decode("utf8")    # :six:                 6⃣
-    seven = b'\x37\xE2\x83\xA3'.decode("utf8")  # :seven:               7⃣
-    x = b'\xE2\x9D\x8C'.decode("utf8")          # :x:                   ❌
-    info = b'\xE2\x84\xB9'.decode("utf8")       # :information_source:  ℹ
-    warning = b'\xE2\x9A\xA0'.decode("utf8")    # :warning:             ⚠
-    error = b'\xe2\x9b\x94'.decode("utf8")      # :no_entry:            ⛔
+    white = b'\xE2\x9A\xAA'.decode("utf8")                  # :white_circle:        ⚪
+    red = b'\xF0\x9F\x94\xB4'.decode("utf8")                # :red_circle:          🔴
+    blue = b'\xF0\x9F\x94\xB5'.decode("utf8")               # :large_blue_circle:   🔵
+    vs = b'\xF0\x9F\x86\x9A'.decode("utf8")                 # :vs:                  🆚
+    tada = b'\xF0\x9F\x8E\x89'.decode("utf8")               # :tada:                🎉
+    one = b'\x31\xE2\x83\xA3'.decode("utf8")                # :one:                 1⃣
+    two = b'\x32\xE2\x83\xA3'.decode("utf8")                # :two:                 2⃣
+    three = b'\x33\xE2\x83\xA3'.decode("utf8")              # :three:               3⃣
+    four = b'\x34\xE2\x83\xA3'.decode("utf8")               # :four:                4⃣
+    five = b'\x35\xE2\x83\xA3'.decode("utf8")               # :five:                5⃣
+    six = b'\x36\xE2\x83\xA3'.decode("utf8")                # :six:                 6⃣
+    seven = b'\x37\xE2\x83\xA3'.decode("utf8")              # :seven:               7⃣
+    x = b'\xE2\x9D\x8C'.decode("utf8")                      # :x:                   ❌
+    info = b'\xE2\x84\xB9'.decode("utf8")                   # :information_source:  ℹ
+    warning = b'\xE2\x9A\xA0'.decode("utf8")                # :warning:             ⚠
+    error = b'\xe2\x9b\x94'.decode("utf8")                  # :no_entry:            ⛔
+    refresh = b'\xE2\x99\xBB\xEF\xB8\x8F'.decode("utf8")    # :recycle:             ♻️
 
     def __str__(self):
         return self.value
@@ -355,7 +356,8 @@ class ConnectFour(Cog):
             str(Emoji.five),
             str(Emoji.six),
             str(Emoji.seven),
-            str(Emoji.x)
+            str(Emoji.x),
+            str(Emoji.refresh)
         ]
 
         # Default chips
@@ -536,9 +538,24 @@ class ConnectFour(Cog):
             await self.send_board(ctx.channel)
 
     @c4.command(name="help", hidden=True)
-    async def _help(self, ctx):
+    async def c4_help(self, ctx):
         """Shortcut to send help manual for ConnectFour"""
         await self.bot.help_command.send_help_for(ctx, self.bot.get_cog("ConnectFour"))
+
+    @c4.command(name="board")
+    async def c4_board(self, ctx: Context):
+        """Resend the current game board"""
+        session = self.session(ctx.channel)
+        if not session:
+            return await self.send_message(
+                ctx.channel,
+                msg=f"{ctx.author.mention} There is no active game in this channel.",
+                level=MsgLevel.warning
+            )
+        elif ctx.author.id not in session.players.keys():
+            return
+        else:
+            await self.init_game_message(ctx.channel, session, session.msg.embeds[0])
 
     @sudo()
     @c4.command(name="enable", hidden=True)
@@ -676,20 +693,30 @@ class ConnectFour(Cog):
             # Not a player
             return
 
+        # Currently the other player's turn
         if user.id != session.current_player.id:
-            # Not the player's turn
 
+            # Still allow quitting
             if reaction.emoji == str(Emoji.x):
                 session.turn -= 1
                 session.forfeit()
                 return await self.send_board(reaction.message.channel)
 
+            # And resending the board
+            elif reaction.emoji == str(Emoji.refresh):
+                await self.init_game_message(reaction.message.channel, session, session.msg.embeds[0])
+
+            # Otherwise needs to be player's turn
             else:
                 return await self.send_message(
                     reaction.message.channel,
                     msg=f"{user.mention}: It is not your turn.",
                     level=MsgLevel.warning
                 )
+
+        # Resend the current game board
+        if reaction.emoji == str(Emoji.refresh):
+            await self.init_game_message(reaction.message.channel, session, session.msg.embeds[0])
 
         if reaction.emoji == str(Emoji.one):
             try:
