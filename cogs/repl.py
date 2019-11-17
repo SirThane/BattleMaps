@@ -129,7 +129,7 @@ class REPL(Cog):
                 result = await result
             self.ret = result
             self.emb_pag.set_headers(['Yielded result:'])
-            emb['color'] = 0x00FF00
+            emb['colour'] = 0x00FF00
             for h, v in self.emb_pag.paginate(result):
                 field = {
                     'name': h,
@@ -139,7 +139,7 @@ class REPL(Cog):
                 emb['fields'].append(field)
 
         except Exception as e:
-            emb['color'] = 0xFF0000
+            emb['colour'] = 0xFF0000
             field = {
                 'name': 'Yielded exception "{0.__name__}":'.format(type(e)),
                 'value': '{0}'.format(e),
@@ -165,7 +165,7 @@ class REPL(Cog):
                 exec(code, self._env(ctx))
                 result = str(s.getvalue())
             self.emb_pag.set_headers(['Yielded result:'])
-            emb['color'] = 0x00FF00
+            emb['colour'] = 0x00FF00
             for h, v in self.emb_pag.paginate(result):
                 field = {
                     'name': h,
@@ -174,7 +174,7 @@ class REPL(Cog):
                 }
                 emb['fields'].append(field)
         except Exception as e:
-            emb['color'] = 0xFF0000
+            emb['colour'] = 0xFF0000
             field = {
                 'inline': False,
                 'name': 'Yielded exception "{0.__name__}":'.format(type(e)),
