@@ -468,11 +468,19 @@ class ConnectFour(Cog):
         return await session.msg.edit(embed=em)
 
     @group(name="c4", invoke_without_command=True)
-    async def c4(self, ctx: Context, *, member: Member = None):
+    async def c4(self, ctx: Context, *, member=None):
         """Connect Four
 
         `[p]c4 @user` to start a game with
         another user in the current channel."""
+
+        if not member:
+            return await self.bot.help_command.send_help_for(ctx, ctx.command, "You need another player to start")
+
+        try:
+            member = await self.member_check(ctx, member)
+        except BadArgument:
+            return await self.member_check(ctx, member)
 
         if not self.channel_check(ctx.channel):
             return await self.send_message(
@@ -481,8 +489,12 @@ class ConnectFour(Cog):
                 level=MsgLevel.error
             )
 
-        elif not member:
-            return await self.bot.help_command.send_help_for(ctx, ctx.command, "You need another player to start")
+        elif self.session(ctx.channel):
+            return await self.send_message(
+                ctx.channel,
+                msg="There is already an active session in this channel",
+                level=MsgLevel.warning
+            )
 
         elif member.id == ctx.author.id:
             return await self.send_message(
