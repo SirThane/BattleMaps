@@ -506,8 +506,8 @@ class ConnectFour(Cog):
             )
 
         else:
-            p2_ctry, p2_chip = self.get_member_chip(member.roles)
-            _, p1_chip = self.get_member_chip(ctx.author.roles, p2_ctry)
+            p2_ctry, p2_chip = self.get_member_chip(ctx.author.roles)
+            _, p1_chip = self.get_member_chip(member.roles, p2_ctry)
 
             self.sessions[ctx.channel.id] = ConnectFourSession(
                 p1=member,
