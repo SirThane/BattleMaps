@@ -75,7 +75,7 @@ class SelfRoles(Cog):
         except BadArgument:
             await ctx.send(
                 embed=Embed(
-                    color=ctx.guild.me.color,
+                    color=ctx.guild.me.colour,
                     title="⚠ Selfroles",
                     description=f"Could not recognize role."
                 )
@@ -85,7 +85,7 @@ class SelfRoles(Cog):
             if role in ctx.author.roles:
                 await ctx.send(
                     embed=Embed(
-                        color=ctx.guild.me.color,
+                        color=ctx.guild.me.colour,
                         title="⚠ Selfroles",
                         description="You already have this role assigned."
                     )
@@ -106,7 +106,7 @@ class SelfRoles(Cog):
                 )
                 await ctx.send(
                     embed=Embed(
-                        color=role.color,
+                        color=role.colour,
                         title="Role Assigned",
                         description=f"Congratulations, {ctx.author.mention}!"
                                     f" You now have the **{role.mention}** "
@@ -139,7 +139,7 @@ class SelfRoles(Cog):
 
             await ctx.send(
                 embed=Embed(
-                    color=ctx.guild.me.color,
+                    color=ctx.guild.me.colour,
                     title="Selfroles",
                     description=f"The following roles are self-assignable:\n"
                                 f"{roles}"
@@ -152,7 +152,7 @@ class SelfRoles(Cog):
         else:
             await ctx.send(
                 embed=Embed(
-                    color=ctx.guild.me.color,
+                    color=ctx.guild.me.colour,
                     title="Selfroles",
                     description="There are currently no assignable selfroles.\n"
                                 "Staff may configure selfroles with `?selfrole add`."
@@ -171,7 +171,7 @@ class SelfRoles(Cog):
         except BadArgument:
             await ctx.send(
                 embed=Embed(
-                    color=ctx.guild.me.color,
+                    color=ctx.guild.me.colour,
                     title="⚠ Selfroles Management",
                     description=f"Could not recognize role."
                 )
@@ -180,7 +180,7 @@ class SelfRoles(Cog):
             if role.id in r_ids:
                 await ctx.send(
                     embed=Embed(
-                        color=ctx.guild.me.color,
+                        color=ctx.guild.me.colour,
                         title="⚠ Selfroles Management",
                         description=f"Role {role.mention} is already configured as a selfrole."
                     )
@@ -190,7 +190,7 @@ class SelfRoles(Cog):
                 self._selfroles[ctx.guild.id].append(role.id)
                 await ctx.send(
                     embed=Embed(
-                        color=ctx.guild.me.color,
+                        color=ctx.guild.me.colour,
                         title="Selfroles Management",
                         description=f"Role {role.mention} has been added to selfroles."
                     )
@@ -209,7 +209,7 @@ class SelfRoles(Cog):
         except BadArgument:
             await ctx.send(
                 embed=Embed(
-                    color=ctx.guild.me.color,
+                    color=ctx.guild.me.colour,
                     title="⚠ Selfroles Management",
                     description=f"Could not recognize role."
                 )
@@ -221,7 +221,7 @@ class SelfRoles(Cog):
                 self._selfroles[ctx.guild.id].remove(role.id)
                 await ctx.send(
                     embed=Embed(
-                        color=ctx.guild.me.color,
+                        color=ctx.guild.me.colour,
                         title="Selfroles Management",
                         description=f"Role {role.mention} has been removed  from selfroles."
                     )
@@ -229,7 +229,7 @@ class SelfRoles(Cog):
             else:
                 await ctx.send(
                     embed=Embed(
-                        color=ctx.guild.me.color,
+                        color=ctx.guild.me.colour,
                         title="⚠ Selfroles Management",
                         description=f"Role {role.mention} is not configured as a selfrole."
                     )
