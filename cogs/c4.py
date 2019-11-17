@@ -122,8 +122,13 @@ class Player:
 
     @property
     def name(self) -> str:
-        """Returns the username of the Member representing player"""
-        return self.member.name
+        """Returns the display name of the Member representing player"""
+        return self.member.display_name if self.member.display_name else self.member.name
+
+    @property
+    def mention(self) -> str:
+        """Returns a mention string for the Member"""
+        return self.member.mention
 
     @property
     def color(self) -> int:
@@ -424,7 +429,7 @@ class ConnectFour(Cog):
             em.description = f"New game! Turn: 1\n" \
                              f"{em.description}\n" \
                              f"\n" \
-                             f"{session.current_player.name}'s turn: {session.current_player.chip}"
+                             f"{session.current_player.mention}'s turn: {session.current_player.chip}"
             em.colour = session.colour
 
             return await self.init_game_message(channel, session, em)
@@ -485,35 +490,35 @@ class ConnectFour(Cog):
         if not self.channel_check(ctx.channel):
             return await self.send_message(
                 ctx.channel,
-                msg="Connect Four is not enabled in this channel",
+                msg=f"{ctx.author.mention}: Connect Four is not enabled in this channel",
                 level=MsgLevel.error
             )
 
         elif self.session(ctx.channel):
             return await self.send_message(
                 ctx.channel,
-                msg="There is already an active session in this channel",
+                msg=f"{ctx.author.mention}: There is already an active session in this channel",
                 level=MsgLevel.warning
             )
 
         elif member.id == ctx.author.id:
             return await self.send_message(
                 ctx.channel,
-                msg="You cannot start a game with yourself.",
+                msg=f"{ctx.author.mention}: You cannot start a game with yourself.",
                 level=MsgLevel.warning
             )
 
         elif member.bot:
             return await self.send_message(
                 ctx.channel,
-                msg="You cannot play against bots ~~(yet <:doritoface:337530039677485057>)~~",
+                msg=f"{ctx.author.mention}: You cannot play against bots.",
                 level=MsgLevel.warning
             )
 
         elif member.id == ctx.author.id:
             return await self.send_message(
                 ctx.channel,
-                msg="You cannot start a game with yourself.",
+                msg=f"{ctx.author.mention}: You cannot start a game with yourself.",
                 level=MsgLevel.warning
             )
 
@@ -673,12 +678,18 @@ class ConnectFour(Cog):
 
         if user.id != session.current_player.id:
             # Not the player's turn
-            await self.send_message(
-                reaction.message.channel,
-                msg=f"{user.mention}: It is not your turn.",
-                level=MsgLevel.warning
-            )
-            return
+
+            if reaction.emoji == str(Emoji.x):
+                session.turn -= 1
+                session.forfeit()
+                return await self.send_board(reaction.message.channel)
+
+            else:
+                return await self.send_message(
+                    reaction.message.channel,
+                    msg=f"{user.mention}: It is not your turn.",
+                    level=MsgLevel.warning
+                )
 
         if reaction.emoji == str(Emoji.one):
             try:
