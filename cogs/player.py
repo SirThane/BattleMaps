@@ -99,7 +99,12 @@ class Player(Cog):
 
             guild = self.bot.get_guild(int(session_config.pop("guild_id")))
             voice = self.bot.get_channel(int(session_config.pop("voice")))
-            log = self.bot.get_channel(int(session_config.pop("log")))
+
+            l_id = session_config.pop("log", None)
+            if l_id:
+                log = self.bot.get_channel(int(l_id))
+            else:
+                log = None
 
             self.bot.loop.create_task(self.init_session(guild, voice, log=log, run_forever=True, **session_config))
 
