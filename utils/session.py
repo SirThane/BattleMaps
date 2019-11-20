@@ -1,6 +1,5 @@
 
-from asyncio import Event
-from asyncio.tasks import create_task
+from asyncio import create_task, Event
 # from discord.activity import Activity
 from discord.channel import TextChannel, VoiceChannel
 from discord.client import Client
@@ -20,9 +19,9 @@ class Session:
             bot: Client,
             config: SubRedis,
             cog: Cog,
-            voice_channel: VoiceChannel,
+            voice: VoiceChannel,
             *,
-            log_channel: TextChannel = None,
+            log: TextChannel = None,
             run_forever: bool = False,
             **kwargs  # TODO: This is where session_config gets sent
     ):
@@ -39,9 +38,9 @@ class Session:
         self.bot = bot
         self.config = config
         self.cog = cog
-        self.voice_channel = voice_channel
+        self.voice_channel = voice
 
-        self.log_channel = log_channel
+        self.log_channel = log
         self.session_config = kwargs
         self.queue_config = self.session_config.get('queue')
 
@@ -52,15 +51,16 @@ class Session:
         self.current_track = None
 
         if run_forever:
-            self.queue = Radio(self.queue_config)
+            self.queue = Radio(config, self.queue_config)
         else:
-            self.queue = Queue(self.queue_config)
+            self.queue = Queue(config, self.queue_config)
 
         self.volume = self.session_config.get('default_volume') or float(self.config.hget("config:defaults", "volume"))
 
         self.is_playing = True
         self.play_next_song = Event()
 
+        print(2)
         create_task(self.session_task())
 
     @property

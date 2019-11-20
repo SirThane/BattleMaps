@@ -32,6 +32,7 @@ class Queue:
 class Radio(Queue):
 
     def __init__(self, config: SubRedis, queue_config=None):
+        self.config = config
         super().__init__(config, queue_config)
 
         self.playlist_directory = self.queue_config.get("playlist_directory") or \

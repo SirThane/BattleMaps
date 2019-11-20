@@ -1,17 +1,18 @@
 
-from difflib import SequenceMatcher
+# Lib
+# from difflib import SequenceMatcher
 from io import BytesIO
-from pathlib import Path
-from re import compile, sub
+# from pathlib import Path
+from re import compile  # , sub
 
-import aiohttp
+# Site
+# from aiohttp import ClientSession
 from asyncio import TimeoutError
 from asyncio.tasks import ensure_future
-import discord
 from discord.colour import Colour
 from discord.embeds import Embed
-from discord.ext import commands
-from discord.ext.commands.converter import Converter
+# from discord.ext import commands
+# from discord.ext.commands.converter import Converter
 from discord.ext.commands.context import Context
 from discord.ext.commands.errors import BadArgument
 from discord.file import File
@@ -21,8 +22,9 @@ from discord.reaction import Reaction
 from discord.user import User
 from mutagen.mp3 import MP3
 from typing import Dict, List, Optional, Tuple, Union
-import youtube_dl
+from youtube_dl import YoutubeDL
 
+# Local
 from utils.utils import SubRedis
 
 
@@ -31,7 +33,7 @@ def numeric_emoji(n: int) -> str:
 
 
 async def add_numeric_reactions(message: Message, num_reactions: int):
-    for index in range(1, 1+num_reactions):
+    for index in range(1, 1 + num_reactions):
         await message.add_reaction(numeric_emoji(index))
 
 
@@ -107,9 +109,9 @@ class Track(PCMVolumeTransformer):
 
         return {'embed': em}
 
-    @classmethod
-    async def convert(cls, ctx: Converter, argument: str):
-        raise NotImplementedError
+    # @classmethod
+    # async def convert(cls, ctx: Converter, argument: str):
+    #     raise NotImplementedError
 
     @classmethod
     async def get_user_choice(cls, ctx: Context, search_query: str, entries: List[Tuple[str]]) -> int:
@@ -142,10 +144,10 @@ class Track(PCMVolumeTransformer):
         return int(reaction.emoji[0]) - 1
 
 
-tracks = {}
-for track in Path(COG_CONFIG.DEFAULT_PLAYLIST_DIRECTORY).glob("**/*.mp3"):
-    tags = MP3(track)
-    tracks[track] = sub(r"[^\w\s]", "", tags.get('TIT2')[0] + ' ' + tags.get('TALB')[0]).split(' ')
+# tracks = {}
+# for track in Path(COG_CONFIG.DEFAULT_PLAYLIST_DIRECTORY).glob("**/*.mp3"):
+#     tags = MP3(track)
+#     tracks[track] = sub(r"[^\w\s]", "", tags.get('TIT2')[0] + ' ' + tags.get('TALB')[0]).split(' ')
 
 
 class MP3Track(Track):
@@ -153,10 +155,18 @@ class MP3Track(Track):
     _track_type = 'MP3 file'
 
     _title = _artist = _album = _date = 'Unknown'
-    _cover = open(COG_CONFIG.DEFAULT_ALBUM_ARTWORK, 'rb')
+    # _cover = open(COG_CONFIG.DEFAULT_ALBUM_ARTWORK, 'rb')
 
-    def __init__(self, source, config: SubRedis, volume: float = None, requester: User = None,  **kwargs):
+    def __init__(
+            self,
+            source,
+            config: SubRedis,
+            volume: float = None,
+            requester: User = None,
+            **kwargs
+    ):
         self.config = config
+        self._cover = open(self.config.hget("config:resources", "default_mp3_art"), 'rb')
         super().__init__(source, config, volume, requester, **kwargs)
 
         tags = MP3(source)
@@ -203,46 +213,59 @@ class MP3Track(Track):
             'file': File(self._cover, 'cover.jpg')
         }
 
-    @classmethod
-    async def convert(cls, ctx: Context, argument: str):
-
-        # Search through all tracks
-        scores = {t: 0 for t in tracks}
-        for word in sub(r"[^\w\s]", "", argument).split():
-            for track in tracks:
-                for _word in tracks[track]:
-                    scores[track] += SequenceMatcher(None, word, _word).ratio()
-        for track in tracks:
-            scores[track] /= len(tracks[track])
-        search_results = sorted(scores, key=scores.get, reverse=True)
-
-        # Raise error or pick search result
-        _tracks = [cls(track, requester=ctx.author) for track in search_results[:COG_CONFIG.MAX_SEARCH_RESULTS]]
-        result = await cls.get_user_choice(ctx, argument, [(track._title, (track._album)) for track in _tracks])
-
-        return _tracks[result]
+    # @classmethod
+    # async def convert(cls, ctx: Context, argument: str):
+    #
+    #     # Search through all tracks
+    #     scores = {t: 0 for t in tracks}
+    #     for word in sub(r"[^\w\s]", "", argument).split():
+    #         for track in tracks:
+    #             for _word in tracks[track]:
+    #                 scores[track] += SequenceMatcher(None, word, _word).ratio()
+    #     for track in tracks:
+    #         scores[track] /= len(tracks[track])
+    #     search_results = sorted(scores, key=scores.get, reverse=True)
+    #
+    #     # Raise error or pick search result
+    #     _tracks = [cls(track, self.config, requester=ctx.author)
+    #     for track in search_results[:COG_CONFIG.MAX_SEARCH_RESULTS]]
+    #     result = await cls.get_user_choice(ctx, argument, [(track._title, (track._album)) for track in _tracks])
+    #
+    #     return _tracks[result]
 
 
 class YouTubeTrack(Track):
+
     _embed_colour = Colour.red()
+
     _track_type = 'YouTube video'
 
-    youtube_api_url = f"https://www.googleapis.com/{COG_CONFIG.YOUTUBE_API.SERVICE_NAME}/{COG_CONFIG.YOUTUBE_API.VERSION}"
+    # youtube_api_url = f"https://www.googleapis.com/
+    # {COG_CONFIG.YOUTUBE_API.SERVICE_NAME}/{COG_CONFIG.YOUTUBE_API.VERSION}"
 
-    video_url_check = compile(r'(?:youtube(?:-nocookie)?\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/'
-                              r'|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
+    # video_url_check = compile(r'(?:youtube(?:-nocookie)?\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|'
+    #                           r'\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
+
+    video_url_check = compile(r'(?:youtube(?:-nocookie)?\.com/(?:[^/\n\s]+/\S+/|(?:v|e(?:mbed)?)/|'
+                              r'\S*?[?&]v=)|youtu\.be/)([a-zA-Z0-9_-]{11})')
+
     ydl_options = {'format': 'bestaudio/best', }
 
     def __init__(
             self,
             video_url: str,
             config: SubRedis,
-            volume: float = COG_CONFIG.DEFAULT_VOLUME,
+            volume: float = None,
             requester: Optional[User] = None,
             **kwargs
     ):
 
-        with youtube_dl.YoutubeDL(self.ydl_options) as ydl:
+        self.config = config
+
+        if not volume:
+            volume = self.config.hget("config:defaults", "volume")
+
+        with YoutubeDL(self.ydl_options) as ydl:
             info = ydl.extract_info(video_url, download=False)
 
             if 'entries' in info:
@@ -259,7 +282,14 @@ class YouTubeTrack(Track):
             self._thumbnail = info['thumbnail']
 
         super().__init__(
-            info['url'], config, volume, requester, before_options='-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', options='-bufsize 7680k', **kwargs)
+            info['url'],
+            config,
+            volume,
+            requester,
+            before_options='-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+            options='-bufsize 7680k',
+            **kwargs
+        )
 
     @property
     def information(self) -> str:
@@ -270,47 +300,47 @@ class YouTubeTrack(Track):
         return f'{self._title} by {self._uploader}'
 
     @property
-    def playing_message(self) -> Dict:
-        return {
-            'embed': discord.Embed(
-                colour=self._embed_colour,
-                description=f'[{self._title}]({self._url})'
-            ).set_author(
-                name=self._uploader, url=self._uploader_url
-            ).set_thumbnail(
-                url=self._thumbnail
-            )
-        }
+    def playing_message(self) -> Dict[str, Embed]:
+        em = Embed(
+            colour=self._embed_colour,
+            description=f'[{self._title}]({self._url})'
+        )
+        em.set_author(name=self._uploader, url=self._uploader_url)
+        em.set_thumbnail(url=self._thumbnail)
+
+        return {'embed': em}
 
     @property
-    def request_message(self) -> Dict:
+    def request_message(self) -> Dict[str, Embed]:
         message = super().request_message
         message['embed'].set_thumbnail(
             url=self._thumbnail
         )
         return message
 
-    @classmethod
-    async def convert(cls, ctx: Converter, argument: str):
-        async with ctx.typing():
-
-            # If user directly requested youtube video
-            if cls.video_url_check.search(argument) is not None:
-                return cls(argument, requester=ctx.author)
-
-            # Otherwise search for video
-            async with aiohttp.ClientSession() as session:
-                search_url = f'{cls.youtube_api_url}/search?q={argument}&part=snippet&maxResults={COG_CONFIG.MAX_SEARCH_RESULTS}&key={COG_CONFIG.YOUTUBE_API.KEY}&alt=json'
-
-                async with session.get(search_url) as response:
-                    search_results = (await response.json())['items']
-
-            # Raise error or pick search result
-            if len(search_results) == 0:
-                raise commands.BadArgument("No search results were found.")
-            elif len(search_results) == 1:
-                result = 0
-            else:
-                result = await cls.get_user_choice(ctx, argument, [(entry['snippet']['title'], entry['snippet']['channelTitle']) for entry in search_results])
-
-            return cls(search_results[result]['id']['videoId'], requester=ctx.author)
+    # @classmethod
+    # async def convert(cls, ctx: Converter, argument: str):
+    #     async with ctx.typing():
+    #
+    #         # If user directly requested youtube video
+    #         if cls.video_url_check.search(argument) is not None:
+    #             return cls(argument, requester=ctx.author)
+    #
+    #         # Otherwise search for video
+    #         async with ClientSession() as session:
+    #             search_url = f'{cls.youtube_api_url}/search?q={argument}&part=
+    #             snippet&maxResults={COG_CONFIG.MAX_SEARCH_RESULTS}&key={COG_CONFIG.YOUTUBE_API.KEY}&alt=json'
+    #
+    #             async with session.get(search_url) as response:
+    #                 search_results = (await response.json())['items']
+    #
+    #         # Raise error or pick search result
+    #         if len(search_results) == 0:
+    #             raise commands.BadArgument("No search results were found.")
+    #         elif len(search_results) == 1:
+    #             result = 0
+    #         else:
+    #             result = await cls.get_user_choice(ctx, argument, [(entry['snippet']['title'],
+    #             entry['snippet']['channelTitle']) for entry in search_results])
+    #
+    #         return cls(search_results[result]['id']['videoId'], requester=ctx.author)

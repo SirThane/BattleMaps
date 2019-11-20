@@ -1,9 +1,10 @@
 
+# Lib
 from datetime import timedelta
 
+# Site
 from discord.colour import Colour
 from discord.embeds import Embed
-from discord.ext import commands
 from discord.ext.commands import check, command, group
 from discord.ext.commands.cog import Cog
 from discord.ext.commands.context import Context
@@ -12,6 +13,7 @@ from discord.errors import Forbidden
 from discord.guild import Guild
 from discord.member import Member, VoiceState
 
+# Local
 from utils.classes import Bot
 from utils.utils import SubRedis
 from utils.session import Session
@@ -49,6 +51,8 @@ class Player(Cog):
         self.config_bot = SubRedis(bot.db, f"{bot.APP_NAME}:config")
 
         self.sessions = dict()
+
+        self.bot.loop.create_task(self.on_ready())
 
     def get_session(self, guild: Guild) -> Session:
         return self.sessions.get(guild)
@@ -199,17 +203,21 @@ class Player(Cog):
 
         await ctx.send(embed=em)
 
-    @commands.Cog.listener()
+    @Cog.listener()
     async def on_ready(self):
-
         for guild in self.config.scan_iter("sessions*"):
             session_config = self.config.hgetall(guild)
-            self.sessions[int(guild)] = Session(  # TODO: Check that scan_iter returns correct key slice
+            _, g_id = guild.split(":")
+            voice = self.bot.get_channel(int(session_config.pop("voice")))
+            log = self.bot.get_channel(int(session_config.pop("log")))
+            self.sessions[self.bot.get_guild(int(g_id))] = Session(
                 self.bot,
                 self.config,
                 self,
+                voice,
+                log=log,
                 run_forever=True,
-                **session_config  # TODO: Check schema in Session
+                **session_config
             )
 
         # for instance in COG_CONFIG.INSTANCES:  # TODO: Config scan_iter "sessions"
@@ -217,7 +225,7 @@ class Player(Cog):
         #         self.bot, self, run_forever=True, **instance.__dict__
         #     )
 
-    @commands.Cog.listener()
+    @Cog.listener()
     async def on_voice_state_update(self, member: Member, _: VoiceState, after: VoiceState):
 
         session = self.get_session(member.guild)
@@ -230,4 +238,5 @@ class Player(Cog):
 
 
 def setup(bot: Bot):
+    """Player"""
     bot.add_cog(Player(bot))
