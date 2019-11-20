@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 # Site
+from asyncio import sleep
 from discord.channel import TextChannel, VoiceChannel
 from discord.colour import Colour
 from discord.embeds import Embed
@@ -273,6 +274,33 @@ class Player(Cog):
         session = self.get_session(ctx.guild)
         if session:
             session.stop()
+
+    @sudo()
+    @command(name="start")
+    async def start(self, ctx: Context):
+
+        session = self.get_session(ctx.guild)
+        if session:
+            session.stop()
+            await sleep(0.5)
+
+        session_config = self.config.hgetall(f"sessions:{ctx.guild.id}")
+
+        if session_config:
+
+            guild = self.bot.get_guild(int(session_config.pop("guild_id")))
+            voice = self.bot.get_channel(int(session_config.pop("voice")))
+
+            l_id = session_config.pop("log", None)
+            if l_id:
+                log = self.bot.get_channel(int(l_id))
+            else:
+                log = None
+
+            self.bot.loop.create_task(self.init_session(guild, voice, log=log, run_forever=True, **session_config))
+
+        else:
+            raise CommandError(f"Player not configured for {ctx.guild.name}")
 
     """ ########
          Events
