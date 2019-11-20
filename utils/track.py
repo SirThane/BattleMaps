@@ -137,17 +137,10 @@ class Track(PCMVolumeTransformer):
             reaction, _ = await ctx.bot.wait_for('reaction_add', check=check, timeout=60)
 
         except TimeoutError:
-            raise BadArgument(
-                "You did not choose a search result in time.")
+            raise BadArgument("You did not choose a search result in time.")
 
         await search_message.delete()
         return int(reaction.emoji[0]) - 1
-
-
-# tracks = {}
-# for track in Path(COG_CONFIG.DEFAULT_PLAYLIST_DIRECTORY).glob("**/*.mp3"):
-#     tags = MP3(track)
-#     tracks[track] = sub(r"[^\w\s]", "", tags.get('TIT2')[0] + ' ' + tags.get('TALB')[0]).split(' ')
 
 
 class MP3Track(Track):
@@ -155,7 +148,6 @@ class MP3Track(Track):
     _track_type = 'MP3 file'
 
     _title = _artist = _album = _date = 'Unknown'
-    # _cover = open(COG_CONFIG.DEFAULT_ALBUM_ARTWORK, 'rb')
 
     def __init__(
             self,

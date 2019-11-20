@@ -15,6 +15,7 @@ from discord.member import Member, VoiceState
 from typing import Optional
 
 # Local
+from utils.checks import sudo
 from utils.classes import Bot
 from utils.utils import SubRedis
 from utils.session import Session
@@ -196,8 +197,7 @@ class Player(Cog):
         session = self.get_session(ctx.guild)
 
         if ctx.author in session.repeat_requests:
-            raise CommandError(
-                'You have already requested to repeat.')
+            raise CommandError('You have already requested to repeat.')
 
         session.repeat_requests.append(ctx.author)
         repeats_needed = len(list(session.listeners)) // 2 + 1
@@ -263,16 +263,34 @@ class Player(Cog):
 
         await ctx.send(embed=em)
 
+    """ ################
+         Admin Commands
+        ################ """
+
+    @sudo()
+    @command(name="stop")
+    async def stop(self, ctx: Context):
+        session = self.get_session(ctx.guild)
+        if session:
+            session.stop()
+
+    """ ########
+         Events
+        ######## """
+
     @Cog.listener()
     async def on_voice_state_update(self, member: Member, _: VoiceState, after: VoiceState):
 
         session = self.get_session(member.guild)
+
         if session is not None:
             if after is None and member in session.skip_requests:
                 session.skip_requests.remove(member)
 
             if session.voice is not None:
                 session.check_listeners()
+
+    # async def cog_command_error(self, ctx: Context, error: Union[Exception, CommandError]):
 
 
 def setup(bot: Bot):

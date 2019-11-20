@@ -5,6 +5,7 @@ from discord.channel import TextChannel, VoiceChannel
 from discord.client import Client
 from discord.ext.commands.cog import Cog
 from discord.member import Member
+from discord.voice_client import VoiceClient
 from typing import Generator
 
 # Local
@@ -119,7 +120,7 @@ class Session:
 
     async def session_task(self):
 
-        self.voice = await self.voice_channel.connect()
+        self.voice: VoiceClient = await self.voice_channel.connect()
         self.voice.session = self
 
         while self.is_playing:
@@ -138,7 +139,3 @@ class Session:
 
             # Wait for track to finish before playing next track
             await self.play_next_song.wait()
-
-        # # Delete session and disconnect
-        # del self.cog.sessions[self.voice.guild]  # TODO: Subclass Cog?
-        # await self.voice.disconnect()

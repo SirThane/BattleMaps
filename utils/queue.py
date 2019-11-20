@@ -38,9 +38,17 @@ class Radio(Queue):
         self.config = config
         super().__init__(config, queue_config)
 
-        self.playlist_directory = self.queue_config.get("playlist_directory") or \
-                                  self.config.hget("config:defaults", "playlist_directory")
+        playlist = self.queue_config.get("playlist_directory")
+        if playlist:
+            self.playlist_directory = playlist
+        else:
+            self.playlist_directory = self.config.hget("config:defaults", "playlist_directory")
 
     def next_track(self) -> Track:
-        mp3_path = choice(list(Path(self.playlist_directory).glob("**/*.mp3")))
-        return super().next_track() or MP3Track(mp3_path, self.config)
+
+        queue_next = super().next_track()
+        if queue_next:
+            return queue_next
+        else:
+            mp3_path = choice(list(Path(self.playlist_directory).glob("**/*.mp3")))
+            return MP3Track(mp3_path, self.config)
