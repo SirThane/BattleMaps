@@ -3,15 +3,16 @@
 from datetime import timedelta
 
 # Site
+from discord.channel import TextChannel, VoiceChannel
 from discord.colour import Colour
 from discord.embeds import Embed
 from discord.ext.commands import check, command, group
 from discord.ext.commands.cog import Cog
 from discord.ext.commands.context import Context
 from discord.ext.commands.errors import CommandError
-from discord.errors import Forbidden
 from discord.guild import Guild
 from discord.member import Member, VoiceState
+from typing import Optional
 
 # Local
 from utils.classes import Bot
@@ -52,23 +53,73 @@ class Player(Cog):
 
         self.sessions = dict()
 
-        self.bot.loop.create_task(self.on_ready())
+        self.bot.loop.create_task(self._init_all_sessions())
 
-    def get_session(self, guild: Guild) -> Session:
+    """ ##############################################
+         Setup, Session Initialization, And Breakdown
+        ############################################## """
+
+    def get_session(self, guild: Guild) -> Optional[Session]:
         return self.sessions.get(guild)
 
-    @group(name="request", aliases=["play"], invoke_without_command=True)
+    async def init_session(
+            self,
+            guild: Guild,
+            voice: VoiceChannel,
+            log: TextChannel = None,
+            run_forever: bool = True,
+            **session_config
+    ):
+        session = Session(
+            self.bot,
+            self.config,
+            self,
+            voice,
+            log=log,
+            run_forever=run_forever,
+            **session_config
+        )
+
+        # Add session to sessions and start voice
+        self.sessions[guild] = session
+        await session.session_task()
+
+        # When voice has ended, disconnect and remove session
+        await session.voice.disconnect()
+        self.sessions.pop(guild)
+
+    async def _init_all_sessions(self):
+        """Read configs from db and init all sessions"""
+
+        # Cannot start sessions before bot is logged in and ready
+        await self.bot.wait_until_ready()
+
+        for init_session_config in self.config.scan_iter("sessions*"):
+            session_config = self.config.hgetall(init_session_config)
+
+            guild = self.bot.get_guild(int(session_config.pop("guild_id")))
+            voice = self.bot.get_channel(int(session_config.pop("voice")))
+            log = self.bot.get_channel(int(session_config.pop("log")))
+
+            self.bot.loop.create_task(self.init_session(guild, voice, log=log, run_forever=True, **session_config))
+
+    def cog_unload(self):
+        """Stop voice on all sessions to cleanly leave session loop and disconnect voice"""
+        for session in self.sessions.values():
+            session.stop()
+
+    """ ##################
+         Requesting Songs
+        ################## """
+
+    @group(name="request", aliases=["play"], invoke_without_command=True, enabled=False)
     @check(user_is_in_voice_channel)
     @check(user_has_required_permissions)
-    async def request(self, ctx: Context, *, request: YouTubeTrack):
+    async def request(self, ctx: Context, *, request):
         """Adds a YouTube video to the requests queue.
 
         request: YouTube search query.
         """
-        try:
-            await ctx.message.delete()
-        except Forbidden:
-            pass
 
         session = self.get_session(ctx.guild)
 
@@ -83,7 +134,7 @@ class Player(Cog):
         await ctx.send(**request.request_message)
         session.queue.add_request(request)
 
-    @request.command(name="mp3")
+    @request.command(name="mp3", enabled=False)
     async def request_mp3(self, ctx: Context, *, request: MP3Track):
         """Adds a local MP3 file to the requests queue.
 
@@ -91,13 +142,17 @@ class Player(Cog):
         """
         await ctx.invoke(self.request, request=request)
 
-    @request.command(name="youtube")
+    @request.command(name="youtube", enabled=False)
     async def request_youtube(self, ctx: Context, *, request: YouTubeTrack):
         """Adds a YouTube video to the requests queue.
 
         request: YouTube search query.
         """
         await ctx.invoke(self.request, request=request)
+
+    """ ################
+         Queue Commands
+        ################ """
 
     @command(name="skip")
     @check(session_is_running)
@@ -181,7 +236,7 @@ class Player(Cog):
 
         await ctx.send(**message)
 
-    @command(name="queue", aliases=["upcoming"])
+    @command(name="queue", aliases=["upcoming"], enabled=False)
     @check(session_is_running)
     async def queue(self, ctx: Context):
 
@@ -202,28 +257,6 @@ class Player(Cog):
             em.description = "There are currently no requests"
 
         await ctx.send(embed=em)
-
-    @Cog.listener()
-    async def on_ready(self):
-        for guild in self.config.scan_iter("sessions*"):
-            session_config = self.config.hgetall(guild)
-            _, g_id = guild.split(":")
-            voice = self.bot.get_channel(int(session_config.pop("voice")))
-            log = self.bot.get_channel(int(session_config.pop("log")))
-            self.sessions[self.bot.get_guild(int(g_id))] = Session(
-                self.bot,
-                self.config,
-                self,
-                voice,
-                log=log,
-                run_forever=True,
-                **session_config
-            )
-
-        # for instance in COG_CONFIG.INSTANCES:  # TODO: Config scan_iter "sessions"
-        #     self._sessions[instance.voice_channel.guild] = Session(
-        #         self.bot, self, run_forever=True, **instance.__dict__
-        #     )
 
     @Cog.listener()
     async def on_voice_state_update(self, member: Member, _: VoiceState, after: VoiceState):

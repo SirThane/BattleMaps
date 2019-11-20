@@ -1,13 +1,13 @@
 
-from asyncio import create_task, Event
-# from discord.activity import Activity
+# Site
+from asyncio import Event
 from discord.channel import TextChannel, VoiceChannel
 from discord.client import Client
-# from discord.enums import ActivityType
 from discord.ext.commands.cog import Cog
 from discord.member import Member
 from typing import Generator
 
+# Local
 from utils.queue import Queue, Radio
 from utils.utils import SubRedis
 
@@ -23,7 +23,7 @@ class Session:
             *,
             log: TextChannel = None,
             run_forever: bool = False,
-            **kwargs  # TODO: This is where session_config gets sent
+            **session_config
     ):
         """
 
@@ -41,7 +41,7 @@ class Session:
         self.voice_channel = voice
 
         self.log_channel = log
-        self.session_config = kwargs
+        self.session_config = session_config
         self.queue_config = self.session_config.get('queue')
 
         self.skip_requests = list()
@@ -60,8 +60,7 @@ class Session:
         self.is_playing = True
         self.play_next_song = Event()
 
-        print(2)
-        create_task(self.session_task())
+        # self.bot.loop.create_task(self.session_task())
 
     @property
     def listeners(self) -> Generator[Member, None, None]:
@@ -72,7 +71,7 @@ class Session:
             - They are not deafened
 
         Returns:
-            `generator` of `discord.Member`: A generator concisting ow members listening to this session.
+            `generator` of `discord.Member`: A generator consisting ow members listening to this session.
 
         """
         for member in self.voice.channel.members:
@@ -100,17 +99,7 @@ class Session:
 
     async def play_track(self):
         """Plays the next track in the queue."""
-
-        # if COG_CONFIG.PLAYING_STATUS_GUILD is not None:  # TODO: Do I want to change status?
-        #     if self.voice_channel.guild.id == COG_CONFIG.PLAYING_STATUS_GUILD.id:
-        #         activity = Activity(
-        #             name=self.current_track.status_information,
-        #             type=ActivityType.playing
-        #         )
-        #
-        #         await self.bot.change_presence(activity=activity)
-
-        if self.log_channel is not None:
+        if self.log_channel:
             await self.log_channel.send(**self.current_track.playing_message)
 
         self.voice.play(self.current_track, after=self.toggle_next)
@@ -150,6 +139,6 @@ class Session:
             # Wait for track to finish before playing next track
             await self.play_next_song.wait()
 
-        # Delete session and disconnect
-        del self.cog.sessions[self.voice.guild]  # TODO: Subclass Cog?
-        await self.voice.disconnect()
+        # # Delete session and disconnect
+        # del self.cog.sessions[self.voice.guild]  # TODO: Subclass Cog?
+        # await self.voice.disconnect()
