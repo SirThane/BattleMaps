@@ -5,7 +5,7 @@ from datetime import datetime
 from io import BytesIO
 from os.path import splitext
 from re import compile
-from typing import Union
+from typing import Union, Optional
 from urllib.parse import quote
 
 from discord import Attachment, DMChannel, Embed, File, HTTPException, Member, Message
@@ -88,7 +88,7 @@ class AdvanceWars(Cog):
             await self.bot.invoke(ctx)
 
     @_map.command(name="load", usage="[title]")
-    async def _load(self, ctx: Context, title: str = None, verify: bool = True, *, _: str = ""):
+    async def _load(self, ctx: Context, title: str = None, *, _: str = ""):
         """Load a map to be worked with
 
         This command will load a map to be worked with.
@@ -128,7 +128,7 @@ class AdvanceWars(Cog):
         unloaded and must loaded again to continue
         working with them."""
 
-        awmap = await CheckMap.check(ctx.message, title, verify=verify)
+        awmap = await CheckMap.check(ctx.message, title, verify=True)
 
         if not awmap:
             raise InvalidMapError
@@ -310,7 +310,7 @@ class AdvanceWars(Cog):
         if isinstance(channel, DMChannel):
             return 0
         else:
-            return channel.guild.me.color.value
+            return channel.guild.me.colour.value
 
     @staticmethod
     def _inv(ctx: Context) -> str:
@@ -464,7 +464,7 @@ class CheckMap:
             title: str = "[Untitled]",
             skips: list = None,
             verify: bool = True
-    ) -> Union[AWMap, None]:
+    ) -> Optional[AWMap]:
         """Takes a discord.Message object and checks
         for valid maps that can be loaded.
 
@@ -496,7 +496,7 @@ class CheckMap:
         s_awl = RE_AWL.search(msg.content)
 
         if "link" not in skips and s_awl:
-            return CheckMap.from_id(s_awl.group(3))
+            return await CheckMap.from_id(s_awl.group(3))
 
         s_csv = RE_CSV.search(msg.content)
 
@@ -504,14 +504,14 @@ class CheckMap:
 
             if "msg_csv" not in skips and 0 <= int(
                     s_csv.group(0).split(",")[0]) <= 176:
-                return CheckMap.from_csv(
+                return await CheckMap.from_csv(
                     s_csv.group(0),
                     title,
                     msg.author.mention
                 )
 
             if "id" not in skips:
-                return CheckMap.from_id(s_csv.group(0), verify)
+                return await CheckMap.from_id(s_csv.group(0), verify)
 
         return
 
@@ -558,7 +558,7 @@ class CheckMap:
         map_csv = awbw_bytes.read().decode("utf-8")
 
         try:
-            awmap = AWMap().from_awbw(map_csv, title=filename)
+            awmap = await AWMap().from_awbw(map_csv, title=filename)
             awmap.author = author
         except AssertionError:
             raise AWBWDimensionsError
@@ -566,7 +566,7 @@ class CheckMap:
             return awmap
 
     @staticmethod
-    def from_id(awbw_id: str, verify: bool = True) -> Union[AWMap, None]:
+    async def from_id(awbw_id: str, verify: bool = True) -> Union[AWMap, None]:
         """Use `AWMap`'s `from_awbw` method to collect
         a map from AWBW using it's map ID
 
@@ -579,14 +579,14 @@ class CheckMap:
         :return: `AWMap` instance with collected map data"""
         try:
             int(awbw_id)
-            awmap = AWMap().from_awbw(awbw_id=int(awbw_id), verify=verify)
+            awmap = await AWMap().from_awbw(awbw_id=int(awbw_id), verify=verify)
         except Exception:
             raise InvalidMapError
         else:
             return awmap
 
     @staticmethod
-    def from_csv(msg_csv: str, title: str, author: str) -> Union[AWMap, None]:
+    async def from_csv(msg_csv: str, title: str, author: str) -> Union[AWMap, None]:
         """Format an `AWMap` from a message containing raw
         AWBW CSV text
 
@@ -599,7 +599,7 @@ class CheckMap:
 
         :return: `AWMap` instance with map data"""
         try:
-            awmap = AWMap().from_awbw(data=msg_csv, title=title)
+            awmap = await AWMap().from_awbw(data=msg_csv, title=title)
             awmap.author = author
         except AssertionError:
             raise AWBWDimensionsError
@@ -608,4 +608,5 @@ class CheckMap:
 
 
 def setup(bot: Bot):
+    """AdvanceWars"""
     bot.add_cog(AdvanceWars(bot))
