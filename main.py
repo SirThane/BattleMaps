@@ -3,11 +3,15 @@
 """BattleMaps, a utility bot for working with Advance Wars
 maps on the AWBW Discord server"""
 
+# Lib
 from json import load
 
-from discord import Activity, Message
+# Site
+from discord.activity import Activity
+from discord.message import Message
 from discord.utils import get, oauth_url
 
+# Local
 from utils.classes import Bot, ErrorLog
 from utils.utils import StrictRedis
 
