@@ -1,18 +1,13 @@
 
 # Lib
-# from difflib import SequenceMatcher
 from io import BytesIO
-# from pathlib import Path
-from re import compile  # , sub
+# from re import compile  # , sub
 
 # Site
-# from aiohttp import ClientSession
 from asyncio import TimeoutError
 from asyncio.tasks import ensure_future
 from discord.colour import Colour
 from discord.embeds import Embed
-# from discord.ext import commands
-# from discord.ext.commands.converter import Converter
 from discord.ext.commands.context import Context
 from discord.ext.commands.errors import BadArgument
 from discord.file import File
@@ -47,7 +42,7 @@ class Track(PCMVolumeTransformer):
             self,
             source,
             config: SubRedis,
-            volume: Optional[float] = None,
+            volume: float = 0.15,
             requester: Optional[User] = None,
             **kwargs
     ):
@@ -153,7 +148,7 @@ class MP3Track(Track):
             self,
             source,
             config: SubRedis,
-            volume: float = None,
+            volume: float = 0.15,
             requester: User = None,
             **kwargs
     ):
@@ -235,19 +230,16 @@ class YouTubeTrack(Track):
     # youtube_api_url = f"https://www.googleapis.com/
     # {COG_CONFIG.YOUTUBE_API.SERVICE_NAME}/{COG_CONFIG.YOUTUBE_API.VERSION}"
 
-    # video_url_check = compile(r'(?:youtube(?:-nocookie)?\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|'
-    #                           r'\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})')
+    # video_url_check = compile(r'(?:youtube(?:-nocookie)?\.com/(?:[^/\n\s]+/\S+/|(?:v|e(?:mbed)?)/|'
+    #                           r'\S*?[?&]v=)|youtu\.be/)([a-zA-Z0-9_-]{11})')
 
-    video_url_check = compile(r'(?:youtube(?:-nocookie)?\.com/(?:[^/\n\s]+/\S+/|(?:v|e(?:mbed)?)/|'
-                              r'\S*?[?&]v=)|youtu\.be/)([a-zA-Z0-9_-]{11})')
-
-    ydl_options = {'format': 'bestaudio/best', }
+    ydl_options = {'format': 'bestaudio/best', "ignoreerrors": True}
 
     def __init__(
             self,
             video_url: str,
             config: SubRedis,
-            volume: float = None,
+            volume: float = 0.15,
             requester: Optional[User] = None,
             **kwargs
     ):
@@ -255,7 +247,7 @@ class YouTubeTrack(Track):
         self.config = config
 
         if not volume:
-            volume = self.config.hget("config:defaults", "volume")
+            volume = float(self.config.hget("config:defaults", "volume"))
 
         with YoutubeDL(self.ydl_options) as ydl:
             info = ydl.extract_info(video_url, download=False)
@@ -309,30 +301,3 @@ class YouTubeTrack(Track):
             url=self._thumbnail
         )
         return message
-
-    # @classmethod
-    # async def convert(cls, ctx: Converter, argument: str):
-    #     async with ctx.typing():
-    #
-    #         # If user directly requested youtube video
-    #         if cls.video_url_check.search(argument) is not None:
-    #             return cls(argument, requester=ctx.author)
-    #
-    #         # Otherwise search for video
-    #         async with ClientSession() as session:
-    #             search_url = f'{cls.youtube_api_url}/search?q={argument}&part=
-    #             snippet&maxResults={COG_CONFIG.MAX_SEARCH_RESULTS}&key={COG_CONFIG.YOUTUBE_API.KEY}&alt=json'
-    #
-    #             async with session.get(search_url) as response:
-    #                 search_results = (await response.json())['items']
-    #
-    #         # Raise error or pick search result
-    #         if len(search_results) == 0:
-    #             raise commands.BadArgument("No search results were found.")
-    #         elif len(search_results) == 1:
-    #             result = 0
-    #         else:
-    #             result = await cls.get_user_choice(ctx, argument, [(entry['snippet']['title'],
-    #             entry['snippet']['channelTitle']) for entry in search_results])
-    #
-    #         return cls(search_results[result]['id']['videoId'], requester=ctx.author)

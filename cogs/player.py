@@ -53,6 +53,8 @@ class Player(Cog):
         self.config = SubRedis(bot.db, f"{bot.APP_NAME}:player")
         self.config_bot = SubRedis(bot.db, f"{bot.APP_NAME}:config")
 
+        self.errorlog = bot.errorlog
+
         self.sessions = dict()
 
         self.bot.loop.create_task(self._init_all_sessions())
@@ -119,7 +121,7 @@ class Player(Cog):
          Requesting Songs
         ################## """
 
-    @group(name="request", aliases=["play"], invoke_without_command=True, enabled=False)
+    @group(name="request", aliases=["play"], invoke_without_command=True, enabled=True)
     @check(user_is_in_voice_channel)
     @check(user_has_required_permissions)
     async def request(self, ctx: Context, *, request):
@@ -127,6 +129,13 @@ class Player(Cog):
 
         request: YouTube search query.
         """
+
+        if isinstance(request, str):
+            try:
+                request = YouTubeTrack(request, self.config, requester=ctx.author)
+            except Exception as error:
+                await self.bot.errorlog.send(error, ctx)
+                raise CommandError(f"An error occurred trying to load YouTubeTrack `{request}`")
 
         session = self.get_session(ctx.guild)
 
@@ -141,20 +150,34 @@ class Player(Cog):
         await ctx.send(**request.request_message)
         session.queue.add_request(request)
 
-    @request.command(name="mp3", enabled=False)
-    async def request_mp3(self, ctx: Context, *, request: MP3Track):
+    @request.command(name="mp3")
+    async def request_mp3(self, ctx: Context, *, request):
         """Adds a local MP3 file to the requests queue.
 
         request: Local track search query.
         """
+
+        try:
+            request = MP3Track(request, config=self.config)
+        except Exception as error:
+            await self.bot.errorlog.send(error, ctx)
+            raise CommandError(f"An error occurred trying to load MP3Track `{request}`")
+
         await ctx.invoke(self.request, request=request)
 
-    @request.command(name="youtube", enabled=False)
-    async def request_youtube(self, ctx: Context, *, request: YouTubeTrack):
+    @request.command(name="youtube")
+    async def request_youtube(self, ctx: Context, *, request):
         """Adds a YouTube video to the requests queue.
 
         request: YouTube search query.
         """
+
+        try:
+            request = YouTubeTrack(request, self.config, requester=ctx.author)
+        except Exception as error:
+            await self.bot.errorlog.send(error, ctx)
+            raise CommandError(f"An error occurred trying to load YouTubeTrack `{request}`")
+
         await ctx.invoke(self.request, request=request)
 
     """ ################
@@ -242,7 +265,7 @@ class Player(Cog):
 
         await ctx.send(**message)
 
-    @command(name="queue", aliases=["upcoming"], enabled=False)
+    @command(name="queue", aliases=["upcoming"])
     @check(session_is_running)
     async def queue(self, ctx: Context):
 
