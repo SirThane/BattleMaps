@@ -4,6 +4,7 @@ from __future__ import annotations
 from traceback import extract_tb
 
 from asyncio import CancelledError, sleep
+from discord.appinfo import AppInfo
 from discord.channel import TextChannel
 from discord.colour import Colour
 from discord.embeds import Embed as DiscordEmbed
@@ -13,7 +14,7 @@ from discord.ext.commands.context import Context
 from discord.message import Message
 from typing import List, Union
 
-from utils.utils import ZWSP
+from utils.utils import StrictRedis, ZWSP
 
 
 class Embed(DiscordEmbed):
@@ -163,29 +164,29 @@ class Bot(DiscordBot):
     def __init__(self, **kwargs):
 
         # Redis db instance made available to cogs
-        self.db = kwargs.pop("db", None)
+        self.db: StrictRedis = kwargs.pop("db", None)
 
         # Name of bot stored in Bot instance
         # Used as key name for db
-        self.APP_NAME = kwargs.pop("app_name", None)
+        self.APP_NAME: str = kwargs.pop("app_name", None)
 
         # Legacy compatibility for Help command
-        self.dm_help = kwargs.pop('dm_help', False) or kwargs.pop('pm_help', False)
-        self.pm_help = self.dm_help
+        self.dm_help: bool = kwargs.pop('dm_help', False) or kwargs.pop('pm_help', False)
+        self.pm_help: bool = self.dm_help
 
         # Used by timer cog
-        self.secs = 0
+        self.secs: int = 0
 
         # Declaring first. This will not be able to get set until login
-        self.app_info = None
+        self.app_info: AppInfo = kwargs.get("app_info", None)
 
         # Get the channel ready for errorlog
         # Bot.get_channel method not available until on_ready
-        self.errorlog_channel = kwargs.pop("errorlog", None)
-        self.errorlog = None
+        self.errorlog_channel: int = kwargs.pop("errorlog", None)
+        self.errorlog: ErrorLog = kwargs.get("errorlog", None)
 
         # Changed signature from arg to kwarg so I can splat the hgetall from db in main.py
-        command_prefix = kwargs.pop("command_prefix", "!")
+        command_prefix: str = kwargs.pop("command_prefix", "!")
 
         super().__init__(command_prefix, **kwargs)
 
