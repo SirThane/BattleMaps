@@ -283,7 +283,10 @@ class ModLogs(Cog):
 
         # If banned user was a member of the server, capture roles
         if isinstance(user, Member):
-            roles = "\n".join([role.mention for role in sorted(user.roles, reverse=True) if role.name != "@everyone"])
+            roles = "\n".join(
+                [f"{role.mention} ({role.name})" for role
+                 in sorted(user.roles, reverse=True) if role.name != "@everyone"]
+            )
             em.add_field(
                 name="Roles",
                 value=roles if roles else "User had no roles"
@@ -436,7 +439,8 @@ class ModLogs(Cog):
             )
 
         roles = "\n".join(
-            [f"{role.mention} ({role.name})" for role in sorted(member.roles, reverse=True) if role.name != "@everyone"]
+            [f"{role.mention} ({role.name})" for role in
+             sorted(member.roles, reverse=True) if role.name != "@everyone"]
         )
 
         em.add_field(
@@ -488,6 +492,12 @@ class ModLogs(Cog):
                     name=f"🗑 Content [{i + 1}/{len(chunks)}]",
                     value=chunk
                 )
+
+        else:
+            em.add_field(
+                name="🗑 Content [0/0]",
+                value="Message had no content"
+            )
 
         # Try to re-download attached images if possible. The proxy url doesn't 404 immediately unlike the
         # regular URL, so it may be possible to download from it before it goes down as well.
@@ -549,51 +559,72 @@ class ModLogs(Cog):
 
         em.description = f"{em.description}\n\nChannel: {msgs[0].channel.mention} ({msgs[0].channel.name})"
 
-        msgs_raw = list()
+        for i, msg in enumerate(msgs):
+            content = f"__Content:__ {escape_markdown(msg.content)}" if msg.content else "Message had no content"
 
-        for msg in msgs:
-            msgs_raw.append(
-                f"**__{msg.author.name}#{msg.author.discriminator}__** ({msg.author.id})\n"
-                f"{escape_markdown(msg.content)}"
-            )
+            if msg.attachments:
+                content = f"{content}\n__Attachments:__ {', '.join([file.filename for file in msg.attachments])}"
 
-        msg_stream = "\n".join(msgs_raw).split("\n")
+            if msg.embeds:
+                embed = f"__Embed Title:__ {escape_markdown(msg.embeds[0].title)}\n" \
+                        f"__Embed Description:__ {escape_markdown(msg.embeds[0].description)}"
+                content = f"{content}\n{embed}"
 
-        field_values = list()
-        current = ""
+            content = [content[i:1024 + i] for i in range(0, len(content), 1024)]
 
-        for line in msg_stream:
-
-            if len(current) + len(line) < 1024:
-                current = f"{current}\n{line}"
-
-            else:
-                field_values.append(current)
-                current = line
-
-        else:
-            field_values.append(current)
-
-        total = len(field_values)
-        field_groups = [field_values[i:25 + i] for i in range(0, len(field_values), 25)]
-
-        for n, field_group in enumerate(field_groups):
-            page = em.copy()
-            if len(field_groups) > 1:
-                if n < 1:
-                    page.set_footer("")
-                else:
-                    page.title = ""
-                    page.description = ""
-                    page.set_author(name="", url="", icon_url="")
-
-            for i, msg_raw in enumerate(field_group):
-                page.add_field(
-                    name=f"🗑 Messages [{(n + 1) * (i + 1)}/{total}]",
-                    value=msg_raw
+            for page in content:
+                em.add_field(
+                    name=f"{msg.author.name}#{msg.author.discriminator} [{i + 1}/{len(msgs)}]",
+                    value=page
                 )
 
-            await self.log_event(page, msgs[0].guild, EventPriority.delete)
+        await self.log_event(em, msgs[0].guild, EventPriority.delete)
+
+        # msgs_raw = list()
+        #
+        # for msg in msgs:
+        #     msgs_raw.append(
+        #         f"**__{msg.author.name}#{msg.author.discriminator}__** ({msg.author.id})\n"
+        #         f"{escape_markdown(msg.content)}"
+        #     )
+        #
+        # msg_stream = "\n".join(msgs_raw).split("\n")
+        #
+        # field_values = list()
+        # current = ""
+        #
+        # for line in msg_stream:
+        #
+        #     if len(current) + len(line) < 1024:
+        #         current = f"{current}\n{line}"
+        #
+        #     else:
+        #         field_values.append(current)
+        #         current = line
+        #
+        # else:
+        #     field_values.append(current)
+        #
+        # total = len(field_values)
+        # field_groups = [field_values[i:25 + i] for i in range(0, len(field_values), 25)]
+        #
+        # for n, field_group in enumerate(field_groups):
+        #     page = em.copy()
+        #     if len(field_groups) > 1:
+        #         if n < 1:
+        #             page.set_footer("")
+        #         else:
+        #             page.title = ""
+        #             page.description = ""
+        #             page.set_author(name="", url="", icon_url="")
+        #
+        #     for i, msg_raw in enumerate(field_group):
+        #         page.add_field(
+        #             name=f"🗑 Messages [{(n + 1) * (i + 1)}/{total}]",
+        #             value=msg_raw
+        #         )
+        #
+        #     await self.log_event(page, msgs[0].guild, EventPriority.delete)
 
     @Cog.listener(name="on_message_edit")
     async def on_message_edit(self, before: Message, after: Message):
@@ -861,4 +892,5 @@ class ModLogs(Cog):
 
 
 def setup(bot: Bot):
+    """ModLogs"""
     bot.add_cog(ModLogs(bot))
