@@ -166,11 +166,11 @@ class HelpCommand(BaseHelpCommand):
 
     @property
     def color(self) -> Colour:
-        """Returns current role color of bot if from Guild, or default Embed color if DM"""
+        """Returns current role colour of bot if from Guild, or default Embed colour if DM"""
         if self.is_dm:
             return Embed.Empty
         else:
-            return self.ctx.guild.me.color
+            return self.ctx.guild.me.colour
 
     @property
     def footer(self) -> str:
@@ -720,4 +720,5 @@ class Help(Cog):
 
 
 def setup(bot: Bot):
+    """Help"""
     bot.add_cog(Help(bot))

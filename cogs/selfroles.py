@@ -237,4 +237,5 @@ class SelfRoles(Cog):
 
 
 def setup(bot: Bot):
+    """SelfRoles"""
     bot.add_cog(SelfRoles(bot))

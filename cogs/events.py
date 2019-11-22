@@ -208,4 +208,5 @@ class Events(Cog):
 
 
 def setup(bot: Bot):
+    """Events"""
     bot.add_cog(Events(bot))

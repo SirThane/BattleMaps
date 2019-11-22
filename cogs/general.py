@@ -102,4 +102,5 @@ class General(Cog):
 
 
 def setup(bot: Bot):
+    """General"""
     bot.add_cog(General(bot))

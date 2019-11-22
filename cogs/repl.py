@@ -189,4 +189,5 @@ class REPL(Cog):
 
 
 def setup(bot: Bot) -> None:
+    """REPL"""
     bot.add_cog(REPL(bot))

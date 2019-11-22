@@ -75,4 +75,5 @@ class Moderation(Cog):
 
 
 def setup(bot: Bot):
+    """Moderation"""
     bot.add_cog(Moderation(bot))

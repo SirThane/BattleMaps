@@ -54,4 +54,5 @@ class Timer(Cog):
 
 
 def setup(bot: Bot):
+    """Timer"""
     bot.add_cog(Timer(bot))
