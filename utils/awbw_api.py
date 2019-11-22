@@ -1,5 +1,5 @@
 
-# from aiohttp import ClientSession  # TODO
+from aiohttp import ClientSession  # TODO
 from datetime import datetime
 from requests import get
 from typing import Any, Dict  # , List, Union
@@ -11,7 +11,7 @@ GAMES_API = "TBD"
 USER_API = "TBD"
 
 
-def get_map(maps_id: int = None, verify: bool = False) -> Dict[str, Any]:
+async def get_map(maps_id: int = None, verify: bool = False) -> Dict[str, Any]:
     """Requests map info from AWBW Maps API
 
     Map data returned in following format:
@@ -56,10 +56,14 @@ def get_map(maps_id: int = None, verify: bool = False) -> Dict[str, Any]:
     else:
         r_map = get(UNSECURED_MAPS_API, params=payload, verify=False)
 
-    if r_map.status_code != 200:
-        raise ConnectionError(f"Unable to establish connection to AWBW. Error: {r_map.status_code}")
+    api = MAPS_API if verify else UNSECURED_MAPS_API
 
-    j_map = r_map.json()
+    async with ClientSession() as session:
+        async with session.get(api, params=payload) as response:
+            if not response.status:
+                raise ConnectionError(f"Unable to establish connection to AWBW. Error: {r_map.status_code}")
+            else:
+                j_map = await response.json()
 
     if j_map.get("err", False):
         raise ValueError(j_map.get("message", "No map matches given ID."))
