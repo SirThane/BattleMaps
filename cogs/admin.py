@@ -42,8 +42,9 @@ class Admin(Cog):
         self.config = SubRedis(bot.db, f"{bot.APP_NAME}:admin")
         self.config_bot = SubRedis(bot.db, f"{bot.APP_NAME}:config")
 
-        self.say_dest = None
         self.errorlog = bot.errorlog
+
+        self.say_dest = None
 
     """ ######################
          Managing Bot Modules
@@ -135,7 +136,9 @@ class Admin(Cog):
             em = Embed(
                 title="Administration: Load Module Failed",
                 description=f"**__{type(error).__name__}__**\n"
-                            f"{error}",
+                            f"```py\n"
+                            f"{error}\n"
+                            f"```",
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
@@ -174,7 +177,7 @@ class Admin(Cog):
             em = Embed(
                 title="Administration: Unload Module Failed",
                 description=f"**__ExtensionNotLoaded__**\n"
-                            f"Module {module} is not loaded",
+                            f"Module `{module}` is not loaded",
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
@@ -183,8 +186,10 @@ class Admin(Cog):
         except Exception as error:
             em = Embed(
                 title="Administration: Unload Module Failed",
-                description=f"**__{type(error).__name__}__**"
-                            f"{error}",
+                description=f"**__{type(error).__name__}__**\n"
+                            f"```py\n"
+                            f"{error}\n"
+                            f"```",
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
@@ -223,7 +228,7 @@ class Admin(Cog):
             em = Embed(
                 title="Administration: Reload Module Failed",
                 description=f"**__ExtensionNotLoaded__**\n"
-                            f"Module {module} is not loaded",
+                            f"Module `{module}` is not loaded",
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
@@ -271,7 +276,9 @@ class Admin(Cog):
             em = Embed(
                 title="Administration: Reload Module Failed",
                 description=f"**__{type(error).__name__}__**\n"
-                            f"{error}",
+                            f"```py\n"
+                            f"{error}\n"
+                            f"```",
                 color=0xFF0000
             )
             msg = await ctx.send(embed=em)
@@ -295,17 +302,31 @@ class Admin(Cog):
     @module.group(name="init", aliases=["initial"], invoke_without_command=True)
     async def init(self, ctx: Context):
         """Get list of modules currently set as initial cogs"""
-        init_modules = self.config_bot.lrange("initial_cogs", 0, -1)
-        print(type(init_modules))
-        str_init_modules = "\n".join(init_modules)
+        init_modules = [f"cogs.{module}" for module in self.config_bot.lrange('initial_cogs', 0, -1)]
+
+        modules = dict()
+
+        for init_module in init_modules:
+            try:
+                module = import_module(init_module)
+                module_setup = getattr(module, "setup")
+                modules[init_module] = module_setup.__doc__
+            except Exception as error:
+                pass
+
+        space = len(max(modules.keys(), key=len))
+        fmt = "\n".join([f"{module}{' ' * (space - len(module))} : {cog}" for module, cog in modules.items()])
+
         em = Embed(
             title="Administration: Initial Modules",
-            description=f"Modules currently set to be loaded at startup\n```py\n{str_init_modules}\n```",
+            description=f"Modules currently set to be loaded at startup\n"
+                        f"```py\n"
+                        f"{fmt}\n"
+                        f"```",
             color=0x00FF00
         )
-        msg = await ctx.send(embed=em)
-        await sleep(5)
-        await msg.delete()
+
+        await ctx.send(embed=em)
 
     @sudo()
     @init.command(name="add", usage="(module name)")
@@ -672,4 +693,5 @@ class Admin(Cog):
 
 
 def setup(bot: Bot):
+    """Admin"""
     bot.add_cog(Admin(bot))
