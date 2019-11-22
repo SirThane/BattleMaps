@@ -3,12 +3,13 @@ from __future__ import annotations
 
 
 import csv
+from collections import Set
 
 from io import BytesIO
 from math import cos, sin, pi, trunc
 
 from PIL import Image, ImageDraw
-from typing import Dict, Generator, List, Tuple, Union
+from typing import Dict, Generator, List, Tuple, Union, Optional
 
 from utils import awbw_api
 from utils.utils import bytespop
@@ -369,7 +370,7 @@ BITMAP_PALETTE = {
 }
 
 
-# For each named element, define the pixels (xy) to receive color (fill)
+# For each named element, define the pixels (xy) to receive colour (fill)
 # Looped over in the get_sprite methods
 BITMAP_SPEC = {
     "plain":        [
@@ -1961,11 +1962,11 @@ class AWMap:
     def __str__(self) -> str:
         ret = ""
         if self.title:
-            ret += f"Map Title: {self.title}\n"
+            ret += f"Map Title: {self.title}"
         if self.author:
-            ret += f"Map Author: {self.author}\n"
+            ret += f"\nMap Author: {self.author}"
         if self.desc:
-            ret += f"Map Description: {self.desc}\n"
+            ret += f"\nMap Description: {self.desc}"
         return ret
 
     def __iter__(self) -> Generator[AWTile, None, None]:
@@ -2047,7 +2048,7 @@ class AWMap:
 
         return self
 
-    def from_awbw(
+    async def from_awbw(
             self,
             data: str = "",
             title: str = "",
@@ -2072,7 +2073,7 @@ class AWMap:
         if awbw_id:
 
             # Use AWBW Maps API to get map info JSON
-            awbw_map = awbw_api.get_map(maps_id=awbw_id, verify=verify)
+            awbw_map = await awbw_api.get_map(maps_id=awbw_id, verify=verify)
 
             # Create the AWMap terrain map from the JSON terrain data
             self._parse_awbw_csv(csvdata=awbw_map["terr"])
@@ -2208,6 +2209,91 @@ class AWMap:
         except KeyError:
             return AWTile(self, x, y, 999, 0)
 
+    """ #############
+         Map Metrics
+        ############# """
+
+    @property
+    def map_size(self) -> int:
+        """Number of tiles in map"""
+        return self.size_h * self.size_w
+
+    @property
+    def playable_countries(self) -> Set[int]:
+        """Returns a list of playable countries"""
+
+        countries = {
+            i: {
+                "has_hq": False,
+                "has_units": False,
+                "has_prod": False
+            } for i in range(1, 17)
+        }
+
+        playable = set()
+
+        for i in countries.keys():
+            props = self.owned_props(i)
+            units = self.deployed_units(i)
+
+            for tile in props:
+
+                # Determine if the country has a HQ or a Lab
+                if tile.is_hq:
+                    countries[i]["has_hq"] = True
+
+                # Determine if the country has a Base, Airport, or Port
+                elif tile.is_prod:
+                    countries[i]["has_prod"] = True
+
+            for tile in units:
+
+                # Determine if the country has deployed units
+                if tile.unit:
+                    countries[i]["has_units"] = True
+
+            # If the country has either HQ type and has either units or production means, it is viable
+            if countries[i]["has_hq"] and (countries[i]["has_units"] or countries[i]["has_prod"]):
+                playable.add(i)
+
+        return playable
+
+    def owned_props(self, t_ctry: int) -> List[Optional[AWTile]]:
+        """Returns a list of tiles with properties owned by country
+
+        :param t_ctry: Internal Country ID
+
+        :return: List of AWTiles
+                 Empty list if no properties are owned by country"""
+
+        tiles = list()
+
+        for tile in self:
+            if tile.t_ctry == t_ctry:
+                tiles.append(tile)
+
+        return tiles
+
+    def deployed_units(self, u_ctry: int) -> List[Optional[AWTile]]:
+        """Returns a list of tiles with properties owned by country
+
+        :param u_ctry: Internal Country ID
+
+        :return: List of AWTiles
+                 Empty list if no properties are owned by country"""
+
+        tiles = list()
+
+        for tile in self:
+            if tile.u_ctry == u_ctry:
+                tiles.append(tile)
+
+        return tiles
+
+    """ ##################
+         Map Manipulation
+        ################## """
+
     def mod_terr(self, x: int, y: int, terr: int, t_ctry: int) -> None:
         """Changes terrain value of tile at (x, y) using Internal Terrain and Country IDs"""
         self.tile(x, y).mod_terr(terr, t_ctry)
@@ -2215,11 +2301,6 @@ class AWMap:
     def mod_unit(self, x: int, y: int, unit: int, u_ctry: int) -> None:
         """Changes unit value of tile at (x, y) using Internal Unit and Country IDs"""
         self.tile(x, y).mod_terr(unit, u_ctry)
-
-    @property
-    def map_size(self) -> int:
-        """Number of tiles in map"""
-        return self.size_h * self.size_w
 
     @property
     def to_awbw(self) -> str:
@@ -2330,6 +2411,18 @@ class AWTile:  # TODO: Account for multi-tile terrain objects e.g. death ray, vo
         return MAIN_TERR.get(self.terr, "InvalidTerrID")
 
     @property
+    def is_hq(self) -> bool:
+        return self.terr in (101, 107)
+
+    @property
+    def is_prop(self) -> bool:
+        return self.terr in MAIN_TERR_CAT["properties"]
+
+    @property
+    def is_prod(self) -> bool:
+        return self.terr in (103, 104, 105)
+
+    @property
     def aws_terr_id(self) -> int:
         return main_terr_to_aws(self.terr, self.t_ctry)[0]
 
@@ -2383,7 +2476,6 @@ class AWTile:  # TODO: Account for multi-tile terrain objects e.g. death ray, vo
             raise ValueError("Invalid Terrain Data")
         else:
             self.terr, self.t_ctry = terr, t_ctry
-            pass
 
     def mod_unit(self, unit: int, u_ctry: int) -> None:  # TODO: Refactor
         if unit in MAIN_UNIT.keys() and u_ctry in MAIN_CTRY.keys():
