@@ -58,6 +58,7 @@ class Player(Cog):
         self.sessions = dict()
 
         self.bot.loop.create_task(self._init_all_sessions())
+        self.bot.loop.create_task(self.cog_reload_cronjob(24 * 60 * 60))
 
     """ ##############################################
          Setup, Session Initialization, And Breakdown
@@ -111,6 +112,16 @@ class Player(Cog):
                 log = None
 
             self.bot.loop.create_task(self.init_session(guild, voice, log=log, run_forever=True, **session_config))
+
+    async def cog_reload_cronjob(self, secs: int):
+        """Async background task added in `__init__` to reload cog after `secs` seconds"""
+
+        await sleep(secs)
+        self.bot.remove_cog("Player")
+
+        # Small delay to avoid race condition
+        await sleep(2)
+        self.bot.add_cog(Player(self.bot))
 
     def cog_unload(self):
         """Stop voice on all sessions to cleanly leave session loop and disconnect voice"""
