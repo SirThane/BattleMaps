@@ -1,10 +1,13 @@
 """Cog containing all global bot events"""
 
-
+# Lib
 from datetime import datetime
-from discord import Embed, Member, Message
-from discord.utils import get
-from discord.ext.commands import Cog, Context
+from typing import Union
+
+# Site
+from discord.embeds import Embed
+from discord.ext.commands.cog import Cog
+from discord.ext.commands.context import Context
 from discord.ext.commands.errors import (
     CheckFailure,
     CommandInvokeError,
@@ -13,9 +16,12 @@ from discord.ext.commands.errors import (
     MissingRequiredArgument,
     NoPrivateMessage
 )
+from discord.member import Member
+from discord.message import Message
+from discord.utils import get
 from pytz import timezone
-from typing import Union
 
+# Local
 from utils.classes import Bot
 from utils.errors import *
 
@@ -36,9 +42,7 @@ class Events(Cog):
 
         self.errorlog = bot.errorlog
 
-        # self.awbw = bot.get_guild(184502171117551617)               # Not Skype
         self.awbw = bot.get_guild(313453805150928906)               # AWBW Guild
-        # self.channel = bot.get_channel(315232431835709441)          # Circlejerk Py
         self.channel = bot.get_channel(313453805150928906)          # AWBW General
         self.notifchannel = bot.get_channel(637877898560143363)     # BattleMaps-Notifs
 
@@ -52,7 +56,7 @@ class Events(Cog):
         if member.guild.id != self.awbw.id:
             return
         em = Embed(
-            description=WELCOME.format(member.mention),
+            description=WELCOME.format(member.display_name),
             color=member.guild.me.colour
         )
         await self.channel.send(embed=em)
