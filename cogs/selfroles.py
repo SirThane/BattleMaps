@@ -1,12 +1,18 @@
 
+# Lib
 from asyncio import sleep
 
-from discord import Embed
-from discord.ext.commands import Cog, command, Context, group, RoleConverter, guild_only
+# Site
+from discord.embeds import Embed
+from discord.ext.commands.cog import Cog
+from discord.ext.commands.context import Context
+from discord.ext.commands.converter import RoleConverter
+from discord.ext.commands.core import command, group, guild_only
 from discord.ext.commands.errors import BadArgument
 
+# Local
 from utils.classes import Bot
-from utils import checks
+from utils.checks import awbw_staff
 
 
 ROLE_SHORTNAME = {
@@ -30,6 +36,7 @@ ROLE_SHORTNAME = {
 
 
 class SelfRoles(Cog):
+    """Commands for managing and assigning selfroles"""
 
     def __init__(self, bot: Bot):
         self.bot = bot
@@ -159,7 +166,7 @@ class SelfRoles(Cog):
                 )
             )
 
-    @checks.awbw_staff()
+    @awbw_staff()
     @selfroles.command(name="add")
     async def _add(self, ctx: Context, *, role) -> None:
         """Configures a role as a selfrole"""
@@ -196,7 +203,7 @@ class SelfRoles(Cog):
                     )
                 )
 
-    @checks.awbw_staff()
+    @awbw_staff()
     @selfroles.command(name="rem", aliases=["del", "remove", "delete"])
     async def _rem(self, ctx: Context, *, role):
         """Removes a role from selfroles"""
