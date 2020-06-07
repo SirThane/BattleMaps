@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
 
+# Lib
 from datetime import timedelta
 
+# Site
 from asyncio import sleep
-from discord import Embed, Colour
-from discord.ext.commands import command, Context
+from discord.colour import Colour
+from discord.embeds import Embed
+from discord.ext.commands.context import Context
+from discord.ext.commands.core import command
 from discord.ext.commands.cog import Cog
 
+# Local
 from utils.classes import Bot
 
 
