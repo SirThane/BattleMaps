@@ -29,12 +29,22 @@ Copyrights to logic of discord help.py belong to Rapptz (Danny)
 Everything else credit to SirThane#1780
 """
 
-
+# Lib
 from asyncio import sleep
-from discord import Colour, DMChannel, Embed, Member, Message, Reaction, User
+
+# Site
 from discord.abc import Messageable
-from discord.ext.commands import Cog, Command, Context, Group
+from discord.channel import DMChannel
+from discord.colour import Colour
+from discord.embeds import Embed
+from discord.ext.commands.cog import Cog
+from discord.ext.commands.context import Context
+from discord.ext.commands.core import Command, Group
 from discord.ext.commands.help import HelpCommand as BaseHelpCommand
+from discord.member import Member
+from discord.message import Message
+from discord.reaction import Reaction
+from discord.user import User
 from typing import Dict, List, Optional, Tuple, Union
 
 try:
@@ -42,7 +52,7 @@ try:
     from utils.classes import Bot
 except ImportError:
     # So I can provide this cog to others
-    from discord.ext.commands import Bot
+    from discord.ext.commands.bot import Bot
 
 
 ZWSP = u'\u200b'
@@ -176,9 +186,8 @@ class HelpCommand(BaseHelpCommand):
     def footer(self) -> str:
         """Returns help command's ending note"""
         command_name = self.invoked_with if self.invoked_with else "help"
-        prefix = self.bot.command_prefix
-        return f"Type {prefix}{command_name} command for more info on a command.\n" \
-               f"You can also type {prefix}{command_name} Category for more info on a category."
+        return f"Type {self.clean_prefix}{command_name} command for more info on a command.\n" \
+               f"You can also type {self.clean_prefix}{command_name} Category for more info on a category."
 
     @property
     def dest(self) -> Messageable:
@@ -686,7 +695,7 @@ class Help(Cog):
         if react.emoji == "▶":
 
             # Ignore if already on last page
-            if active_help["current"] > active_help["last"]:
+            if active_help["current"] >= active_help["last"]:
                 return
 
             # Set index to next and edit message with next page
