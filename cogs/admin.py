@@ -8,22 +8,26 @@ Mostly stolen from Luc:
 Copyright (c) 2015 Rapptz
 """
 
+# Lib
 from importlib import import_module
-from os import popen
+from os import getcwd, popen
+from os.path import split
 
-from asyncio import sleep
+# Site
 from discord.abc import Messageable
 from discord.activity import Activity
 from discord.channel import TextChannel
 from discord.embeds import Embed
 from discord.enums import ActivityType, Status
-from discord.ext.commands import Cog, command, Context, group
+from discord.ext.commands.cog import Cog
+from discord.ext.commands.context import Context
+from discord.ext.commands.core import command, has_guild_permissions, group
 from discord.ext.commands.errors import (
     BadArgument,
     ExtensionAlreadyLoaded,
     ExtensionFailed, ExtensionNotFound,
     ExtensionNotLoaded,
-    NoEntryPointError
+    NoEntryPointError,
 )
 from discord.utils import oauth_url
 
@@ -690,6 +694,93 @@ class Admin(Cog):
 
         await ctx.send(embed=em)
         await self.bot.logout()
+
+    """ ######
+         Logs
+        ###### """
+
+    @staticmethod
+    def get_tail(file: str, lines: int):
+        """Get the tail of the specified log file"""
+
+        # Too many lines will not display in embed.
+        if 0 > lines or lines > 15:
+            lines = 5
+
+        # Get log file name from repo name from name of cwd
+        repo = split(getcwd())[1]
+
+        # Use linux `tail` to read logs
+        ret = popen(f"tail -{lines} ~/.pm2/logs/{repo}-{file}.log").read()
+
+        # Format into string with characters for diff markdown highlighting
+        head = "+" if file == "out" else "-"
+        ret = "\n".join([f"{head}{line}" for line in ret.split("\n")])
+
+        return ret
+
+    @sudo()
+    @group(name="tail", aliases=["logs"], invoke_without_command=True)
+    async def tail(self, ctx: Context, lines: int = 5):
+        """Get logs for stdout and stderr"""
+
+        err = self.get_tail("error", lines)
+        out = self.get_tail("out", lines)
+
+        em = Embed(
+            title="Administration: Tail",
+            color=0x00FF00
+        )
+        em.add_field(
+            name="Error",
+            value=f"```diff\n{err}\n```",
+            inline=False
+        )
+        em.add_field(
+            name="Out",
+            value=f"```diff\n{out}\n```",
+            inline=False
+        )
+
+        await ctx.send(embed=em)
+
+    @sudo()
+    @tail.command(name="out")
+    async def out(self, ctx: Context, lines: int = 5):
+        """Get stdout logs"""
+
+        out = self.get_tail("out", lines)
+
+        em = Embed(
+            title="Administration: Tail",
+            color=0x00FF00
+        )
+        em.add_field(
+            name="Out",
+            value=f"```diff\n{out}\n```",
+            inline=False
+        )
+
+        await ctx.send(embed=em)
+
+    @sudo()
+    @tail.command(name="err", aliases=["error"])
+    async def err(self, ctx: Context, lines: int = 5):
+        """Get stdout logs"""
+
+        err = self.get_tail("error", lines)
+
+        em = Embed(
+            title="Administration: Tail",
+            color=0x00FF00
+        )
+        em.add_field(
+            name="Error",
+            value=f"```diff\n{err}\n```",
+            inline=False
+        )
+
+        await ctx.send(embed=em)
 
 
 def setup(bot: Bot):
