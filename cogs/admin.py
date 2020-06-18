@@ -715,7 +715,7 @@ class Admin(Cog):
 
         # Format into string with characters for diff markdown highlighting
         head = "+" if file == "out" else "-"
-        ret = "\n".join([f"{head}{line}" for line in ret.split("\n")])
+        ret = "\n".join([f"{head}{line}" for line in ret.split("\n")][:-1])
 
         return ret
 
