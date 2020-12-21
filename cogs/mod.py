@@ -1,13 +1,17 @@
 
-from asyncio import sleep
-from discord import Member, Forbidden, HTTPException
-from discord.ext.commands import command, has_permissions
+# Lib
+from asyncio.tasks import sleep
+
+# Site
+from discord.errors import Forbidden, HTTPException
+from discord.ext.commands.core import command, has_permissions
 from discord.ext.commands.cog import Cog
 from discord.ext.commands.context import Context
+from discord.member import Member
 from discord.message import Message
 
-from utils.classes import Bot
-from utils.utils import SubRedis
+# Local
+from utils.classes import Bot, SubRedis
 
 
 class Moderation(Cog):
@@ -35,8 +39,8 @@ class Moderation(Cog):
 
         check = None
         if author:
-            def check(message: Message) -> bool:
-                return message.author.id == author.id
+            def check(msg: Message) -> bool:
+                return msg.author.id == author.id
 
             # ``purge(limit, check)`` will only delete messages from ``history(limit)`` that match ``check``
             # Use a larger ``history`` to find number of total messages in channel such that ``limit``
