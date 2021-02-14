@@ -1,23 +1,36 @@
 """Commands for Advance Wars Maps"""
 
-from asyncio import sleep
+# Lib
 from datetime import datetime
 from io import BytesIO
 from os.path import splitext
 from re import compile
-from typing import Union, Optional
 from urllib.parse import quote
 
-from discord import Attachment, DMChannel, Embed, File, HTTPException, Member, Message
-from discord.ext.commands import Cog, group
+# Site
+from asyncio import sleep
+from discord.channel import DMChannel
+from discord.embeds import Embed
+from discord.errors import HTTPException
+from discord.ext.commands.cog import Cog
+from discord.ext.commands.core import group
 from discord.ext.commands.context import Context
+from discord.file import File
+from discord.member import Member
+from discord.message import Attachment, Message
+from typing import Union, Optional
 
+# Local
 from utils.checks import sudo
-from utils.classes import Bot
+from utils.classes import Bot, SubRedis
 from utils.awmap import AWMap
-from utils.errors import *
-from utils.utils import SubRedis
-
+from utils.errors import (
+    AWBWDimensionsError,
+    FileSaveFailureError,
+    InvalidMapError,
+    NoLoadedMapError,
+    UnimplementedError
+)
 
 RE_AWL = compile(r"(http[s]?://)?awbw.amarriner.com/(glenstorm/)?prevmaps.php\?maps_id=([0-9]+)(?i)")
 RE_CSV = compile(r"(([0-9])+(,[0-9]*)*(\n[0-9]+(,[0-9]*)*)*)")  # {1}")
