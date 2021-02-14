@@ -462,7 +462,7 @@ class AdvanceWars(Cog):
     @Cog.listener("on_message")
     async def on_message(self, msg: Message):
         if self.listen_for_maps and not msg.author.bot:
-            if not msg.content.startswith(self.bot.command_prefix[0]):
+            if not any([msg.content.startswith(prefix) for prefix in self.bot.command_prefix(self.bot, msg)]):
                 awmap = await CheckMap.check(msg, skips=["msg_csv", "id"])
                 if awmap:
                     await self.em_load(msg.channel, awmap)
