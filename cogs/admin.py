@@ -31,9 +31,9 @@ from discord.ext.commands.errors import (
 )
 from discord.utils import oauth_url
 
+# Local
 from utils.checks import sudo
-from utils.classes import Bot
-from utils.utils import SubRedis, GlobalTextChannelConverter
+from utils.classes import Bot, SubRedis, GlobalTextChannelConverter
 
 
 class Admin(Cog):
@@ -49,6 +49,15 @@ class Admin(Cog):
         self.errorlog = bot.errorlog
 
         self.say_dest = None
+
+    @staticmethod
+    def color(ctx: Context):
+        """Color for embeds"""
+
+        if ctx.guild:
+            return ctx.guild.me.color
+        else:
+            return None
 
     """ ######################
          Managing Bot Modules
@@ -82,7 +91,6 @@ class Admin(Cog):
         be sent to the errorlog channel"""
 
         module = f"cogs.{module}"
-        msg = None
         verbose_error = None
 
         try:
@@ -95,7 +103,7 @@ class Admin(Cog):
                             f"No module `{module}` found in cogs directory",
                 color=0xFF0000
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
             verbose_error = error.original
 
         except ExtensionAlreadyLoaded as error:
@@ -105,7 +113,7 @@ class Admin(Cog):
                             f"Module `{module}` is already loaded",
                 color=0xFF0000
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
             verbose_error = error
 
         except NoEntryPointError as error:
@@ -115,7 +123,7 @@ class Admin(Cog):
                             f"Module `{module}` does not define a `setup` function",
                 color=0xFF0000
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
             verbose_error = error
 
         except ExtensionFailed as error:
@@ -133,7 +141,7 @@ class Admin(Cog):
                                 f"An execution error occurred during module `{module}`'s setup function",
                     color=0xFF0000
                 )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
             verbose_error = error.original
 
         except Exception as error:
@@ -145,7 +153,7 @@ class Admin(Cog):
                             f"```",
                 color=0xFF0000
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
             verbose_error = error
 
         else:
@@ -154,13 +162,11 @@ class Admin(Cog):
                 description=f"Module `{module}` loaded successfully",
                 color=0x00FF00
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
 
         finally:
             if verbose and verbose_error:
                 await self.errorlog.send(verbose_error, ctx)
-            await sleep(5)
-            await msg.delete()
 
     @sudo()
     @module.command(name="unload", usage="(module name)")
@@ -171,7 +177,6 @@ class Admin(Cog):
         be sent to the errorlog channel"""
 
         module = f"cogs.{module}"
-        msg = None
         verbose_error = None
 
         try:
@@ -184,7 +189,7 @@ class Admin(Cog):
                             f"Module `{module}` is not loaded",
                 color=0xFF0000
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
             verbose_error = error
 
         except Exception as error:
@@ -196,7 +201,7 @@ class Admin(Cog):
                             f"```",
                 color=0xFF0000
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
             verbose_error = error
 
         else:
@@ -205,13 +210,11 @@ class Admin(Cog):
                 description=f"Module `{module}` unloaded successfully",
                 color=0x00FF00
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
 
         finally:
             if verbose and verbose_error:
                 await self.errorlog.send(verbose_error, ctx)
-            await sleep(5)
-            await msg.delete()
 
     @sudo()
     @module.command(name="reload", usage="(module name)")
@@ -222,7 +225,6 @@ class Admin(Cog):
         be sent to the errorlog channel"""
 
         module = f"cogs.{module}"
-        msg = None
         verbose_error = None
 
         try:
@@ -235,7 +237,7 @@ class Admin(Cog):
                             f"Module `{module}` is not loaded",
                 color=0xFF0000
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
             verbose_error = error
 
         except ExtensionNotFound as error:
@@ -245,7 +247,7 @@ class Admin(Cog):
                             f"No module `{module}` found in cogs directory",
                 color=0xFF0000
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
             verbose_error = error.original
 
         except NoEntryPointError as error:
@@ -255,7 +257,7 @@ class Admin(Cog):
                             f"Module `{module}` does not define a `setup` function",
                 color=0xFF0000
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
             verbose_error = error
 
         except ExtensionFailed as error:
@@ -273,7 +275,7 @@ class Admin(Cog):
                                 f"An execution error occurred during module `{module}`'s setup function",
                     color=0xFF0000
                 )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
             verbose_error = error.original
 
         except Exception as error:
@@ -285,7 +287,7 @@ class Admin(Cog):
                             f"```",
                 color=0xFF0000
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
             verbose_error = error
 
         else:
@@ -294,29 +296,28 @@ class Admin(Cog):
                 description=f"Module `{module}` reloaded successfully",
                 color=0x00FF00
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
 
         finally:
             if verbose and verbose_error:
                 await self.errorlog.send(verbose_error, ctx)
-            await sleep(5)
-            await msg.delete()
 
     @sudo()
     @module.group(name="init", aliases=["initial"], invoke_without_command=True)
     async def init(self, ctx: Context):
         """Get list of modules currently set as initial cogs"""
-        init_modules = [f"cogs.{module}" for module in self.config_bot.lrange('initial_cogs', 0, -1)]
 
         modules = dict()
+        # to_remove = list()
 
-        for init_module in init_modules:
+        for init_module in self.config_bot.lrange('initial_cogs', 0, -1):
             try:
                 module = import_module(init_module)
                 module_setup = getattr(module, "setup")
                 modules[init_module] = module_setup.__doc__
             except Exception as error:
-                pass
+                pass  # TODO: Capture failed init cogs
+            self.bot.loop.create_task()
 
         space = len(max(modules.keys(), key=len))
         fmt = "\n".join([f"{module}{' ' * (space - len(module))} : {cog}" for module, cog in modules.items()])
@@ -330,7 +331,7 @@ class Admin(Cog):
             color=0x00FF00
         )
 
-        await ctx.send(embed=em)
+        await ctx.send(embed=em, delete_after=5)
 
     @sudo()
     @init.command(name="add", usage="(module name)")
@@ -343,7 +344,6 @@ class Admin(Cog):
         If `verbose=True` is included at the end, error tracebacks will
         be sent to the errorlog channel"""
 
-        msg = None
         verbose_error = None
         lib = None
         module_setup = None
@@ -356,9 +356,7 @@ class Admin(Cog):
                             f"Module `{module}` is already initial module",
                 color=0xFF0000
             )
-            msg = await ctx.send(embed=em)
-            await sleep(5)
-            await msg.delete()
+            await ctx.send(embed=em, delete_after=5)
             return
 
         try:
@@ -375,7 +373,7 @@ class Admin(Cog):
                             f"No module `{module}` found in cogs directory",
                 color=0xFF0000
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
             verbose_error = error
 
         except AttributeError as error:
@@ -385,7 +383,7 @@ class Admin(Cog):
                             f"Module `{module}` does not define a `setup` function",
                 color=0xFF0000
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
             verbose_error = error
 
         except Exception as error:
@@ -395,7 +393,7 @@ class Admin(Cog):
                             f"{error}",
                 color=0xFF0000
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
             verbose_error = error
 
         else:
@@ -405,7 +403,7 @@ class Admin(Cog):
                 description=f"Module `{module}` added to initial modules",
                 color=0x00FF00
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
 
         finally:
             if verbose and verbose_error:
@@ -414,9 +412,6 @@ class Admin(Cog):
             # We don't actually need them, so remove
             del lib
             del module_setup
-
-            await sleep(5)
-            await msg.delete()
 
     @sudo()
     @init.command(name="rem", aliases=["del", "delete", "remove"], usage="(module name)")
@@ -433,7 +428,7 @@ class Admin(Cog):
                 description=f"Module `{module}` added to initial modules",
                 color=0x00FF00
             )
-            msg = await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
 
         else:
             em = Embed(
@@ -441,10 +436,7 @@ class Admin(Cog):
                 description=f"Module `{module}` is not an initial module",
                 color=0xFF0000
             )
-            msg = await ctx.send(embed=em)
-
-        await sleep(5)
-        await msg.delete()
+            await ctx.send(embed=em, delete_after=5)
 
     """ ######################
          General Use Commands
@@ -475,7 +467,7 @@ class Admin(Cog):
                     description=f"**__{type(error).__name__}__**: {str(error)}",
                     color=0xFF0000
                 )
-                await ctx.send(embed=em)
+                await ctx.send(embed=em, delete_after=5)
             else:
                 em = Embed(
                     title="Administration: Set `say` Destination",
@@ -485,7 +477,7 @@ class Admin(Cog):
                                 f"ID: {self.say_dest.id}",
                     color=0x00FF00
                 )
-                await ctx.send(embed=em)
+                await ctx.send(embed=em, delete_after=5)
         else:
             self.say_dest = None
             em = Embed(
@@ -493,17 +485,19 @@ class Admin(Cog):
                 description=f"Say destination has been unset",
                 color=0x00FF00
             )
-            await ctx.send(embed=em)
+            await ctx.send(embed=em, delete_after=5)
 
     @sudo()
     @command(name='invite')
     async def invite(self, ctx: Context):
+        """Sends an OAuth bot invite URL"""
+
         em = Embed(
             title=f'OAuth URL for {self.bot.user.name}',
             description=f'[Click Here]'
                         f'({oauth_url(self.bot.app_info.id)}) '
                         f'to invite {self.bot.user.name} to your guild.',
-            color=ctx.guild.me.colour
+            color=self.color(ctx)
         )
         await ctx.send(embed=em)
 
@@ -528,7 +522,7 @@ class Admin(Cog):
             description="Status changed to `online`",
             color=0x00FF00
         )
-        await ctx.send(embed=em)
+        await ctx.send(embed=em, delete_after=5)
 
     @sudo()
     @status.command(name="dnd", aliases=["do_not_disturb"])
@@ -541,7 +535,7 @@ class Admin(Cog):
             description="Status changed to `dnd`",
             color=0x00FF00
         )
-        await ctx.send(embed=em)
+        await ctx.send(embed=em, delete_after=5)
 
     @sudo()
     @status.command(name="idle")
@@ -554,7 +548,7 @@ class Admin(Cog):
             description="Status changed to `idle`",
             color=0x00FF00
         )
-        await ctx.send(embed=em)
+        await ctx.send(embed=em, delete_after=5)
 
     @sudo()
     @status.command(name="invisible", aliases=["offline"])
@@ -567,7 +561,7 @@ class Admin(Cog):
             description="Status changed to `invisible`",
             color=0x00FF00
         )
-        await ctx.send(embed=em)
+        await ctx.send(embed=em, delete_after=5)
 
     @sudo()
     @status.command(name="remove", aliases=["rem", "del", "delete", "stop"])
@@ -580,7 +574,7 @@ class Admin(Cog):
             title="Administration: Status Message Removed",
             color=0x00FF00
         )
-        await ctx.send(embed=em)
+        await ctx.send(embed=em, delete_after=5)
 
     @sudo()
     @status.command(name="playing", aliases=["game"])
@@ -597,7 +591,7 @@ class Admin(Cog):
                         f"Playing {status}",
             color=0x00FF00
         )
-        await ctx.send(embed=em)
+        await ctx.send(embed=em, delete_after=5)
 
     @sudo()
     @status.command(name="streaming")
@@ -614,7 +608,7 @@ class Admin(Cog):
                         f"Playing {status}",
             color=0x00FF00
         )
-        await ctx.send(embed=em)
+        await ctx.send(embed=em, delete_after=5)
 
     @sudo()
     @status.command(name="listening")
@@ -628,7 +622,7 @@ class Admin(Cog):
             description=f"Listening to {status}",
             color=0x00FF00
         )
-        await ctx.send(embed=em)
+        await ctx.send(embed=em, delete_after=5)
 
     @sudo()
     @status.command(name="watching")
@@ -642,7 +636,132 @@ class Admin(Cog):
             description=f"Watching {status}",
             color=0x00FF00
         )
-        await ctx.send(embed=em)
+        await ctx.send(embed=em, delete_after=5)
+
+    """ #########################
+         Guild-Specific Prefixes
+        ######################### """
+
+    @group(name="prefix", invoke_without_command=True)
+    async def prefix(self, ctx: Context):
+        """Manage bot prefixes
+
+        `Displays current prefix settings"""
+
+        if ctx.guild:
+            guild_prefix = self.config_bot.hget("prefix:guild", ctx.guild.id)
+
+            if guild_prefix:
+                guild_prefix = f"`{guild_prefix}`"
+            else:
+                guild_prefix = f"Not set for `{ctx.guild.name}`"
+
+        else:
+            guild_prefix = None
+
+        em = Embed(
+            title="Administration: Prefix Settings",
+            color=self.color(ctx)
+        )
+
+        em.add_field(
+            name="Default Prefix:",
+            value=f"`{self.config_bot.hget('prefix:config', 'default_prefix')}`",
+            inline=False
+        )
+
+        em.add_field(
+            name="When Mentioned:",
+            value=f"`{self.config_bot.hget('prefix:config', 'when_mentioned')}`",
+            inline=False
+        )
+
+        if guild_prefix:
+            em.add_field(
+                name="Guild Prefix:",
+                value=guild_prefix,
+                inline=False
+            )
+
+        await ctx.send(embed=em, delete_after=8)
+
+    @sudo()
+    @prefix.command(name="default")
+    async def default(self, ctx: Context, prefix: str = None):
+        """Show or change default prefix"""
+
+        if prefix:
+            self.config_bot.hset("prefix:config", "default_prefix", prefix)
+            em = Embed(
+                title="Administration: Default Prefix",
+                description=f"Default prefix changed to `{prefix}`",
+                color=self.color(ctx)
+            )
+
+        else:
+            default_prefix = self.config_bot.hget("prefix:config", "default_prefix")
+            em = Embed(
+                title="Administration: Default Prefix",
+                description=f"Default prefix currently set to `{default_prefix}`",
+                color=self.color(ctx)
+            )
+
+        await ctx.send(embed=em, delete_after=5)
+
+    @sudo()
+    @prefix.command(name="mention")
+    async def mention(self, ctx: Context, enabled: bool = None):
+        """Show or change `when_mentioned` prefix option
+
+        `[p]prefix mention` to toggle current setting
+        `[p]prefix mention [True|False]` to set setting"""
+
+        if enabled is None:
+            enabled = not self.config_bot.hget("prefix:config", "when_mentioned")
+
+        self.config_bot.hset("prefix:config", "when_mentioned", str(enabled))
+
+        em = Embed(
+            title="Administration: Mention As Prefix",
+            description=f"`when_mentioned` is now {'en' if enabled else 'dis'}abled",
+            color=self.color(ctx)
+        )
+
+        await ctx.send(embed=em, delete_after=5)
+
+    @has_guild_permissions(manage_guild=True)
+    @prefix.command(name="guild")
+    async def guild(self, ctx: Context, *, prefix: str = None):
+        """Change guild-specific prefix"""
+
+        current_guild_prefix = self.config_bot.hget("prefix:guild", f"{ctx.guild.id}")
+
+        if prefix:
+            if current_guild_prefix == prefix:
+                em = Embed(
+                    title="Administration: Guild-Specific Prefix",
+                    description=f"No changes to make.\n"
+                                f"Prefix for guild `{ctx.guild.name}` is currently set to `{prefix}`",
+                    color=self.color(ctx)
+                )
+
+            else:
+                self.config_bot.hset("prefix:guild", f"{ctx.guild.id}", prefix)
+                em = Embed(
+                    title="Administration: Guild-Specific Prefix",
+                    description=f"Prefix for guild `{ctx.guild.name}` set to `{prefix}`",
+                    color=self.color(ctx)
+                )
+
+        else:
+            self.config_bot.hdel("prefix:guild", f"{ctx.guild.id}")
+            em = Embed(
+                title="Administration: Guild-Specific Prefix",
+                description=f"Prefix for guild `{ctx.guild.name}` unset",
+                color=self.color(ctx)
+            )
+
+        await ctx.send(embed=em, delete_after=5)
 
     """ #########################
          Updating and Restarting
@@ -665,7 +784,7 @@ class Admin(Cog):
             description=self.gitpull(),
             color=0x00FF00
         )
-        await ctx.send(embed=em)
+        await ctx.send(embed=em, delete_after=5)
 
     @sudo()
     @group(name='restart', aliases=["kill", "f"], invoke_without_command=True)
@@ -678,7 +797,7 @@ class Admin(Cog):
             color=0x00FF00
         )
 
-        await ctx.send(embed=em)
+        await ctx.send(embed=em, delete_after=5)
         await self.bot.logout()
 
     @sudo()
@@ -704,7 +823,7 @@ class Admin(Cog):
         """Get the tail of the specified log file"""
 
         # Too many lines will not display in embed.
-        if 0 > lines or lines > 15:
+        if 0 > lines or lines > 20:
             lines = 5
 
         # Get log file name from repo name from name of cwd
@@ -714,7 +833,7 @@ class Admin(Cog):
         ret = popen(f"tail -{lines} ~/.pm2/logs/{repo}-{file}.log").read()
 
         # Format into string with characters for diff markdown highlighting
-        head = "+" if file == "out" else "-"
+        head = "+ " if file == "out" else "- "
         ret = "\n".join([f"{head}{line}" for line in ret.split("\n")][:-1])
 
         return ret
