@@ -2,7 +2,6 @@
 
 # Lib
 from datetime import datetime
-from typing import Union
 
 # Site
 from discord.embeds import Embed
@@ -20,10 +19,11 @@ from discord.member import Member
 from discord.message import Message
 from discord.utils import get
 from pytz import timezone
+from typing import Union
 
 # Local
 from utils.classes import Bot
-from utils.errors import *
+from utils.errors import CommandError, AWBWDimensionsError, InvalidMapError, NoLoadedMapError, UnimplementedError
 
 
 WELCOME = "**Welcome to AWBW Discord Server {}!**\nPresent yourself and have fun!"
