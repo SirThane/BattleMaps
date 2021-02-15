@@ -8,12 +8,14 @@ from json import load
 
 # Site
 from discord.activity import Activity
+from discord.channel import TextChannel
+from discord.ext.commands import when_mentioned
 from discord.message import Message
-from discord.utils import get, oauth_url
+from discord.utils import oauth_url  # , get
+from typing import List
 
 # Local
-from utils.classes import Bot, ErrorLog
-from utils.utils import StrictRedis
+from utils.classes import Bot, ErrorLog, StrictRedis, SubRedis
 
 
 APP_NAME = "BattleMaps"  # BOT NAME HERE
@@ -24,13 +26,15 @@ Minimum Redis Schema
 
 :namespace {APP_NAME}:config:
     :HASH {APP_NAME}:config:instance
-        :key command_prefix:    str         # Prefix for commands
         :key description:       str         # Description will be used for Help
         :key dm_help:           bool        # If Help output will be forced to DMs
         :key errorlog:          int         # Channel ID for errorlog channel
     :HASH {APP_NAME}:config:run
         :key bot:               bool        # If bot account
-        :key token              str         # Login token
+        :key token:             str         # Login token
+    :HASH {APP_NAME}:config:prefix:config
+        :key default_prefix:    str         # Default bot prefix
+        :key when_mentioned:    bool        # Whether bot mentions count as prefix
 
 
 Redis Configuration JSON Schema
@@ -55,14 +59,42 @@ except FileNotFoundError:
     raise FileNotFoundError("redis.json not found in running directory")
 
 
-config = f"{APP_NAME}:config"
+config = SubRedis(db, f"{APP_NAME}:config")
 
-bot = Bot(db=db, app_name=APP_NAME, **db.hgetall(f"{config}:instance"))
+
+if not config.hget("prefix:config", "default_prefix"):
+    config.hset("prefix:config", "default_prefix", "!")
+
+
+if not config.hget("prefix:config", "when_mentioned"):
+    config.hset("prefix:config", "when_mentioned", "False")
+
+
+def command_prefix(client: Bot, msg: Message) -> List[str]:
+    """Callable to determine guild-specific prefix or default"""
+
+    # Get default prefix and whether mentions count
+    prefix_config = config.hgetall("prefix:config")
+
+    prefix = [prefix_config["default_prefix"]]
+    if prefix_config["when_mentioned"]:
+        prefix.extend(when_mentioned(client, msg))
+
+    # If in a guild, check for guild-specific prefix
+    if isinstance(msg.channel, TextChannel):
+        guild_prefix = config.hget("prefix:guild", msg.channel.guild.id)
+        if guild_prefix:
+            prefix.append(guild_prefix)
+
+    return prefix
+
+
+bot = Bot(db=db, app_name=APP_NAME, command_prefix=command_prefix, **config.hgetall("instance"))
 
 
 @bot.event
 async def on_ready():
-    """Coroutine called bot is logged in and ready to receive commands"""
+    """Coroutine called when bot is logged in and ready to receive commands"""
 
     # "Loading" status message
     loading = "around, setting up shop."
@@ -70,7 +102,7 @@ async def on_ready():
 
     # Bot account metadata such as bot user ID and owner identity
     bot.app_info = await bot.application_info()
-    bot.owner = get(bot.get_all_members(), id=bot.app_info.owner.id)
+    bot.owner = bot.get_user(bot.app_info.owner.id)
 
     # Add the ErrorLog object if the channel is specified
     if bot.errorlog_channel:
@@ -79,7 +111,7 @@ async def on_ready():
     print(f"\n#-------------------------------#")
 
     # Load all initial cog names stored in db
-    for cog in db.lrange(f"{config}:initial_cogs", 0, -1):
+    for cog in config.lrange("initial_cogs", 0, -1):
         try:
             print(f"| Loading initial cog {cog}")
             bot.load_extension(f"cogs.{cog}")
@@ -87,7 +119,7 @@ async def on_ready():
             print(f"| Failed to load extension {cog}\n|   {type(e).__name__}: {e}")
 
     # "Ready" status message
-    ready = f"{bot.command_prefix}help for help"
+    ready = f"{config.hget('prefix:config', 'default_prefix')}help for help"
     await bot.change_presence(activity=Activity(name=ready, type=2))
 
     # Pretty printing ready message and general stats
@@ -109,4 +141,4 @@ async def on_message(msg: Message):
 
 
 if __name__ == "__main__":
-    bot.run(**db.hgetall(f"{config}:run"))
+    bot.run(**config.hgetall("run"))
