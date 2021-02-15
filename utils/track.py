@@ -20,7 +20,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from youtube_dl import YoutubeDL
 
 # Local
-from utils.utils import SubRedis
+from utils.classes import SubRedis
 
 
 def numeric_emoji(n: int) -> str:
@@ -161,12 +161,12 @@ class MP3Track(Track):
         self.length = tags.info.length
 
         for attribute, tag in (
-                ('_title', 'TIT2'),
-                ('_artist', 'TPE1'),
-                ('_album', 'TALB'),
-                ('_date', 'TDRC'),
-                ('_cover', 'APIC:'),
-                ('_cover', 'APIC')
+            ('_title', 'TIT2'),
+            ('_artist', 'TPE1'),
+            ('_album', 'TALB'),
+            ('_date', 'TDRC'),
+            ('_cover', 'APIC:'),
+            ('_cover', 'APIC')
         ):
             data = tags.get(tag)
             if data is not None:
