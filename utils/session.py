@@ -10,7 +10,7 @@ from typing import Generator
 
 # Local
 from utils.queue import Queue, Radio
-from utils.utils import SubRedis
+from utils.classes import SubRedis
 
 
 class Session:
@@ -85,12 +85,12 @@ class Session:
             return self.session_config.get("requires_role") in user.roles
         return True
 
-    def change_volume(self, volume: float):
+    def change_volume(self, volume: float) -> None:
         """Changes this session's volume"""
         self.volume = volume
         self.current_track.volume = self.volume
 
-    def toggle_next(self, error=None):
+    def toggle_next(self, error=None) -> None:
         """Sets the next track to start playing"""
         if error:
             pass
@@ -105,12 +105,12 @@ class Session:
 
         self.voice.play(self.current_track, after=self.toggle_next)
 
-    def stop(self):
+    def stop(self) -> None:
         """Stops this session."""
         self.is_playing = False
         self.voice.stop()
 
-    def check_listeners(self):
+    def check_listeners(self) -> None:
         """Checks if there is anyone listening and pauses / resumes accordingly."""
         if list(self.listeners):
             if self.voice.is_paused():
