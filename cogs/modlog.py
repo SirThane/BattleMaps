@@ -1,22 +1,31 @@
 """Fancy channel logs using rich embeds"""
 
+# Lib
 from io import BytesIO
 
+# Site
 from asyncio import sleep
 from datetime import datetime, timedelta
-from discord import Colour, Guild, Member, Message, User
 from discord.channel import DMChannel
+from discord.colour import Colour
 from discord.enums import AuditLogAction, Enum
 from discord.errors import Forbidden, HTTPException
-from discord.ext.commands import Context, Cog, group
+from discord.ext.commands.cog import Cog
+from discord.ext.commands.context import Context
+from discord.ext.commands.core import group
 from discord.file import File
+from discord.guild import Guild
+from discord.member import Member
+from discord.message import Message
+from discord.user import User
 from discord.utils import escape_markdown
 from pytz import timezone
 from typing import List, Tuple, Union, Optional
 
-from utils.classes import Bot, Embed
+# Local
 from utils.checks import sudo
-from utils.utils import download_image, SubRedis
+from utils.classes import Bot, Embed, SubRedis
+from utils.utils import download_image
 
 
 class EventColors(Enum):
