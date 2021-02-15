@@ -1,7 +1,16 @@
 
-from discord.ext import commands
-import discord
+# Lib
+from typing import Callable
+
+# Site
+from discord.channel import DMChannel, GroupChannel
+from discord.ext.commands.context import Context
+from discord.ext.commands.core import check
+from discord.utils import find
+
+# Local
 from main import db, APP_NAME
+
 
 """
     Utility functions and definitions.
@@ -26,48 +35,38 @@ AWBW_STAFF_ROLES = [
 ]
 
 
-def supercede(precedent):
+def supercede(precedent: Callable) -> Callable:
     """Decorate a predicate.
     Pass a predicate as param.
     Returns True if either test True."""
-    def decorator(predicate):
-        def wrapper(ctx):
-            if precedent(ctx):
-                return True
-            return predicate(ctx)
+    def decorator(predicate: Callable) -> Callable:
+        def wrapper(ctx: Context) -> bool:
+            return precedent(ctx) or predicate(ctx)
         return wrapper
     return decorator
 
 
-def require(requisite):
+def require(requisite: Callable) -> Callable:
     """Decorate a predicate.
     Pass a predicate as param.
     Returns False if either test False."""
-    def decorator(predicate):
-        def wrapper(ctx):
-            if not requisite(ctx):
-                return False
-            return predicate(ctx)
+    def decorator(predicate: Callable) -> Callable:
+        def wrapper(ctx: Context) -> bool:
+            return predicate(ctx) and requisite(ctx)
         return wrapper
     return decorator
 
 
-def in_pm(ctx):
-    def check():
-        return isinstance(
-            ctx.channel,
-            discord.DMChannel
-        ) or isinstance(
-            ctx.channel,
-            discord.GroupChannel
-        )
-    return check()
+def in_pm(ctx: Context) -> bool:
+    def chk() -> bool:
+        return isinstance(ctx.channel, DMChannel) or isinstance(ctx.channel, GroupChannel)
+    return chk()
 
 
-def no_pm(ctx):
-    def check():
+def no_pm(ctx: Context) -> bool:
+    def chk() -> bool:
         return not in_pm(ctx)
-    return check()
+    return chk()
 
 
 """
@@ -75,32 +74,32 @@ def no_pm(ctx):
 """
 
 
-def bot_owner(ctx):
-    def check():
+def bot_owner(ctx: Context) -> bool:
+    def chk() -> bool:
         return ctx.author.id == 125435062127820800
-    return check()
+    return chk()
 
 
 @require(no_pm)  # can't have roles in PMs
 @supercede(bot_owner)
-def has_role(ctx, check):
+def has_role(ctx: Context, chk) -> bool:  # TODO: What type is chk?
     """
     Check if someone has a role,
     :param ctx:
-    :param check: Prepped find() argument
+    :param chk: Prepped find() argument
     :return: Whether or not the role was found
     """
     # Take a prepped find() argument and pass it in
-    return discord.utils.find(check, ctx.author.roles) is not None
+    return find(chk, ctx.author.roles) is not None
 
 
 @supercede(bot_owner)
-def sudoer(ctx):
+def sudoer(ctx: Context) -> bool:
     return ctx.author in db.smembers(f'{config}:sudoers')
 
 
 @supercede(sudoer)
-def admin_perm(ctx):  # TODO: Why didn't this work?
+def admin_perm(ctx: Context) -> bool:  # TODO: Why didn't this work?
     if ctx.guild:
         return ctx.author.guild_permissions.administrator
     else:
@@ -109,7 +108,7 @@ def admin_perm(ctx):  # TODO: Why didn't this work?
 
 @supercede(sudoer)
 @require(lambda ctx: ctx.guild and ctx.guild.id == 313453805150928906)
-def awbw_staff_role(ctx):
+def awbw_staff_role(ctx: Context) -> bool:
     if ctx.guild:
         for role in AWBW_STAFF_ROLES:
             return role in [r.id for r in ctx.author.roles]
@@ -123,24 +122,24 @@ def awbw_staff_role(ctx):
 
 
 def owner():
-    def predicate(ctx):
+    def predicate(ctx: Context) -> bool:
         return bot_owner(ctx)
-    return commands.check(predicate)
+    return check(predicate)
 
 
 def sudo():
-    def predicate(ctx):
+    def predicate(ctx: Context) -> bool:
         return sudoer(ctx)
-    return commands.check(predicate)
+    return check(predicate)
 
 
 def has_admin():
-    def predicate(ctx):
+    def predicate(ctx: Context) -> bool:
         return admin_perm(ctx)
-    return commands.check(predicate)
+    return check(predicate)
 
 
 def awbw_staff():
     def predicate(ctx):
         return awbw_staff_role(ctx)
-    return commands.check(predicate)
+    return check(predicate)
