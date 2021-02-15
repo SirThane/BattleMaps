@@ -21,8 +21,7 @@ from discord.user import User
 from typing import Union, Optional, List, Tuple
 
 from utils.checks import sudo
-from utils.classes import Bot
-from utils.utils import SubRedis
+from utils.classes import Bot, SubRedis
 
 
 class Emoji(Enum):
