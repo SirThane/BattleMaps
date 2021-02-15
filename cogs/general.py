@@ -1,10 +1,16 @@
 """General Commands"""
 
-from discord import Colour, Embed, Member
-from discord.ext.commands import Cog, command, Context
+# Site
+from discord.colour import Colour
+from discord.embeds import Embed
+from discord.member import Member
+from discord.ext.commands.cog import Cog
+from discord.ext.commands.context import Context
+from discord.ext.commands.core import command
 
+# Local
 from utils.classes import Bot
-from utils import checks
+from utils.checks import sudo
 
 
 class General(Cog):
@@ -30,7 +36,7 @@ class General(Cog):
 
         roles = ", ".join(
             [r.name for r in sorted(
-                member.roles,
+                member.roles[1:-1],
                 reverse=True
             ) if '@everyone' not in r.name]
         )
@@ -85,20 +91,11 @@ class General(Cog):
 
         await ctx.channel.send(embed=embed)
 
-    @checks.sudo()
+    @sudo()
     @command(name='ping', hidden=True)
     async def ping(self, ctx: Context):
         """Your basic `ping`"""
         await ctx.send('Pong')
-
-    @command(name="discordid", aliases=["myid", "userid"])
-    async def _discordid(self, ctx: Context, member: Member = None):
-        if member:
-            target = member
-        else:
-            target = ctx.author
-
-        await ctx.send(f"{target.mention}'s Discord User ID: `{target.id}`")
 
 
 def setup(bot: Bot):
