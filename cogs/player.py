@@ -17,8 +17,7 @@ from typing import Optional
 
 # Local
 from utils.checks import sudo
-from utils.classes import Bot
-from utils.utils import SubRedis
+from utils.classes import Bot, SubRedis
 from utils.session import Session
 from utils.track import MP3Track, YouTubeTrack
 
