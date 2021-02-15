@@ -31,6 +31,7 @@ Everything else credit to SirThane#1780
 
 # Lib
 from asyncio import sleep
+from typing import Dict, List, Optional, Tuple, Union
 
 # Site
 from discord.abc import Messageable
@@ -45,7 +46,6 @@ from discord.member import Member
 from discord.message import Message
 from discord.reaction import Reaction
 from discord.user import User
-from typing import Dict, List, Optional, Tuple, Union
 
 try:
     # My subclassing of Bot
