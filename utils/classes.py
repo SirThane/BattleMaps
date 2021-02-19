@@ -232,29 +232,6 @@ class Embed(DiscordEmbed):
                     inline=field["inline"]
                 )
 
-            # values = list()
-            # lines: List[str] = value.split("\n")
-            # page: str = ""
-            #
-            # while all(map(lambda item: len(item) < 1001, lines)):
-            #     for x, line in enumerate(lines):
-            #         if len(line) > 1000:
-            #             sublines = [line[1000 * n:1000 * (n + 1)] for n in range(ceil(len(line) / 1000))]
-            #
-            # for line in lines:
-            #     if len(page) + len(line) < 1000:
-            #         page: str = f"{page}\n{line}"
-            #     else:
-            #         values.append(page)
-            #         page = line
-            #
-            # values.append(page)
-
-            # self.remove_field(i)
-
-            # for n in range(len(values)):
-            #     self.insert_field_at(i + n, name=name, value=values[n], inline=inline)
-
     def split(self) -> List[Embed]:
 
         self.paginate_fields(limit=1010)
