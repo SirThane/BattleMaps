@@ -13,8 +13,7 @@ from discord.ext.commands.core import command, group
 # Local
 from utils.classes import Bot, Embed
 from utils.checks import sudo
-from utils.utils import stdoutio, Paginator
-
+# from utils.utils import stdoutio
 
 MD = "```py\n{0}\n```"
 
@@ -128,40 +127,39 @@ class REPL(Cog):
             await ctx.send(embed=page)
             await sleep(0.1)
 
-    @sudo()
-    @command(hidden=True, name='exec')
-    async def _exec(self, ctx: Context, *, code: str) -> None:
-        """Run exec() on an input."""
-
-        code = code.strip('```\n ')
-        emb = self.emb_dict(title='Exec on', desc=MD.format(code))
-
-        try:
-            with stdoutio() as s:
-                exec(code, self._env(ctx))
-                result = str(s.getvalue())
-            self.emb_pag.set_headers(['Yielded result:'])
-            emb['colour'] = 0x00FF00
-            for h, v in self.emb_pag.paginate(result):
-                field = {
-                    'name': h,
-                    'value': MD.format(v),
-                    'inline': False,
-                }
-                emb['fields'].append(field)
-        except Exception as e:
-            emb['colour'] = 0xFF0000
-            field = {
-                'inline': False,
-                'name': 'Yielded exception "{0.__name__}":'.format(type(e)),
-                'value': str(e)
-            }
-            emb['fields'].append(field)
-
-        embed = Embed().from_dict(emb)
-
-        # await ctx.message.delete()
-        await ctx.send(embed=embed)
+    # @sudo()
+    # @command(hidden=True, name='exec')
+    # async def _exec(self, ctx: Context, *, code: str) -> None:
+    #     """Run exec() on an input."""
+    #
+    #     code = code.strip('```\n ')
+    #     emb = self.emb_dict(title='Exec on', desc=MD.format(code))
+    #
+    #     try:
+    #         with stdoutio() as s:
+    #             exec(code, self._env(ctx))
+    #             result = str(s.getvalue())
+    #         self.emb_pag.set_headers(['Yielded result:'])
+    #         emb['colour'] = 0x00FF00
+    #         for h, v in self.emb_pag.paginate(result):
+    #             field = {
+    #                 'name': h,
+    #                 'value': MD.format(v),
+    #                 'inline': False,
+    #             }
+    #             emb['fields'].append(field)
+    #     except Exception as e:
+    #         emb['colour'] = 0xFF0000
+    #         field = {
+    #             'inline': False,
+    #             'name': 'Yielded exception "{0.__name__}":'.format(type(e)),
+    #             'value': str(e)
+    #         }
+    #         emb['fields'].append(field)
+    #
+    #     embed = Embed().from_dict(emb)
+    #
+    #     await ctx.send(embed=embed)
 
 
 def setup(bot: Bot) -> None:
