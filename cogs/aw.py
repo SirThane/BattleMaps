@@ -32,7 +32,7 @@ from utils.errors import (
     UnimplementedError
 )
 
-RE_AWL = compile(r"(http[s]?://)?awbw.amarriner.com/(glenstorm/)?prevmaps.php\?maps_id=([0-9]+)(?i)")
+RE_AWL = compile(r"(http[s]?://)?awbw.amarriner.com/(glenstorm/|2030/)?prevmaps.php\?maps_id=(?P<id>[0-9]+)(?i)")
 RE_CSV = compile(r"(([0-9])+(,[0-9]*)*(\n[0-9]+(,[0-9]*)*)*)")  # {1}")
 
 
@@ -509,7 +509,7 @@ class CheckMap:
         s_awl = RE_AWL.search(msg.content)
 
         if "link" not in skips and s_awl:
-            return await CheckMap.from_id(s_awl.group(3))
+            return await CheckMap.from_id(s_awl.group("id"))
 
         s_csv = RE_CSV.search(msg.content)
 
