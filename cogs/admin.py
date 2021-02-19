@@ -9,6 +9,7 @@ Copyright (c) 2015 Rapptz
 """
 
 # Lib
+from asyncio import sleep
 from importlib import import_module
 from os import getcwd, popen
 from os.path import split
@@ -17,7 +18,7 @@ from os.path import split
 from discord.abc import Messageable
 from discord.activity import Activity
 from discord.channel import TextChannel
-from discord.embeds import Embed
+# from discord.embeds import Embed
 from discord.enums import ActivityType, Status
 from discord.ext.commands.cog import Cog
 from discord.ext.commands.context import Context
@@ -30,6 +31,7 @@ from discord.ext.commands.errors import (
     NoEntryPointError,
 )
 from discord.utils import oauth_url
+from utils.classes import Embed
 
 # Local
 from utils.checks import sudo
@@ -861,7 +863,9 @@ class Admin(Cog):
             inline=False
         )
 
-        await ctx.send(embed=em)
+        for embed in em.split():
+            await ctx.send(embed=embed)
+            await sleep(0.1)
 
     @sudo()
     @tail.command(name="out")
@@ -880,7 +884,9 @@ class Admin(Cog):
             inline=False
         )
 
-        await ctx.send(embed=em)
+        for embed in em.split():
+            await ctx.send(embed=embed)
+            await sleep(0.1)
 
     @sudo()
     @tail.command(name="err", aliases=["error"])
@@ -899,7 +905,9 @@ class Admin(Cog):
             inline=False
         )
 
-        await ctx.send(embed=em)
+        for embed in em.split():
+            await ctx.send(embed=embed)
+            await sleep(0.1)
 
 
 def setup(bot: Bot):
