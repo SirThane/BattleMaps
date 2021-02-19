@@ -824,9 +824,9 @@ class Admin(Cog):
     def get_tail(file: str, lines: int):
         """Get the tail of the specified log file"""
 
-        # Too many lines will not display in embed.
-        if 0 > lines or lines > 20:
-            lines = 5
+        # # Too many lines will not display in embed.
+        # if 0 > lines or lines > 20:
+        #     lines = 5
 
         # Get log file name from repo name from name of cwd
         repo = split(getcwd())[1]
