@@ -1,11 +1,17 @@
 """Cog to provide REPL-like functionality"""
 
-import inspect
+# Lib
+from asyncio.tasks import sleep
+from inspect import isawaitable
 
-from discord import Colour, Embed
-from discord.ext.commands import Cog, command, Context, group
+# Site
+from discord.colour import Colour
+from discord.ext.commands.cog import Cog
+from discord.ext.commands.context import Context
+from discord.ext.commands.core import command, group
 
-from utils.classes import Bot
+# Local
+from utils.classes import Bot, Embed
 from utils.checks import sudo
 from utils.utils import stdoutio, Paginator
 
@@ -24,22 +30,9 @@ class REPL(Cog):
         self.errorlog = bot.errorlog
 
         self.ret = None
-        self._env_store = {}
-        self.emb_pag = Paginator(
-            page_limit=1014,
-            trunc_limit=1850,
-            header_extender='Cont.'
-        )
+        self._env_store = dict()
 
-    def emb_dict(self, title: str, desc: str) -> dict:
-        d = {
-            "title": title,
-            "description": desc,
-            "fields": []
-        }
-        return d
-
-    def _env(self, ctx: Context):
+    def _env(self, ctx: Context) -> dict:
         import discord
         import random
         env = {
@@ -61,18 +54,36 @@ class REPL(Cog):
     @sudo()
     @group(name='env')
     async def env(self, ctx: Context):
-        pass
+        if len(self._env_store):
+            emb = Embed(title='Environment Store List', color=Colour.green())
+            for k, v in self._env_store.items():
+                emb.add_field(name=k, value=repr(v))
+        else:
+            emb = Embed(
+                title='Environment Store List',
+                description='Environment Store is currently empty',
+                color=Colour.green()
+            )
+        await ctx.send(embed=emb)
 
     @sudo()
     @env.command(name='update', aliases=['store', 'add', 'append'])
     async def _update(self, ctx: Context, name: str):
+        """Add `ret` as a new object to custom REPL environment"""
+
         if name:
             self._env_store[name] = self.ret
-            emb = Embed(title='Environment Updated', color=Colour.green())
-            emb.add_field(name=name, value=repr(self.ret))
+            em = Embed(title='Environment Updated', color=Colour.green())
+            em.add_field(name=name, value=repr(self.ret))
+
         else:
-            emb = Embed(title='Environment Update', description='You must enter a name', color=Colour.red())
-        await ctx.send(embed=emb)
+            em = Embed(
+                title='Environment Update',
+                description='You must enter a name',
+                color=Colour.red()
+            )
+
+        await ctx.send(embed=em)
 
     @sudo()
     @env.command(name='remove', aliases=['rem', 'del', 'pop'])
@@ -82,38 +93,17 @@ class REPL(Cog):
         else:
             v = None
             name = 'You must enter a name'
+
         if v:
-            emb = Embed(title='Environment Item Removed', color=Colour.green())
-            emb.add_field(name=name, value=repr(v))
+            em = Embed(title='Environment Item Removed', color=Colour.green())
+            em.add_field(name=name, value=repr(v))
         else:
-            emb = Embed(title='Environment Item Not Found', description=name, color=Colour.red())
-        await ctx.send(embed=emb)
-
-    @sudo()
-    @env.command(name='list')
-    async def _list(self, ctx: Context) -> None:
-        if len(self._env_store.keys()):
-            emb = Embed(title='Environment Store List', color=Colour.green())
-            for k, v in self._env_store.items():
-                emb.add_field(name=k, value=repr(v))
-        else:
-            emb = Embed(title='Environment Store List', description='Environment Store is currently empty',
-                        color=Colour.green())
-        await ctx.send(embed=emb)
-
-    @sudo()
-    @command(hidden=True, name='await')
-    async def _await(self, ctx: Context, *, code: str) -> None:
-        try:
-            resp = eval(code, self._env(ctx))
-            if inspect.isawaitable(resp):
-                await resp
-            else:
-                raise Exception("Not awaitable.")
-        except Exception as e:
-            await ctx.send(str(e))
-        finally:
-            await ctx.message.delete()
+            em = Embed(
+                title='Environment Item Not Found',
+                description=name,
+                color=Colour.red()
+            )
+        await ctx.send(embed=em)
 
     @sudo()
     @command(hidden=True, name='eval')
@@ -121,36 +111,22 @@ class REPL(Cog):
         """Run eval() on an input."""
 
         code = code.strip('` ')
-        emb = self.emb_dict(title='Eval on', desc=MD.format(code))
 
         try:
             result = eval(code, self._env(ctx))
-            if inspect.isawaitable(result):
+            if isawaitable(result):
                 result = await result
             self.ret = result
-            self.emb_pag.set_headers(['Yielded result:'])
-            emb['colour'] = 0x00FF00
-            for h, v in self.emb_pag.paginate(result):
-                field = {
-                    'name': h,
-                    'value': MD.format(v),
-                    'inline': False
-                }
-                emb['fields'].append(field)
+            em = Embed(title='Eval on', description=MD.format(code), color=0x00FF00)
+            em.add_field(name="Result:", value=MD.format(result), inline=False)
 
         except Exception as e:
-            emb['colour'] = 0xFF0000
-            field = {
-                'name': 'Yielded exception "{0.__name__}":'.format(type(e)),
-                'value': '{0}'.format(e),
-                'inline': False
-            }
-            emb['fields'].append(field)
+            em = Embed(title='Eval on', desc=MD.format(code), color=0xFF0000)
+            em.add_field(name=f"Exception: {e.__name__}", value=str(e), inline=False)
 
-        embed = Embed().from_dict(emb)
-
-        # await ctx.message.delete()
-        await ctx.channel.send(embed=embed)
+        for page in em.split():
+            await ctx.send(embed=page)
+            await sleep(0.1)
 
     @sudo()
     @command(hidden=True, name='exec')
