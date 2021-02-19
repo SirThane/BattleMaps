@@ -6,7 +6,7 @@ from asyncio import CancelledError
 from asyncio.tasks import sleep
 from re import match
 from traceback import extract_tb
-from typing import List, Union, Any, Generator, Set, Dict
+from typing import Any, Dict, Generator, List, Set, Tuple, Union
 
 # Site
 from discord.appinfo import AppInfo
@@ -28,6 +28,12 @@ from utils.utils import ZWSP, bool_transform, _get_from_guilds
 
 class Embed(DiscordEmbed):
 
+    STR_PAGE_DEPTH = {
+        0: "\n",
+        1: " ",
+        2: ""
+    }
+
     def copy(self):
         """Returns a shallow copy of the embed.
 
@@ -36,12 +42,14 @@ class Embed(DiscordEmbed):
         return Embed.from_dict(self.to_dict())
 
     def strip_head(self):
+        """Removes all values from header elements"""
         self.title = ""
         self.description = ""
         self.set_author(name="", url="", icon_url="")
         self.set_thumbnail(url="")
 
     def strip_foot(self):
+        """Removes all values from footer elements"""
         self.set_image(url="")
         self.set_footer(text="", icon_url="")
 
@@ -82,7 +90,7 @@ class Embed(DiscordEmbed):
         return len(self.image.url) if self.image.url else 0
 
     @property
-    def foot_len(self) -> int:
+    def foot_text_len(self) -> int:
         return len(self.footer.text) if self.footer.text else 0
 
     @property
@@ -94,7 +102,7 @@ class Embed(DiscordEmbed):
         ############### """
 
     @property
-    def fields_len(self):
+    def fields_len(self) -> List[int]:
         return [len(field.name) + len(field.value) for field in self.fields]
 
     """ #############
@@ -116,54 +124,170 @@ class Embed(DiscordEmbed):
     def foot_len(self) -> int:
         return sum((
             self.image_len,
-            self.foot_len,
+            self.foot_text_len,
             self.foot_icon_len
         ))
 
+    """ ############
+         Pagination
+        ############ """
+
+    @staticmethod
+    def deconstruct_string(string: str, limit: int = 1000, depth: int = 0) -> List[Tuple[str, str]]:
+        """Transforms a string into a list of tuples. The second element
+        of each tuple will be a section of the string. The first element
+        will be the breaking character that separates it from the next
+        section."""
+
+        # Prioritize line breaks, then spaces, then no delimiter
+        # Without a delimiter, it will stop at `limit` characters for
+        # words longer than `limit`
+        delimiter = Embed.STR_PAGE_DEPTH[depth]
+
+        if Embed.STR_PAGE_DEPTH[depth]:
+            strings = [(delimiter, piece) for piece in string.split(delimiter)]
+        else:
+            strings = [(delimiter, piece) for piece in list(string)]
+
+        ret = list()
+
+        # Build a list of each component section of the original string paired
+        # the the character that separated it from the next section
+        for delim, string in strings:
+            if len(delim) + len(string) <= limit:
+                ret.append((delim, string))
+            else:
+                ret.extend(Embed.deconstruct_string(string, limit, depth + 1))
+
+        return ret
+
+    @staticmethod
+    def paginate_string(string: str, limit: int = 1000) -> List[str]:
+        """Deconstruct a string into section/delimiter pairs and reconstitute
+        into a list of strings shorter than `limit`"""
+
+        deconstructed_string = Embed.deconstruct_string(string, limit)
+
+        ret = list()
+
+        # Prepare the first element
+        next_delim, page = deconstructed_string.pop(0)
+
+        for delim, string in deconstructed_string:
+
+            # Translate delimiters back into priorities for comparison
+            # Higher order delimiters take precedence to prevent merging words
+            delim_depth = {k: v for v, k in Embed.STR_PAGE_DEPTH.items()}
+            if delim_depth.get(delim) > delim_depth.get(next_delim):
+                next_delim = delim
+
+            if len(page) + len(next_delim) + len(string) <= limit:
+                page = next_delim.join((page, string))
+                next_delim = delim
+
+            else:
+                ret.append(page)
+                page = string
+                next_delim = delim
+
+        ret.append(page)
+        return ret
+
+    def paginate_fields(self, limit: int = 1000) -> None:
+
+        fields: List[dict] = [field.copy() for field in self.to_dict().get("fields")]
+        self.clear_fields()
+
+        for field in fields:
+
+            if len(field["value"]) <= limit:
+                self.add_field(
+                    name=field["name"],
+                    value=field["value"],
+                    inline=field["inline"]
+                )
+                continue
+
+            value: str = field["value"]
+
+            if value.startswith("```") and value.endswith("```"):
+                cb_wrapped: bool = True
+                md: str = value.split("\n")[0].strip("```")
+                value: str = value.strip("```")
+                if md:
+                    value: str = value.replace(f"{md}\n", "")
+            else:
+                cb_wrapped: bool = False
+                md: str = ""
+
+            values = self.paginate_string(value, limit)
+
+            if cb_wrapped:
+                values = [f"```{md}\n{value}\n```" for value in values]
+
+            for i, value in enumerate(values):
+                self.add_field(
+                    name=f"{field['name']}{' (Cont.)' if i else ''}",
+                    value=value,
+                    inline=field["inline"]
+                )
+
+            # values = list()
+            # lines: List[str] = value.split("\n")
+            # page: str = ""
+            #
+            # while all(map(lambda item: len(item) < 1001, lines)):
+            #     for x, line in enumerate(lines):
+            #         if len(line) > 1000:
+            #             sublines = [line[1000 * n:1000 * (n + 1)] for n in range(ceil(len(line) / 1000))]
+            #
+            # for line in lines:
+            #     if len(page) + len(line) < 1000:
+            #         page: str = f"{page}\n{line}"
+            #     else:
+            #         values.append(page)
+            #         page = line
+            #
+            # values.append(page)
+
+            # self.remove_field(i)
+
+            # for n in range(len(values)):
+            #     self.insert_field_at(i + n, name=name, value=values[n], inline=inline)
+
     def split(self) -> List[Embed]:
-        # title = len(self.title) if self.title else 0
-        # desc = len(self.description) if self.description else 0
-        # author_name = len(self.author.name) if self.author.name else 0
-        # author_url = len(self.author.url) if self.author.url else 0
-        # author_icon_url = len(self.author.icon_url) if self.author.icon_url else 0
-        # thumbnail = len(self.thumbnail.url) if self.thumbnail.url else 0
 
-        # image = len(self.image.url) if self.image.url else 0
-        # footer_text = len(self.footer.text) if self.footer.text else 0
-        # footer_icon_url = len(self.footer.icon_url) if self.footer.icon_url else 0
-
-        # field_lengths = [len(field.name) + len(field.value) for field in self.fields]
-
-        # head = sum((title, desc, author_name, author_url, author_icon_url, thumbnail))
-        # foot = sum((image, footer_text, footer_icon_url))
+        self.paginate_fields(limit=1010)
 
         if self.head_len + self.foot_len + sum(self.fields_len) < 6000:
             return [self]
 
-        char_count = head
-
         pages = list()
-        page = self.copy()
+        page: Embed = self.copy()
 
         fields = [field.copy() for field in self.to_dict().get("fields", None)]
 
         page.clear_fields()
         page.strip_foot()
 
-        for i, field in enumerate(fields):
+        for field in fields:
 
-            if char_count + field_lengths[i] < 6000 and len(page.fields) <= 25:
+            field_len = len(field["name"]) + len(field["value"])
+
+            if all((
+                page.head_len + len(page.fields_len) + field_len < 6000,
+                len(page.fields) <= 25
+            )):
                 page.add_field(
                     name=field["name"],
                     value=field["value"],
                     inline=field["inline"]
                 )
-                char_count += field_lengths[i]
 
             else:
                 pages.append(page)
 
-                page = self.copy()
+                page: Embed = self.copy()
                 page.strip_head()
                 page.clear_fields()
                 page.strip_foot()
@@ -173,9 +297,8 @@ class Embed(DiscordEmbed):
                     value=field["value"],
                     inline=field["inline"]
                 )
-                char_count = field_lengths[i]
 
-        if char_count + foot < 6000:
+        if page.head_len + len(page.fields_len) + self.foot_len < 6000:
             page.set_footer(
                 text=self.footer.text,
                 icon_url=self.footer.icon_url
