@@ -310,18 +310,17 @@ class Admin(Cog):
         """Get list of modules currently set as initial cogs"""
 
         modules = dict()
-        # to_remove = list()
+        failed = dict()
 
         for init_module in self.config_bot.lrange('initial_cogs', 0, -1):
             try:
-                module = import_module(init_module)
+                module = import_module(f"cogs.{init_module}")
                 module_setup = getattr(module, "setup")
                 modules[init_module] = module_setup.__doc__
             except Exception as error:
-                pass  # TODO: Capture failed init cogs
-            self.bot.loop.create_task()
+                failed[init_module] = error  # TODO: Capture error details of failed cogs
 
-        space = len(max(modules.keys(), key=len))
+        space = len(max(modules.keys(), key=lambda x: len(x)))
         fmt = "\n".join([f"{module}{' ' * (space - len(module))} : {cog}" for module, cog in modules.items()])
 
         em = Embed(
