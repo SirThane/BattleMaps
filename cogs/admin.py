@@ -426,7 +426,7 @@ class Admin(Cog):
             self.config_bot.lrem("initial_cogs", 0, module)
             em = Embed(
                 title="Administration: Initial Module Remove",
-                description=f"Module `{module}` added to initial modules",
+                description=f"Module `{module}` removed from initial modules",
                 color=0x00FF00
             )
             await ctx.send(embed=em, delete_after=5)
