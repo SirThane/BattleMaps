@@ -1,6 +1,13 @@
-/redis.json
-*__pycache__*
+
+# Directories
 /.idea/
 /TestFiles/
 /MP3/
-/cogs/player.bak/
+
+# Files
+/redis.json
+/test.pkl
+
+# File patterns
+*-t.py*
+*__pycache__*
