@@ -111,8 +111,11 @@ class Events(Cog):
             await self.bot.help_command.send_help_for(ctx, ctx.command, "You are missing required arguments.")
 
         elif isinstance(error, CommandNotFound):
-            cmd = ctx.command
-            await self.bot.help_command.send_help_for(ctx, self.bot.get_command("help"), f"Command `{cmd}` not found.")
+            await self.bot.help_command.send_help_for(
+                ctx,
+                self.bot.get_command("help"),
+                f"Command `{ctx.invoked_with}` not found."
+            )
 
         elif isinstance(error, CheckFailure):
             em = Embed(
