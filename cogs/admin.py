@@ -332,7 +332,7 @@ class Admin(Cog):
             color=0x00FF00
         )
 
-        await ctx.send(embed=em, delete_after=5)
+        await ctx.send(embed=em, delete_after=15)
 
     @sudo()
     @init.command(name="add", usage="(module name)")
