@@ -18,7 +18,6 @@ from os.path import split
 from discord.abc import Messageable
 from discord.activity import Activity
 from discord.channel import TextChannel
-# from discord.embeds import Embed
 from discord.enums import ActivityType, Status
 from discord.ext.commands.cog import Cog
 from discord.ext.commands.context import Context
@@ -49,6 +48,7 @@ class Admin(Cog):
 
         self.errorlog = bot.errorlog
 
+        self.delete_after = 30
         self.say_dest = None
 
     @staticmethod
@@ -104,7 +104,7 @@ class Admin(Cog):
                             f"No module `{module}` found in cogs directory",
                 color=0xFF0000
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             verbose_error = error.original
 
         except ExtensionAlreadyLoaded as error:
@@ -114,7 +114,7 @@ class Admin(Cog):
                             f"Module `{module}` is already loaded",
                 color=0xFF0000
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             verbose_error = error
 
         except NoEntryPointError as error:
@@ -124,7 +124,7 @@ class Admin(Cog):
                             f"Module `{module}` does not define a `setup` function",
                 color=0xFF0000
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             verbose_error = error
 
         except ExtensionFailed as error:
@@ -142,7 +142,7 @@ class Admin(Cog):
                                 f"An execution error occurred during module `{module}`'s setup function",
                     color=0xFF0000
                 )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             verbose_error = error.original
 
         except Exception as error:
@@ -154,7 +154,7 @@ class Admin(Cog):
                             f"```",
                 color=0xFF0000
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             verbose_error = error
 
         else:
@@ -163,7 +163,7 @@ class Admin(Cog):
                 description=f"Module `{module}` loaded successfully",
                 color=0x00FF00
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
 
         finally:
             if verbose and verbose_error:
@@ -190,7 +190,7 @@ class Admin(Cog):
                             f"Module `{module}` is not loaded",
                 color=0xFF0000
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             verbose_error = error
 
         except Exception as error:
@@ -202,7 +202,7 @@ class Admin(Cog):
                             f"```",
                 color=0xFF0000
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             verbose_error = error
 
         else:
@@ -211,7 +211,7 @@ class Admin(Cog):
                 description=f"Module `{module}` unloaded successfully",
                 color=0x00FF00
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
 
         finally:
             if verbose and verbose_error:
@@ -238,7 +238,7 @@ class Admin(Cog):
                             f"Module `{module}` is not loaded",
                 color=0xFF0000
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             verbose_error = error
 
         except ExtensionNotFound as error:
@@ -248,7 +248,7 @@ class Admin(Cog):
                             f"No module `{module}` found in cogs directory",
                 color=0xFF0000
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             verbose_error = error.original
 
         except NoEntryPointError as error:
@@ -258,7 +258,7 @@ class Admin(Cog):
                             f"Module `{module}` does not define a `setup` function",
                 color=0xFF0000
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             verbose_error = error
 
         except ExtensionFailed as error:
@@ -276,7 +276,7 @@ class Admin(Cog):
                                 f"An execution error occurred during module `{module}`'s setup function",
                     color=0xFF0000
                 )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             verbose_error = error.original
 
         except Exception as error:
@@ -288,7 +288,7 @@ class Admin(Cog):
                             f"```",
                 color=0xFF0000
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             verbose_error = error
 
         else:
@@ -297,7 +297,7 @@ class Admin(Cog):
                 description=f"Module `{module}` reloaded successfully",
                 color=0x00FF00
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
 
         finally:
             if verbose and verbose_error:
@@ -331,7 +331,7 @@ class Admin(Cog):
             color=0x00FF00
         )
 
-        await ctx.send(embed=em, delete_after=15)
+        await ctx.send(embed=em, delete_after=self.delete_after)
 
     @sudo()
     @init.command(name="add", usage="(module name)")
@@ -356,7 +356,7 @@ class Admin(Cog):
                             f"Module `{module}` is already initial module",
                 color=0xFF0000
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             return
 
         try:
@@ -373,7 +373,7 @@ class Admin(Cog):
                             f"No module `{module}` found in cogs directory",
                 color=0xFF0000
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             verbose_error = error
 
         except AttributeError as error:
@@ -383,7 +383,7 @@ class Admin(Cog):
                             f"Module `{module}` does not define a `setup` function",
                 color=0xFF0000
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             verbose_error = error
 
         except Exception as error:
@@ -393,7 +393,7 @@ class Admin(Cog):
                             f"{error}",
                 color=0xFF0000
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
             verbose_error = error
 
         else:
@@ -403,7 +403,7 @@ class Admin(Cog):
                 description=f"Module `{module}` added to initial modules",
                 color=0x00FF00
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
 
         finally:
             if verbose and verbose_error:
@@ -428,7 +428,7 @@ class Admin(Cog):
                 description=f"Module `{module}` removed from initial modules",
                 color=0x00FF00
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
 
         else:
             em = Embed(
@@ -436,7 +436,7 @@ class Admin(Cog):
                 description=f"Module `{module}` is not an initial module",
                 color=0xFF0000
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
 
     """ ######################
          General Use Commands
@@ -467,7 +467,7 @@ class Admin(Cog):
                     description=f"**__{type(error).__name__}__**: {str(error)}",
                     color=0xFF0000
                 )
-                await ctx.send(embed=em, delete_after=5)
+                await ctx.send(embed=em, delete_after=self.delete_after)
             else:
                 em = Embed(
                     title="Administration: Set `say` Destination",
@@ -477,7 +477,7 @@ class Admin(Cog):
                                 f"ID: {self.say_dest.id}",
                     color=0x00FF00
                 )
-                await ctx.send(embed=em, delete_after=5)
+                await ctx.send(embed=em, delete_after=self.delete_after)
         else:
             self.say_dest = None
             em = Embed(
@@ -485,7 +485,7 @@ class Admin(Cog):
                 description=f"Say destination has been unset",
                 color=0x00FF00
             )
-            await ctx.send(embed=em, delete_after=5)
+            await ctx.send(embed=em, delete_after=self.delete_after)
 
     @sudo()
     @command(name='invite')
@@ -522,7 +522,7 @@ class Admin(Cog):
             description="Status changed to `online`",
             color=0x00FF00
         )
-        await ctx.send(embed=em, delete_after=5)
+        await ctx.send(embed=em, delete_after=self.delete_after)
 
     @sudo()
     @status.command(name="dnd", aliases=["do_not_disturb"])
@@ -535,7 +535,7 @@ class Admin(Cog):
             description="Status changed to `dnd`",
             color=0x00FF00
         )
-        await ctx.send(embed=em, delete_after=5)
+        await ctx.send(embed=em, delete_after=self.delete_after)
 
     @sudo()
     @status.command(name="idle")
@@ -548,7 +548,7 @@ class Admin(Cog):
             description="Status changed to `idle`",
             color=0x00FF00
         )
-        await ctx.send(embed=em, delete_after=5)
+        await ctx.send(embed=em, delete_after=self.delete_after)
 
     @sudo()
     @status.command(name="invisible", aliases=["offline"])
@@ -561,7 +561,7 @@ class Admin(Cog):
             description="Status changed to `invisible`",
             color=0x00FF00
         )
-        await ctx.send(embed=em, delete_after=5)
+        await ctx.send(embed=em, delete_after=self.delete_after)
 
     @sudo()
     @status.command(name="remove", aliases=["rem", "del", "delete", "stop"])
@@ -574,7 +574,7 @@ class Admin(Cog):
             title="Administration: Status Message Removed",
             color=0x00FF00
         )
-        await ctx.send(embed=em, delete_after=5)
+        await ctx.send(embed=em, delete_after=self.delete_after)
 
     @sudo()
     @status.command(name="playing", aliases=["game"])
@@ -591,7 +591,7 @@ class Admin(Cog):
                         f"Playing {status}",
             color=0x00FF00
         )
-        await ctx.send(embed=em, delete_after=5)
+        await ctx.send(embed=em, delete_after=self.delete_after)
 
     @sudo()
     @status.command(name="streaming")
@@ -608,7 +608,7 @@ class Admin(Cog):
                         f"Playing {status}",
             color=0x00FF00
         )
-        await ctx.send(embed=em, delete_after=5)
+        await ctx.send(embed=em, delete_after=self.delete_after)
 
     @sudo()
     @status.command(name="listening")
@@ -622,7 +622,7 @@ class Admin(Cog):
             description=f"Listening to {status}",
             color=0x00FF00
         )
-        await ctx.send(embed=em, delete_after=5)
+        await ctx.send(embed=em, delete_after=self.delete_after)
 
     @sudo()
     @status.command(name="watching")
@@ -636,7 +636,7 @@ class Admin(Cog):
             description=f"Watching {status}",
             color=0x00FF00
         )
-        await ctx.send(embed=em, delete_after=5)
+        await ctx.send(embed=em, delete_after=self.delete_after)
 
     """ #########################
          Guild-Specific Prefixes
@@ -683,7 +683,7 @@ class Admin(Cog):
                 inline=False
             )
 
-        await ctx.send(embed=em, delete_after=8)
+        await ctx.send(embed=em, delete_after=self.delete_after)
 
     @sudo()
     @prefix.command(name="default")
@@ -706,7 +706,7 @@ class Admin(Cog):
                 color=self.color(ctx)
             )
 
-        await ctx.send(embed=em, delete_after=5)
+        await ctx.send(embed=em, delete_after=self.delete_after)
 
     @sudo()
     @prefix.command(name="mention")
@@ -727,7 +727,7 @@ class Admin(Cog):
             color=self.color(ctx)
         )
 
-        await ctx.send(embed=em, delete_after=5)
+        await ctx.send(embed=em, delete_after=self.delete_after)
 
     @has_guild_permissions(manage_guild=True)
     @prefix.command(name="guild")
@@ -761,7 +761,7 @@ class Admin(Cog):
                 color=self.color(ctx)
             )
 
-        await ctx.send(embed=em, delete_after=5)
+        await ctx.send(embed=em, delete_after=self.delete_after)
 
     """ #########################
          Updating and Restarting
@@ -784,7 +784,7 @@ class Admin(Cog):
             description=self.gitpull(),
             color=0x00FF00
         )
-        await ctx.send(embed=em, delete_after=5)
+        await ctx.send(embed=em, delete_after=self.delete_after)
 
     @sudo()
     @group(name='restart', aliases=["kill", "f"], invoke_without_command=True)
@@ -797,7 +797,7 @@ class Admin(Cog):
             color=0x00FF00
         )
 
-        await ctx.send(embed=em, delete_after=5)
+        await ctx.send(embed=em, delete_after=self.delete_after)
         await self.bot.logout()
 
     @sudo()
