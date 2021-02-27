@@ -430,9 +430,15 @@ class StrictRedis(DefaultStrictRedis):
 
 class SubRedis:
 
-    def __init__(self, db: StrictRedis, basekey: str):
-        self.db = db
-        self.basekey = basekey
+    def __init__(self, db: Union[StrictRedis, SubRedis], basekey: str):
+
+        if isinstance(db, SubRedis):
+            self.root = db.root
+            self.basekey = f"{db.basekey}:{basekey}"
+
+        else:
+            self.root = db
+            self.basekey = basekey
 
     """ ###############
          Managing Keys
@@ -441,12 +447,12 @@ class SubRedis:
     def exists(self, *names: str) -> int:
         """Returns the number of ``names`` that exist"""
         names = [f"{self.basekey}:{name}" for name in names]
-        return self.db.exists(*names)
+        return self.root.exists(*names)
 
     def delete(self, *names: str) -> Any:
         """Delete one or more keys specified by ``names``"""
         names = [f"{self.basekey}:{name}" for name in names]
-        return self.db.delete(*names)
+        return self.root.delete(*names)
 
     """ ###########
          Iterators
@@ -484,11 +490,11 @@ class SubRedis:
         ``xx`` if set to True, set the value at key ``name`` to ``value`` only
             if it already exists.
         """
-        return self.db.set(f"{self.basekey}:{name}", value, ex, px, nx, xx)
+        return self.root.set(f"{self.basekey}:{name}", value, ex, px, nx, xx)
 
     def get(self, name: str) -> str:
         """Return the value at key ``name``, or None if the key doesn't exist"""
-        return self.db.get(f"{self.basekey}:{name}")
+        return self.root.get(f"{self.basekey}:{name}")
 
     """ ######
          Sets
@@ -496,23 +502,23 @@ class SubRedis:
 
     def scard(self, name: str) -> int:
         """Return the number of elements in set ``name``"""
-        return self.db.scard(f"{self.basekey}:{name}")
+        return self.root.scard(f"{self.basekey}:{name}")
 
     def sismember(self, name: str, value: str) -> bool:
         """Return a boolean indicating if ``value`` is a member of set ``name``"""
-        return self.db.sismember(f"{self.basekey}:{name}", value)
+        return self.root.sismember(f"{self.basekey}:{name}", value)
 
     def smembers(self, names: str) -> Set[str]:
         """Return all members of the set ``name``"""
-        return self.db.smembers(f"{self.basekey}:{names}")
+        return self.root.smembers(f"{self.basekey}:{names}")
 
     def sadd(self, name: str, *values: str) -> Any:
         """Add ``value(s)`` to set ``name``"""
-        return self.db.sadd(f"{self.basekey}:{name}", *values)
+        return self.root.sadd(f"{self.basekey}:{name}", *values)
 
     def srem(self, name: str, *values: str) -> Any:
         """Remove ``values`` from set ``name``"""
-        return self.db.srem(f"{self.basekey}:{name}", *values)
+        return self.root.srem(f"{self.basekey}:{name}", *values)
 
     """ #######
          Lists
@@ -526,11 +532,11 @@ class SubRedis:
         ``start`` and ``end`` can be negative numbers just like
         Python slicing notation
         """
-        return self.db.lrange(f"{self.basekey}:{name}", start, end)
+        return self.root.lrange(f"{self.basekey}:{name}", start, end)
 
     def lpush(self, name: str, *values: str) -> Any:
         """Push ``values`` onto the head of the list ``name``"""
-        return self.db.lpush(f"{self.basekey}:{name}", *values)
+        return self.root.lpush(f"{self.basekey}:{name}", *values)
 
     def lrem(self, name: str, count: int, value: str) -> Any:
         """
@@ -542,7 +548,7 @@ class SubRedis:
             count < 0: Remove elements equal to value moving from tail to head.
             count = 0: Remove all elements equal to value.
         """
-        return self.db.lrem(f"{self.basekey}:{name}", count, value)
+        return self.root.lrem(f"{self.basekey}:{name}", count, value)
 
     """ #############################
          Hashes (Dict-like Mappings)
@@ -550,37 +556,37 @@ class SubRedis:
 
     def hget(self, name: str, key: str) -> str:
         """Return the value of ``key`` within the hash ``name``"""
-        return self.db.hget(f"{self.basekey}:{name}", key)
+        return self.root.hget(f"{self.basekey}:{name}", key)
 
     def hkeys(self, name: str) -> List[str]:
         """Return the list of keys within hash ``name``"""
-        return self.db.hkeys(f"{self.basekey}:{name}")
+        return self.root.hkeys(f"{self.basekey}:{name}")
 
     def hvals(self, name: str) -> List[str]:
         """Return the list of values within hash ``name``"""
-        return self.db.hvals(f"{self.basekey}:{name}")
+        return self.root.hvals(f"{self.basekey}:{name}")
 
     def hgetall(self, name: str) -> Dict[str, Any]:
         """Return a Python dict of the hash's name/value pairs"""
-        return self.db.hgetall(f"{self.basekey}:{name}")
+        return self.root.hgetall(f"{self.basekey}:{name}")
 
     def hset(self, name: str, key: str, value: str) -> Any:
         """
         Set ``key`` to ``value`` within hash ``name``
         Returns 1 if HSET created a new field, otherwise 0
         """
-        return self.db.hset(f"{self.basekey}:{name}", key, value)
+        return self.root.hset(f"{self.basekey}:{name}", key, value)
 
     def hmset(self, name: str, mapping: dict) -> Any:
         """
         Set key to value within hash ``name`` for each corresponding
         key and value from the ``mapping`` dict.
         """
-        return self.db.hmset(f"{self.basekey}:{name}", mapping)
+        return self.root.hmset(f"{self.basekey}:{name}", mapping)
 
     def hdel(self, name: str, *keys):
         """Delete ``keys`` from hash ``name``"""
-        return self.db.hdel(name, *keys)
+        return self.root.hdel(name, *keys)
 
 
 class Paginator:
