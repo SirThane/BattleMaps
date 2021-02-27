@@ -25,23 +25,23 @@ from utils.classes import Bot, SubRedis
 
 
 class Emoji(Enum):
-    white = b'\xE2\x9A\xAA'.decode("utf8")                  # :white_circle:        ⚪
-    red = b'\xF0\x9F\x94\xB4'.decode("utf8")                # :red_circle:          🔴
-    blue = b'\xF0\x9F\x94\xB5'.decode("utf8")               # :large_blue_circle:   🔵
-    vs = b'\xF0\x9F\x86\x9A'.decode("utf8")                 # :vs:                  🆚
-    tada = b'\xF0\x9F\x8E\x89'.decode("utf8")               # :tada:                🎉
-    one = b'\x31\xE2\x83\xA3'.decode("utf8")                # :one:                 1⃣
-    two = b'\x32\xE2\x83\xA3'.decode("utf8")                # :two:                 2⃣
-    three = b'\x33\xE2\x83\xA3'.decode("utf8")              # :three:               3⃣
-    four = b'\x34\xE2\x83\xA3'.decode("utf8")               # :four:                4⃣
-    five = b'\x35\xE2\x83\xA3'.decode("utf8")               # :five:                5⃣
-    six = b'\x36\xE2\x83\xA3'.decode("utf8")                # :six:                 6⃣
-    seven = b'\x37\xE2\x83\xA3'.decode("utf8")              # :seven:               7⃣
-    x = b'\xE2\x9D\x8C'.decode("utf8")                      # :x:                   ❌
-    info = b'\xE2\x84\xB9'.decode("utf8")                   # :information_source:  ℹ
-    warning = b'\xE2\x9A\xA0'.decode("utf8")                # :warning:             ⚠
-    error = b'\xe2\x9b\x94'.decode("utf8")                  # :no_entry:            ⛔
-    refresh = b'\xE2\x99\xBB\xEF\xB8\x8F'.decode("utf8")    # :recycle:             ♻️
+    white   = b'\xE2\x9A\xAA'.decode("utf8")              # :white_circle:        ⚪
+    red     = b'\xF0\x9F\x94\xB4'.decode("utf8")          # :red_circle:          🔴
+    blue    = b'\xF0\x9F\x94\xB5'.decode("utf8")          # :large_blue_circle:   🔵
+    vs      = b'\xF0\x9F\x86\x9A'.decode("utf8")          # :vs:                  🆚
+    tada    = b'\xF0\x9F\x8E\x89'.decode("utf8")          # :tada:                🎉
+    one     = b'\x31\xE2\x83\xA3'.decode("utf8")          # :one:                 1⃣
+    two     = b'\x32\xE2\x83\xA3'.decode("utf8")          # :two:                 2⃣
+    three   = b'\x33\xE2\x83\xA3'.decode("utf8")          # :three:               3⃣
+    four    = b'\x34\xE2\x83\xA3'.decode("utf8")          # :four:                4⃣
+    five    = b'\x35\xE2\x83\xA3'.decode("utf8")          # :five:                5⃣
+    six     = b'\x36\xE2\x83\xA3'.decode("utf8")          # :six:                 6⃣
+    seven   = b'\x37\xE2\x83\xA3'.decode("utf8")          # :seven:               7⃣
+    x       = b'\xE2\x9D\x8C'.decode("utf8")              # :x:                   ❌
+    info    = b'\xE2\x84\xB9'.decode("utf8")              # :information_source:  ℹ
+    warning = b'\xE2\x9A\xA0'.decode("utf8")              # :warning:             ⚠
+    error   = b'\xe2\x9b\x94'.decode("utf8")              # :no_entry:            ⛔
+    refresh = b'\xE2\x99\xBB\xEF\xB8\x8F'.decode("utf8")  # :recycle:             ♻️
 
     def __str__(self):
         return self.value
