@@ -458,7 +458,7 @@ class SubRedis:
          Iterators
         ########### """
 
-    def scan_iter(self, pattern: str = None, count: int = None) -> Generator[str, str, None]:
+    def scan_iter(self, match: str = None, count: int = None, _type: str = None) -> Generator[str, str, None]:
         """
         Make an iterator using the SCAN command so that the client doesn't
         need to remember the cursor position.
@@ -467,9 +467,9 @@ class SubRedis:
 
         ``count`` allows for hint the minimum number of returns
         """
-        if not pattern == "*":
-            pattern = f":{pattern}"
-        for item in self.db.scan_iter(f"{self.basekey}{pattern}", count):
+        if not match == "*":
+            match = f":{match}"
+        for item in self.root.scan_iter(match=f"{self.basekey}{match}", count=count, _type=_type):
             yield item.replace(f"{self.basekey}:", "")
 
     """ ###############
