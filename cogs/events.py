@@ -22,7 +22,7 @@ from pytz import timezone
 from typing import Union
 
 # Local
-from utils.classes import Bot
+from utils.classes import Bot, Embed, SubRedis
 from utils.errors import CommandError, AWBWDimensionsError, InvalidMapError, NoLoadedMapError, UnimplementedError
 
 
@@ -37,8 +37,7 @@ class Events(Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.db = bot.db
-        self.config = f"{bot.APP_NAME}:events"
+        self.config = SubRedis(bot.db, "events")
 
         self.errorlog = bot.errorlog
 

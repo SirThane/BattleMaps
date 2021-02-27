@@ -9,7 +9,7 @@ from discord.ext.commands.context import Context
 from discord.ext.commands.core import command
 
 # Local
-from utils.classes import Bot
+from utils.classes import Bot, Embed, SubRedis
 from utils.checks import sudo
 
 
@@ -18,8 +18,7 @@ class General(Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.db = bot.db
-        self.config = f"{bot.APP_NAME}:general"
+        self.db = SubRedis(bot.db, "general")
 
         self.errorlog = bot.errorlog
 

@@ -11,7 +11,7 @@ from discord.ext.commands.core import command, group, guild_only
 from discord.ext.commands.errors import BadArgument
 
 # Local
-from utils.classes import Bot
+from utils.classes import Bot, Embed, SubRedis
 from utils.checks import awbw_staff
 
 
@@ -40,19 +40,18 @@ class SelfRoles(Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.db = bot.db
-        self.config = f"{bot.APP_NAME}:selfroles"
+        self.config = SubRedis(bot.db, "selfroles")
 
         self.errorlog = bot.errorlog
 
         self._selfroles = {g.id: [] for g in bot.guilds}
 
-        for key in self.db.scan_iter(match=f"{self.config}:*"):
+        for key in self.config.scan_iter(match=f"{self.config}:*"):
             guild = bot.get_guild(int(key.split(":")[-1]))
             if not guild:
                 continue
             self._selfroles[guild.id] = []
-            r_ids = [int(r_id) for r_id in self.db.smembers(key)]
+            r_ids = [int(r_id) for r_id in self.config.smembers(key)]
             for role in guild.roles:
                 if role.id in r_ids:
                     self._selfroles[guild.id].append(role.id)
@@ -193,7 +192,7 @@ class SelfRoles(Cog):
                     )
                 )
             else:
-                self.db.sadd(f"{self.config}:{ctx.guild.id}", str(role.id))
+                self.config.sadd(f"{self.config}:{ctx.guild.id}", str(role.id))
                 self._selfroles[ctx.guild.id].append(role.id)
                 await ctx.send(
                     embed=Embed(
@@ -224,7 +223,7 @@ class SelfRoles(Cog):
 
         else:
             if role.id in r_ids:
-                self.db.srem(f"{self.config}:{ctx.guild.id}", role.id)
+                self.config.srem(f"{self.config}:{ctx.guild.id}", role.id)
                 self._selfroles[ctx.guild.id].remove(role.id)
                 await ctx.send(
                     embed=Embed(

@@ -47,10 +47,7 @@ async def user_has_required_permissions(ctx: Context) -> bool:
 class Player(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.root_db = bot.db
-
-        self.config = SubRedis(bot.db, f"{bot.APP_NAME}:player")
-        self.config_bot = SubRedis(bot.db, f"{bot.APP_NAME}:config")
+        self.config = SubRedis(bot.db, "player")
 
         self.errorlog = bot.errorlog
 

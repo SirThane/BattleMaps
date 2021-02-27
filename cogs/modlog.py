@@ -63,8 +63,7 @@ class ModLogs(Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.root_db = bot.db
-        self.config = SubRedis(bot.db, f"{bot.APP_NAME}:modlog")
+        self.config = SubRedis(bot.db, "modlog")
 
         self.errorlog = bot.errorlog
 

@@ -348,7 +348,7 @@ class Bot(DiscordBot):
     def __init__(self, **kwargs):
 
         # Redis db instance made available to cogs
-        self.db: StrictRedis = kwargs.pop("db", None)
+        self.db: SubRedis = kwargs.pop("db", None)
 
         # Name of bot stored in Bot instance
         # Used as key name for db
@@ -368,6 +368,10 @@ class Bot(DiscordBot):
         # Bot.get_channel method not available until on_ready
         self.errorlog_channel: int = kwargs.pop("errorlog", None)
         self.errorlog: ErrorLog = kwargs.get("errorlog", None)
+
+        # Added by help.py
+        # Supress IDE errors
+        self.send_help_for = None
 
         # Changed signature from arg to kwarg so I can splat the hgetall from db in main.py
         command_prefix: str = kwargs.pop("command_prefix", "!")

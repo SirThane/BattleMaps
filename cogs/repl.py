@@ -11,7 +11,7 @@ from discord.ext.commands.context import Context
 from discord.ext.commands.core import command, group
 
 # Local
-from utils.classes import Bot, Embed
+from utils.classes import Bot, Embed, SubRedis
 from utils.checks import sudo
 # from utils.utils import stdoutio
 
@@ -23,8 +23,7 @@ class REPL(Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.db = bot.db
-        self.config = f"{bot.APP_NAME}:REPL"
+        self.config = SubRedis(bot.db, "REPL")
 
         self.errorlog = bot.errorlog
 
@@ -43,7 +42,7 @@ class REPL(Cog):
             'author': ctx.message.author,
             'discord': discord,
             'random': random,
-            'db': self.db,
+            'db': self.config,
             'ret': self.ret,
         }
         env.update(globals())

@@ -54,12 +54,13 @@ Redis Configuration JSON Schema
 try:
     with open("redis.json", "r+") as redis_conf:
         conf = load(redis_conf)["db"]
-        db = StrictRedis(**conf)
+        root = StrictRedis(**conf)
+        db = SubRedis(root, APP_NAME)
 except FileNotFoundError:
     raise FileNotFoundError("redis.json not found in running directory")
 
 
-config = SubRedis(db, f"{APP_NAME}:config")
+config = SubRedis(db, "config")
 
 
 if not config.hget("prefix:config", "default_prefix"):

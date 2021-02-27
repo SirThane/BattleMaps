@@ -50,8 +50,7 @@ class AdvanceWars(Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.root_db = bot.db
-        self.config = SubRedis(bot.db, f"{bot.APP_NAME}:maps")
+        self.config = SubRedis(bot.db, "maps")
 
         self.listen_for_maps = bool(self.config.get("listen_for_maps")) or False
         self.buffer_channel = self.bot.get_channel(id=434551085185630218)

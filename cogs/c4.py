@@ -339,8 +339,7 @@ class ConnectFour(Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.root_db = bot.db
-        self.config = SubRedis(bot.db, f"{bot.APP_NAME}:c4")
+        self.config = SubRedis(bot.db, "c4")
 
         self.sessions = dict()
         self.timeout = 120

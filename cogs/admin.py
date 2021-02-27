@@ -43,10 +43,9 @@ class Admin(Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.root_db = bot.db
 
-        self.config = SubRedis(bot.db, f"{bot.APP_NAME}:admin")
-        self.config_bot = SubRedis(bot.db, f"{bot.APP_NAME}:config")
+        self.config = SubRedis(bot.db, "admin")
+        self.config_bot = SubRedis(bot.db, "config")
 
         self.errorlog = bot.errorlog
 

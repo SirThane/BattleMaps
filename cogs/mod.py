@@ -19,8 +19,7 @@ class Moderation(Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.root_db = bot.db
-        self.config = SubRedis(bot.db, f"{bot.APP_NAME}:mod")
+        self.config = SubRedis(bot.db, "mod")
 
         self.errorlog = bot.errorlog
 

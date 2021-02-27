@@ -12,15 +12,14 @@ from discord.ext.commands.core import command
 from discord.ext.commands.cog import Cog
 
 # Local
-from utils.classes import Bot
+from utils.classes import Bot, Embed, SubRedis
 
 
 class Timer(Cog):
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.db = bot.db
-        self.config = f"{bot.APP_NAME}:timer"
+        self.config = SubRedis(bot.db, "timer")
 
         self.errorlog = bot.errorlog
 
