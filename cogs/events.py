@@ -4,7 +4,6 @@
 from datetime import datetime
 
 # Site
-from discord.embeds import Embed
 from discord.ext.commands.cog import Cog
 from discord.ext.commands.context import Context
 from discord.ext.commands.errors import (

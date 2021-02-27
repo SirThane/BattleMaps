@@ -1,8 +1,9 @@
 """General Commands"""
 
+# Lib
+
 # Site
 from discord.colour import Colour
-from discord.embeds import Embed
 from discord.member import Member
 from discord.ext.commands.cog import Cog
 from discord.ext.commands.context import Context

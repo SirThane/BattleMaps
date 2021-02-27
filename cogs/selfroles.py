@@ -3,7 +3,6 @@
 from asyncio import sleep
 
 # Site
-from discord.embeds import Embed
 from discord.ext.commands.cog import Cog
 from discord.ext.commands.context import Context
 from discord.ext.commands.converter import RoleConverter
