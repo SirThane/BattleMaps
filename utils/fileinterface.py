@@ -49,8 +49,8 @@ class PickleInterface:
     Example:
 
     >>> from utils.fileinterface import PickleInterface as PI
-    >>> t = PI("test.pkl")
-    >>> t["foo"] = "bar"
+    ... t = PI("test.pkl")
+    ... t["foo"] = "bar"
 
     This change is automatically written to file because it uses the
     `__setitem__` method
@@ -459,7 +459,7 @@ class PickleInterface:
     @auto_save
     def clear(self) -> None:
         """Mimic `clear` for dict"""
-        return self._payload.clear()
+        return self._cache.clear()
 
     @auto_save
     def copy(self) -> dict:
@@ -474,22 +474,22 @@ class PickleInterface:
     @auto_save
     def pop(self, *args, **kwargs):
         """Mimic `pop` for dict"""
-        return self._payload.pop(*args, **kwargs)
+        return self._cache.pop(*args, **kwargs)
 
     @auto_save
     def popitem(self) -> Tuple[Any, Any]:
         """Mimic `popitem` for dict"""
-        return self._payload.popitem()
+        return self._cache.popitem()
 
     @auto_save
     def setdefault(self, *args, **kwargs) -> None:
         """Mimic `setdefault` for dict"""
-        return self._payload.setdefault(*args, **kwargs)
+        return self._cache.setdefault(*args, **kwargs)
 
     @auto_save
     def update(self, *args, **kwargs) -> None:
         """Mimic `update` for dict"""
-        return self._payload.update(*args, **kwargs)
+        return self._cache.update(*args, **kwargs)
 
     @auto_save
     def keys(self) -> dict.keys:
