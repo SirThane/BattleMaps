@@ -469,7 +469,7 @@ class SubRedis:
         """
         if not match == "*":
             match = f":{match}"
-        for item in self.root.scan_iter(match=f"{self.basekey}{match}", count=count, _type=_type):
+        for item in self.root.scan_iter(match=f"{self.basekey}{match}", count=count):
             yield item.replace(f"{self.basekey}:", "")
 
     """ ###############
