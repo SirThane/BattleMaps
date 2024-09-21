@@ -7,6 +7,8 @@
 # Files
 /redis.json
 /test.pkl
+/BattleMaps.sh
+/BattleMaps.json
 
 # File patterns
 *-t.py*
