@@ -45,7 +45,7 @@ def layer(bitmask: Union[str, int]) -> List[Tuple[int, int]]:
     # Create the list of all tuples from (0, 0) to (3, 3)
     key = [(x, y) for y in range(4) for x in range(4)]
 
-    # Return a list of only those tuples that correspond ot ON bits in the bitmask
+    # Return a list of only those tuples that correspond to ON bits in the bitmask
     return [key[i] for i in range(16) if 2 ** i & bitmask]
 
 
@@ -290,7 +290,9 @@ MAIN_CTRY = {
     13:     "Teal Galaxy",
     14:     "Purple Lightning",
     15:     "Acid Rain",
-    16:     "White Nova"
+    16:     "White Nova",
+    17:     "Azure Asteroid",
+    18:     "Noir Eclipse"
 }
 
 
@@ -315,6 +317,8 @@ BITMAP_PALETTE = {
     "blue4":    (54,  86,  209),    # CI light
     "blue5":    (20,  43,  135),    # CI dark
     "blue6":    (68,  153, 247),    # River light
+    "blue7":    (109, 186, 242),    # AA light
+    "blue8":    (62,  121, 204),    # AA dark
 
     "teal1":    (68,  172, 163),    # TG light
     "teal2":    (10,  89,  82),     # TG dark
@@ -348,6 +352,8 @@ BITMAP_PALETTE = {
 
     "brown1":   (152, 104, 48),     # Mountain dark; Pipe dark
     "brown2":   (104, 80,  56),     # Borders
+    "brown3":   (87,  74,  74),     # NE light
+    "brown4":   (47,  40,  40),     # NE dark
 
     "black":    (0,   0,   0),      # Teleport
 
@@ -695,6 +701,26 @@ BITMAP_SPEC = {
             "fill": BITMAP_PALETTE["red6"]
         }
     ],
+    "aaprop":   [
+        {
+            "xy":   layer("1110111011100000b0"),
+            "fill": BITMAP_PALETTE["blue7"]
+        },
+        {
+            "xy":   layer("0001000100011111b0"),
+            "fill": BITMAP_PALETTE["blue8"]
+        }
+    ],
+    "neprop":   [
+        {
+            "xy":   layer("1110111011100000b0"),
+            "fill": BITMAP_PALETTE["brown3"]
+        },
+        {
+            "xy":   layer("0001000100011111b0"),
+            "fill": BITMAP_PALETTE["brown4"]
+        }
+    ],
     # "seam":     [
     #     {
     #         "xy":   [layer("1010010110100101b0")] * 8,
@@ -879,6 +905,26 @@ BITMAP_SPEC = {
         {
             "xy":   [layer("0000011001100000b0")] * 8,
             "fill": [BITMAP_PALETTE["red5"]] * 8
+        },
+        {
+            "xy":   [layer("1111100110011111b0")] * 8,
+            "fill": BITMAP_PALETTE["BLINK"]
+        }
+    ],
+    "aahq":     [
+        {
+            "xy":   [layer("0000011001100000b0")] * 8,
+            "fill": [BITMAP_PALETTE["blue7"]] * 8
+        },
+        {
+            "xy":   [layer("1111100110011111b0")] * 8,
+            "fill": BITMAP_PALETTE["BLINK"]
+        }
+    ],
+    "nehq":     [
+        {
+            "xy":   [layer("0000011001100000b0")] * 8,
+            "fill": [BITMAP_PALETTE["brown3"]] * 8
         },
         {
             "xy":   [layer("1111100110011111b0")] * 8,
@@ -1119,6 +1165,34 @@ BITMAP_SPEC = {
             "fill": BITMAP_PALETTE["white"]
         }
     ],
+    "aaunit":   [
+        {
+            "xy":   layer("0000001001100000b0"),
+            "fill": BITMAP_PALETTE["blue7"]
+        },
+        {
+            "xy":   layer("0110100110010110b0"),
+            "fill": BITMAP_PALETTE["blue8"]
+        },
+        {
+            "xy":   layer("0000010000000000b0"),
+            "fill": BITMAP_PALETTE["white"]
+        }
+    ],
+    "neunit":   [
+        {
+            "xy":   layer("0000001001100000b0"),
+            "fill": BITMAP_PALETTE["brown3"]
+        },
+        {
+            "xy":   layer("0110100110010110b0"),
+            "fill": BITMAP_PALETTE["brown4"]
+        },
+        {
+            "xy":   layer("0000010000000000b0"),
+            "fill": BITMAP_PALETTE["white"]
+        }
+    ],
 }
 
 
@@ -1156,6 +1230,8 @@ STATIC_ID_TO_SPEC = {
     "plprop":       [242, 243, 244, 245, 246],
     "arprop":       [252, 253, 254, 255, 256],
     "wnprop":       [262, 263, 264, 265, 266],
+    "aaprop":       [272, 273, 274, 275, 276],
+    "neprop":       [282, 283, 284, 285, 286]
 }
 
 
@@ -1179,7 +1255,9 @@ ANIM_ID_TO_SPEC = {
     "tghq":     [231, 237],
     "plhq":     [241, 247],
     "arhq":     [251, 257],
-    "wnhq":     [261, 267]
+    "wnhq":     [261, 267],
+    "aahq":     [271, 277],
+    "nehq":     [281, 287]
 }
 
 
@@ -1203,7 +1281,9 @@ UNIT_ID_TO_SPEC = {
     "tgunit":   list(range(1301, 1347)),
     "plunit":   list(range(1401, 1447)),
     "arunit":   list(range(1501, 1547)),
-    "wnunit":   list(range(1601, 1647))
+    "wnunit":   list(range(1601, 1647)),
+    "aaunit":   list(range(1701, 1747)),
+    "neunit":   list(range(1801, 1847))
 }
 
 
@@ -1692,6 +1772,22 @@ AWBW_TERR = {
     192:    (101, 16),  # White Nova HQ
     193:    (107, 16),  # White Nova Lab
     194:    (105, 16),  # White Nova Port
+    # 195:  (900,  0),  # Teleport Tile  # Top of list
+    196:    (104, 17),  # Azure Asteroid Airport
+    197:    (103, 17),  # Azure Asteroid Base
+    198:    (102, 17),  # Azure Asteroid City
+    199:    (106, 17),  # Azure Asteroid Com Tower
+    200:    (101, 17),  # Azure Asteroid HQ
+    201:    (107, 17),  # Azure Asteroid Lab
+    202:    (105, 17),  # Azure Asteroid Port
+    203:    (104, 18),  # Noir Eclipse Airport
+    204:    (103, 18),  # Noir Eclipse Base
+    205:    (102, 18),  # Noir Eclipse City
+    206:    (106, 18),  # Noir Eclipse Com Tower
+    207:    (101, 18),  # Noir Eclipse HQ
+    208:    (107, 18),  # Noir Eclipse Lab
+    209:    (105, 18),  # Noir Eclipse Port
+
 }
 
 
@@ -1742,7 +1838,9 @@ AWBW_COUNTRY_CODE = {
     "tg":   13,
     "pl":   14,
     "ar":   15,
-    "wn":   16
+    "wn":   16,
+    "aa":   17,
+    "ne":   18
 }
 
 
