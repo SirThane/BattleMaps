@@ -1524,7 +1524,7 @@ AWS_UNIT = {
 
 # Relate AWBW Terrain IDs (keys) to Internal Terrain, Country ID pairs (values)
 AWBW_TERR = {
-    "":     (999,  0),  # Teleport Tile
+    195:    (999,  0),  # Teleport Tile
     1:      (1,    0),  # Plain
     2:      (3,    0),  # Mountain
     3:      (2,    0),  # Wood
@@ -2169,7 +2169,7 @@ class AWMap:
 
     @staticmethod
     def terr_from_awbw(terr: int) -> Dict[str, int]:
-        if terr == "":
+        if terr == 195:
             main_id, main_ctry = 999, 0
         else:
             terr = int(terr)
