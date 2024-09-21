@@ -13,7 +13,7 @@ pillow = ">=8.1.0"
 pygithub = "==1.54.1"
 pytz = "==2021.1"
 redis = "==3.5.3"
-requests = "==2.25.1"
+requests = "==2.32.2"
 typing = "==3.7.4.3"
 
 [dev-packages]
