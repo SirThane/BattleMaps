@@ -9,6 +9,7 @@ from io import BytesIO
 from math import cos, sin, pi, trunc
 
 from PIL import Image, ImageDraw
+from PIL.Image import Resampling
 from typing import Dict, Generator, List, Tuple, Union, Optional
 
 from utils import awbw_api
@@ -2012,7 +2013,7 @@ class AWMap:
 
         # The data that the class is instantiated with will be stored in
         # raw_data and can later be referenced
-        self.raw_data = None
+        self.raw_data: bytearray = bytearray()
 
         # The actual 2D dictionary containing the AWTiles with terrain and unit
         # data. Stored as a list of rows ([y][x]) which can be pretty printed
@@ -2020,38 +2021,38 @@ class AWMap:
         # map. Keys are the index (coordinate values). Dictionaries used to
         # avoid potential mistakes of indices. Retrieving AWTile at a given
         # coordinate is abstracted out to self.tile(x, y)
-        self.map = dict()
+        self.map: Dict = dict()
 
         # Map dimensions, Width and Height
-        self.size_w = 0
-        self.size_h = 0
+        self.size_w: int = 0
+        self.size_h: int = 0
 
         # AWS Style information. Currently unused
         self.style = 0
 
         # Metadata will be taken from AWBW, AWS, or manually passed to
         # constructor methods
-        self.title = ""
-        self.author = ""
-        self.desc = ""
+        self.title: str = ""
+        self.author: str = ""
+        self.desc: str = ""
 
         # TODO: Buffer tile coords to skip for multi-tile objects
         # e.g. Volcano, Deathray, Flying Fortress
-        self.pass_buffer = list()
+        self.pass_buffer: list = list()
 
         # Params used from outside class instance
-        self.awbw_id = ""
-        self.override_awareness = True
+        self.awbw_id: str = ""
+        self.override_awareness: bool = True
 
         # TODO: Go back and find the convo to figure out what I was going to do for AWBW Nyvelion
-        self.nyv = False
+        self.nyv: bool = False
 
         # TODO: I don't remember what I was going to with self.countries. Can probably be made into @property
-        self.countries = list()
+        self.countries: list = list()
 
         # TODO: Obviously backburner for BattleMaps commands for modifying maps in Discord
-        self.custom_countries = list()
-        self.country_conversion = dict()
+        self.custom_countries: list = list()
+        self.country_conversion: dict = dict()
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}:" \
@@ -2586,9 +2587,9 @@ class AWMinimap:
 
     def __init__(self, awmap: AWMap):
         self.im = Image.new("RGBA", (4 * awmap.size_w, 4 * awmap.size_h))
-        self.ims = []
+        self.ims = list()
         self.animated = False
-        self.anim_buffer = []
+        self.anim_buffer = list()
         self.final_im = None
 
         # Add all terrain sprites (buffer animated sprites)
@@ -2629,18 +2630,20 @@ class AWMinimap:
             if self.animated:
                 for i, f in enumerate(self.ims):
                     self.ims[i] = f.resize(
-                        (awmap.size_w * 16, awmap.size_h * 16)
+                        (awmap.size_w * 16, awmap.size_h * 16),
+                        resample=Resampling.NEAREST
                     )
             else:
-                self.im = self.im.resize((awmap.size_w * 16, awmap.size_h * 16))
+                self.im = self.im.resize((awmap.size_w * 16, awmap.size_h * 16), resample=Resampling.NEAREST)
         elif awmap.size_w * awmap.size_h <= 3200:
             if self.animated:
                 for i, f in enumerate(self.ims):
                     self.ims[i] = f.resize(
-                        (awmap.size_w * 8, awmap.size_h * 8)
+                        (awmap.size_w * 8, awmap.size_h * 8),
+                        resample=Resampling.NEAREST
                     )
             else:
-                self.im = self.im.resize((awmap.size_w * 8, awmap.size_h * 8))
+                self.im = self.im.resize((awmap.size_w * 8, awmap.size_h * 8), resample=Resampling.NEAREST)
 
         if self.animated:
             self.final_im = AWMinimap.compile_gif(self.ims)
@@ -2679,7 +2682,7 @@ class AWMinimap:
     @staticmethod
     def get_static_sprite(sprite_name: str) -> Tuple[List[Image.Image], bool]:
         im = Image.new("RGBA", (4, 4))
-        draw = ImageDraw.Draw(im)
+        draw = ImageDraw.Draw(im, "RGBA")
         spec = BITMAP_SPEC[sprite_name]
         for _layer in spec:
             draw.point(**_layer)
@@ -2692,7 +2695,7 @@ class AWMinimap:
             ims.append(Image.new("RGBA", (4, 4)))
         spec = BITMAP_SPEC[sprite_name]
         for frame in range(8):
-            draw = ImageDraw.Draw(ims[frame])
+            draw = ImageDraw.Draw(ims[frame], "RGBA")
             for _layer in spec:
                 draw.point(xy=_layer["xy"][frame], fill=_layer["fill"][frame])
         return ims, True
@@ -2705,7 +2708,7 @@ class AWMinimap:
         spec = BITMAP_SPEC[sprite_name]
         for i in range(8):
             if 1 < i < 6:
-                draw = ImageDraw.Draw(ims[i])
+                draw = ImageDraw.Draw(ims[i], "RGBA")
                 for _layer in spec:
                     draw.point(**_layer)
         return ims, True
@@ -2716,7 +2719,7 @@ class AWMinimap:
         first_frame = frames.pop(0)
         first_frame.save(
             img_bytes,
-            "GIF",
+            format="GIF",
             save_all=True,
             append_images=frames,
             loop=0,
