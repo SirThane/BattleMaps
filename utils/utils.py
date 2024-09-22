@@ -6,7 +6,7 @@ import sys
 from contextlib import contextmanager
 from io import StringIO, BytesIO
 from time import localtime, strftime
-from typing import Iterable, Tuple, Union
+from typing import Iterable, Literal, Tuple, Union
 
 # Site
 from aiohttp.client import ClientSession
@@ -89,7 +89,7 @@ def bytespop(
         b: Union[bytes, bytearray],
         q: int = 1,
         decode: str = None,
-        endian: str = "little"
+        endian: Literal["little", "big"] = "little"
 ) -> Tuple[Union[int, str, bytearray], bytearray]:
 
     if isinstance(b, bytes):
