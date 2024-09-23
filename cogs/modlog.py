@@ -25,7 +25,7 @@ from typing import List, Tuple, Union, Optional
 # Local
 from utils.checks import sudo
 from utils.classes import Bot, Embed, SubRedis
-from utils.utils import download_image
+from utils.tools import download_image
 
 
 class EventColors(Enum):

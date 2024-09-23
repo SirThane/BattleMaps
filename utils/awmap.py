@@ -13,7 +13,7 @@ from PIL.Image import Resampling
 from typing import Dict, Generator, List, Tuple, Union, Optional
 
 from utils import awbw_api
-from utils.utils import bytespop
+from utils.tools import bytespop
 
 
 def layer(bitmask: Union[str, int]) -> List[Tuple[int, int]]:
