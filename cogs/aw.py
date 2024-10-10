@@ -34,6 +34,10 @@ from utils.errors import (
 
 RE_AWL = compile(r"(http[s]?://)?awbw.amarriner.com/(glenstorm/|2030/)?prevmaps.php\?maps_id=(?P<id>[0-9]+)(?i)")
 RE_CSV = compile(r"(([0-9])+(,[0-9]*)*(\n[0-9]+(,[0-9]*)*)*)")  # {1}")
+NEW_GAME = "https://awbw.amarriner.com/create.php?maps_id={0}"
+VIEW_GAMES = "https://awbw.amarriner.com/gamescurrent.php?maps_id={0}"
+PLANNER = "https://awbw.amarriner.com/moveplanner.php?maps_id={0}"
+ANALYSIS = "https://awbw.amarriner.com/analysis.php?maps_id={0}"
 
 
 class AdvanceWars(Cog):
@@ -341,15 +345,21 @@ class AdvanceWars(Cog):
         if awmap.awbw_id:
             a_url = f"http://awbw.amarriner.com/profile.php?username={quote(awmap.author)}"
             if awmap.author == "[Unknown]":
-                author = "Design Map by [Unknown]"
+                desc = "Design Map by [Unknown]"
             else:
-                author = f"Design map by [{awmap.author}]({a_url})"
+                desc = f"Design map by [{awmap.author}]({a_url})"
+            desc = (
+                f"{desc}\n\n"
+                f"[Games]({VIEW_GAMES.format(awmap.awbw_id)}) ᛫ "
+                f"[New Game]({NEW_GAME.format(awmap.awbw_id)}) ᛫ "
+                f"[Planner]({PLANNER.format(awmap.awbw_id)}) ᛫ "
+                f"[Map Analysis]({ANALYSIS.format(awmap.awbw_id)})")
             m_url = f"http://awbw.amarriner.com/prevmaps.php?maps_id={awmap.awbw_id}"
         else:
-            author = f"Design map by {awmap.author}"
+            desc = f"Design map by {awmap.author}"
             m_url = ""
 
-        return Embed(color=self._color(channel), title=awmap.title, description=author, url=m_url)
+        return Embed(color=self._color(channel), title=awmap.title, description=desc, url=m_url)
 
     async def em_load(self, channel, awmap: AWMap):
         """Formats and sends an embed to `channel` appropriate
