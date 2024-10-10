@@ -23,7 +23,7 @@ from discord.utils import get, find
 from redis.client import StrictRedis as DefaultStrictRedis
 
 # Local
-from utils.utils import ZWSP, bool_transform, _get_from_guilds
+from utils.tools import ZWSP, bool_transform, _get_from_guilds
 
 
 class Embed(DiscordEmbed):
